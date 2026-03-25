@@ -1,0 +1,19 @@
+{
+  "name": "builder",
+  "version": "1.0.0",
+  "description": "React Architecture Builder monorepo",
+  "private": true,
+  "workspaces": [
+    "login-app",
+    "builder-app"
+  ],
+  "scripts": {
+    "dev:login": "npm run dev --workspace=login-app",
+    "dev:builder": "npm run dev --workspace=builder-app",
+    "build:login": "npm run build --workspace=login-app",
+    "build:builder": "npm run build --workspace=builder-app"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

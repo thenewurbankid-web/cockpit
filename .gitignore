@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# IDE
+.vscode/
+.idea/
+
+# Build / output
+dist/
+build/
+*.log
+
+# Temporary dev/debug scripts
+dbg*.js
+fix-*.js
+check.js
