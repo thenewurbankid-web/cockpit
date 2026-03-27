@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { highlightElement, clearHighlight } from '../highlight'
 
 interface ResolvedLocator {
   file: string
@@ -247,9 +248,11 @@ interface RowProps {
   node: DisplayNode
   selected: Element | null
   onSelect: (node: DisplayNode) => void
+  /** locatorId of the element currently hovered in the preview canvas */
+  hoveredLocatorId: string | null
 }
 
-function TreeRow({ node, selected, onSelect }: RowProps) {
+function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
   // Root component (depth 0) and all DOM nodes start open;
   // child component nodes (depth > 0) start collapsed.
   const [open, setOpen] = useState(node.kind !== 'component' || node.depth === 0)
@@ -264,6 +267,14 @@ function TreeRow({ node, selected, onSelect }: RowProps) {
       ? '.' + el.className.trim().split(/\s+/).join('.')
       : ''
 
+  // This row is highlighted when canvas mouse hovers its element.
+  const isCanvasHovered =
+    hoveredLocatorId !== null &&
+    node.kind === 'dom' &&
+    node.locatorId === hoveredLocatorId
+
+  const rowEl = nodeElement
+
   return (
     <div>
       <div
@@ -275,16 +286,18 @@ function TreeRow({ node, selected, onSelect }: RowProps) {
           paddingTop: 2,
           paddingBottom: 2,
           paddingRight: 8,
-          background: isSelected ? '#313244' : 'transparent',
-          borderLeft: isSelected ? '2px solid #89b4fa' : '2px solid transparent',
+          background: isSelected ? '#313244' : isCanvasHovered ? 'rgba(250,179,135,0.12)' : 'transparent',
+          borderLeft: isSelected ? '2px solid #89b4fa' : isCanvasHovered ? '2px solid #fab387' : '2px solid transparent',
           cursor: 'pointer',
           userSelect: 'none',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           fontFamily: 'monospace',
           fontSize: 12,
-          transition: 'background 0.1s',
+          transition: 'background 0.12s, border-left-color 0.12s',
         }}
+        onMouseEnter={() => highlightElement(rowEl)}
+        onMouseLeave={() => clearHighlight()}
         onClick={() => onSelect(node)}
       >
         {/* expand / collapse */}
@@ -359,7 +372,7 @@ function TreeRow({ node, selected, onSelect }: RowProps) {
       {open &&
         hasChildren &&
         node.children.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} />
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredLocatorId={hoveredLocatorId} />
         ))}
     </div>
   )
@@ -483,7 +496,34 @@ export function DOMTreePanel({
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
   const [selected, setSelected] = useState<Element | null>(null)
+  const [hoveredCanvasLocatorId, setHoveredCanvasLocatorId] = useState<string | null>(null)
   const rafRef = useRef<number>(0)
+
+  // Track which element the mouse is over in the preview canvas so the
+  // corresponding tree row can glow amber (canvas hover → tree highlight).
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    function onMouseMove(e: MouseEvent) {
+      let el = e.target as Element | null
+      while (el && canvas!.contains(el)) {
+        const id = el.getAttribute('data-locatorjs-id')
+        if (id) { setHoveredCanvasLocatorId(id); return }
+        el = el.parentElement
+      }
+      setHoveredCanvasLocatorId(null)
+    }
+
+    function onMouseLeave() { setHoveredCanvasLocatorId(null) }
+
+    canvas.addEventListener('mousemove', onMouseMove)
+    canvas.addEventListener('mouseleave', onMouseLeave)
+    return () => {
+      canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('mouseleave', onMouseLeave)
+    }
+  }, [canvasRef])
 
   // Poll via rAF — cheap, catches every HMR re-render without MutationObserver setup.
   useEffect(() => {
@@ -565,7 +605,7 @@ export function DOMTreePanel({
       <div style={styles.scroll}>
         {tree.length > 0 ? (
           tree.map((child) => (
-            <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} />
+            <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredLocatorId={hoveredCanvasLocatorId} />
           ))
         ) : (
           <div style={styles.empty}>Waiting for render…</div>
