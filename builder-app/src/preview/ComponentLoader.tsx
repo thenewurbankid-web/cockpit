@@ -1,15 +1,14 @@
 import { Component, lazy, Suspense, useEffect, useState } from 'react'
 
-// Dynamically import LoginPage from login-app via the @login-app alias.
-// The alias resolves to ../login-app/src at build time (see vite.config.ts).
+// Dynamically import the full login-app via the @login-app alias.
 // Using a factory function so React.lazy gets a fresh import on HMR.
-function loadLoginPage() {
-  return import('@login-app/pages/LoginPage').then((mod) => ({
-    default: mod.LoginPage,
+function loadApp() {
+  return import('@login-app/App').then((mod) => ({
+    default: mod.default,
   }))
 }
 
-const LoginPage = lazy(loadLoginPage)
+const LoginApp = lazy(loadApp)
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -62,7 +61,7 @@ export function ComponentLoader() {
     <PreviewCanvas>
       <Suspense fallback={<div style={styles.loading}>Loading component…</div>}>
         <ErrorBoundary key={resetKey}>
-          <LoginPage />
+          <LoginApp />
         </ErrorBoundary>
       </Suspense>
     </PreviewCanvas>

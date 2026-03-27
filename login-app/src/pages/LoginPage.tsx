@@ -122,7 +122,17 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     color: '#dc2626',
     fontSize: '0.875rem',
-
+  },
+  forgotBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#2563eb',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    padding: 0,
+    textAlign: 'center',
+    textDecoration: 'underline',
+    alignSelf: 'center',
   },
 }
 
