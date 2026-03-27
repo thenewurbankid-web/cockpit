@@ -1125,6 +1125,25 @@ function extractOwnerProps(source: string, ownerName: string): ComponentProp[] {
             else if (right.type === 'BooleanLiteral') defaultValue = String((right as AstNode & { value?: unknown }).value ?? '')
             else if (right.type === 'NullLiteral') defaultValue = 'null'
             else if (right.type === 'Identifier') defaultValue = String((right as AstNode & { name?: string }).name ?? '')
+            else {
+              // Complex expression (object, array, template literal, etc.) — extract raw source text.
+              const loc = right.loc as AstLocFull | undefined
+              if (loc) {
+                const srcLines = source.split('\n')
+                if (loc.start.line === loc.end.line) {
+                  defaultValue = srcLines[loc.start.line - 1]?.slice(loc.start.column, loc.end.column)
+                } else {
+                  const parts: string[] = []
+                  for (let l = loc.start.line; l <= loc.end.line; l++) {
+                    const ln = srcLines[l - 1] ?? ''
+                    if (l === loc.start.line) parts.push(ln.slice(loc.start.column))
+                    else if (l === loc.end.line) parts.push(ln.slice(0, loc.end.column))
+                    else parts.push(ln)
+                  }
+                  defaultValue = parts.join('\n')
+                }
+              }
+            }
           }
         }
         result.push({ name: key.name, typeStr: '', source: 'owner', defaultValue })
@@ -1311,8 +1330,26 @@ function inferTypeFromValueString(raw: string): string {
       : first
     const t = inferTypeFromExpression(expr)
     if (t !== 'unknown') return t
+    // Unwrapped parse yielded unknown — if the original started with `{`, try parsing
+    // the full string as an expression (handles object literals like `{color:"green"}`
+    // which Babel reads as a LabeledStatement when braces are stripped).
+    if (isExpression) {
+      try {
+        const ast2 = parse(`(${trimmed})`, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+        const stmts2 = (ast2.program as unknown as { body: AstNode[] }).body
+        const first2 = stmts2[0]
+        if (first2) {
+          const expr2 = first2.type === 'ExpressionStatement'
+            ? (first2 as AstNode & { expression?: AstNode }).expression ?? first2
+            : first2
+          const t2 = inferTypeFromExpression(expr2)
+          if (t2 !== 'unknown') return t2
+        }
+      } catch { /* fall through */ }
+      return ''
+    }
     // Plain (non-expression) text that parsed as an identifier is a string attribute value.
-    return isExpression ? '' : 'string'
+    return 'string'
   } catch {
     // Fallback heuristics for values we can't parse.
     if (/^['"`]/.test(unwrapped) || /['"`]$/.test(unwrapped)) return 'string'
@@ -2254,6 +2291,9 @@ export function InspectorPanel({
     !!selectedNode.ownerComponentName &&
     selectedNode.ownerComponentName !== rootComponentName
   )
+  // True when the selected component IS the root — it has no parent, so binding makes no sense.
+  // Root props only support default values; child props support binding + default values.
+  const isRootComponent = !!(rootComponentName && selectedNode && /^[A-Z]/.test(selectedNode.tag) && selectedNode.tag === rootComponentName)
   const [displayCode, setDisplayCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -3080,7 +3120,8 @@ export function InspectorPanel({
     const nodeLocLine = selectedNode?.locatorLine ?? line
     const ownerName = selectedNode?.ownerComponentName ?? componentName ?? ''
     // variable mode → pass as expression {varName}; entry mode → pass as string "value"
-    const isVarMode = newPropMode === 'variable'
+    // Root component has no parent to bind variables from — always treat as entry mode.
+    const isVarMode = (!rootComponentName || selectedNode?.tag !== rootComponentName) && newPropMode === 'variable'
     const rawValue = newPropValue.trim()
     const valueToUse = rawValue || name
     // Destructure default: variable mode → raw identifier (= varName); entry mode → quoted string literal (= 'value')
@@ -3314,64 +3355,93 @@ export function InspectorPanel({
                         const isExpanded = expandedRows.has(prop.name)
                         return (
                           <div key={prop.name} style={styles.attrRowWrap}>
-                            {/* Main header row */}
-                            <div style={styles.attrRow}>
-                              <button
-                                style={styles.rowChevron}
-                                title={isExpanded ? 'Collapse' : 'Expand to edit default value'}
-                                onClick={() => setExpandedRows(prev => {
-                                  const next = new Set(prev)
-                                  isExpanded ? next.delete(prop.name) : next.add(prop.name)
-                                  return next
-                                })}
-                              >
-                                {isExpanded ? '▾' : '▸'}
-                              </button>
+                            {/* Main header row — root drops the chevron column from the grid */}
+                            <div style={isRootComponent
+                              ? { ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px auto auto' }
+                              : styles.attrRow
+                            }>
+                              {/* Chevron only for child components (root shows default inline, no expand needed) */}
+                              {!isRootComponent && (
+                                <button
+                                  style={styles.rowChevron}
+                                  title={isExpanded ? 'Collapse' : 'Expand to edit default value'}
+                                  onClick={() => setExpandedRows(prev => {
+                                    const next = new Set(prev)
+                                    isExpanded ? next.delete(prop.name) : next.add(prop.name)
+                                    return next
+                                  })}
+                                >
+                                  {isExpanded ? '▾' : '▸'}
+                                </button>
+                              )}
                               <span style={styles.attrName}>{prop.name}</span>
-                              {/* Value input with var/val mode toggle */}
+                              {/* Value cell: root → default value input (no binding); child → binding with var/val mode */}
                               <div style={styles.attrValueCell}>
-                                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                  {!isReadOnly && (
-                                    <div style={{ ...styles.modeToggle, flexShrink: 0 }}>
-                                      <button
-                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'variable' ? styles.modeBtnActive : {}) }}
-                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'variable' }))}
-                                      >var</button>
-                                      <button
-                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'entry' ? styles.modeBtnActive : {}) }}
-                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'entry' }))}
-                                      >val</button>
-                                    </div>
-                                  )}
-                                  {(propValueMode[prop.name] ?? 'variable') === 'variable' ? (
-                                    <select
-                                      style={{ ...styles.attrInput, flex: 1 }}
-                                      disabled={isReadOnly}
-                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
-                                      onChange={(e) => {
-                                        if (isReadOnly) return
-                                        setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
-                                      }}
-                                    >
-                                      <option value="">— pick variable —</option>
-                                      {parentLocals.map(v => <option key={v} value={v}>{v}</option>)}
-                                    </select>
-                                  ) : (
-                                    <input
-                                      style={{ ...styles.attrInput, flex: 1 }}
-                                      readOnly={isReadOnly}
-                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
-                                      onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                      onBlur={(e) => {
-                                        if (isReadOnly) return
-                                        const typed = e.target.value
-                                        const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
-                                        setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
-                                      }}
-                                      placeholder={prop.defaultValue ?? 'value'}
-                                    />
-                                  )}
-                                </div>
+                                {isRootComponent ? (
+                                  <input
+                                    style={{ ...styles.attrInput, flex: 1 }}
+                                    placeholder="default value"
+                                    value={propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''}
+                                    onChange={(e) => { setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
+                                  />
+                                ) : (
+                                  <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                    {!isReadOnly && (
+                                      <div style={{ ...styles.modeToggle, flexShrink: 0 }}>
+                                        <button
+                                          style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'variable' ? styles.modeBtnActive : {}) }}
+                                          onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'variable' }))}
+                                        >var</button>
+                                        <button
+                                          style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'entry' ? styles.modeBtnActive : {}) }}
+                                          onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'entry' }))}
+                                        >val</button>
+                                      </div>
+                                    )}
+                                    {(propValueMode[prop.name] ?? 'variable') === 'variable' ? (
+                                      <select
+                                        style={{ ...styles.attrInput, flex: 1 }}
+                                        disabled={isReadOnly}
+                                        value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
+                                        onChange={(e) => {
+                                          if (isReadOnly) return
+                                          setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
+                                        }}
+                                      >
+                                        <option value="">— pick variable —</option>
+                                        {scopeLayers.length > 0
+                                          ? scopeLayers.map(layer => [
+                                              layer.props.length > 0 && (
+                                                <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                                  {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                                </optgroup>
+                                              ),
+                                              layer.state.length > 0 && (
+                                                <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                                  {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                                </optgroup>
+                                              ),
+                                            ])
+                                          : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                        }
+                                      </select>
+                                    ) : (
+                                      <input
+                                        style={{ ...styles.attrInput, flex: 1 }}
+                                        readOnly={isReadOnly}
+                                        value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
+                                        onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
+                                        onBlur={(e) => {
+                                          if (isReadOnly) return
+                                          const typed = e.target.value
+                                          const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
+                                          setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
+                                        }}
+                                        placeholder={prop.defaultValue ?? 'value'}
+                                      />
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               {/* Type cell — always editable; ⟳ infers on click (var mode: from variable type, val mode: from literal) */}
                               <div style={{ ...styles.attrValueCell, maxWidth: 90 }}>
@@ -3393,11 +3463,11 @@ export function InspectorPanel({
                                       style={styles.inferBtn}
                                       title="Infer type from current value"
                                       onClick={() => {
-                                        const curVal = propValueEdits[prop.name]
-                                          ?? usageAttrs.find(a => a.name === prop.name)?.rawValue
-                                          ?? prop.defaultValue ?? ''
-                                        const isVarMode = (propValueMode[prop.name] ?? 'variable') === 'variable'
-                                        const inferred = isVarMode && parentSource && parentComponentName
+                                        const curVal = isRootComponent
+                                          ? (propDefaultEdits[prop.name] ?? prop.defaultValue ?? '')
+                                          : (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
+                                        const varMode = !isRootComponent && (propValueMode[prop.name] ?? 'variable') === 'variable'
+                                        const inferred = varMode && parentSource && parentComponentName
                                           ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
                                           : inferTypeFromValueString(curVal)
                                         if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
@@ -3418,8 +3488,8 @@ export function InspectorPanel({
                                 </button>
                               )}
                             </div>
-                            {/* Expanded panel — default value */}
-                            {isExpanded && (
+                            {/* Expanded panel — default value (child components only; root shows default inline) */}
+                            {isExpanded && !isRootComponent && (
                               <div style={styles.attrRowExpanded}>
                                 <span style={styles.attrExpandLabel}>default</span>
                                 <input
@@ -3521,34 +3591,60 @@ export function InspectorPanel({
                         </div>
                       </div>
                       <div style={styles.addPropRow}>
-                        {/* Mode toggle: variable vs literal entry */}
-                        <div style={styles.modeToggle}>
-                          <button
-                            style={{ ...styles.modeBtn, ...(newPropMode === 'variable' ? styles.modeBtnActive : {}) }}
-                            onClick={() => { setNewPropMode('variable'); setNewPropValue(''); setNewPropTypeInferred(false) }}
-                          >var</button>
-                          <button
-                            style={{ ...styles.modeBtn, ...(newPropMode === 'entry' ? styles.modeBtnActive : {}) }}
-                            onClick={() => { setNewPropMode('entry'); setNewPropValue(''); setNewPropTypeInferred(false) }}
-                          >val</button>
-                        </div>
-                        {newPropMode === 'variable' ? (
-                          <select
-                            style={{ ...styles.attrInput, flex: 1 }}
-                            value={newPropValue}
-                            onChange={(e) => { setNewPropValue(e.target.value) }}
-                          >
-                            <option value="">— pick variable —</option>
-                            {parentLocals.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                        ) : (
+                        {isRootComponent ? (
+                          /* Root component: no parent to bind from — default value only */
                           <input
                             style={{ ...styles.attrInput, flex: 1 }}
                             placeholder="default value"
                             value={newPropValue}
-                            onFocus={(e) => { e.currentTarget.value = ''; setNewPropValue('') }}
                             onChange={(e) => { setNewPropValue(e.target.value) }}
                           />
+                        ) : (
+                          <>
+                            {/* Mode toggle: variable vs literal entry */}
+                            <div style={styles.modeToggle}>
+                              <button
+                                style={{ ...styles.modeBtn, ...(newPropMode === 'variable' ? styles.modeBtnActive : {}) }}
+                                onClick={() => { setNewPropMode('variable'); setNewPropValue(''); setNewPropTypeInferred(false) }}
+                              >var</button>
+                              <button
+                                style={{ ...styles.modeBtn, ...(newPropMode === 'entry' ? styles.modeBtnActive : {}) }}
+                                onClick={() => { setNewPropMode('entry'); setNewPropValue(''); setNewPropTypeInferred(false) }}
+                              >val</button>
+                            </div>
+                            {newPropMode === 'variable' ? (
+                              <select
+                                style={{ ...styles.attrInput, flex: 1 }}
+                                value={newPropValue}
+                                onChange={(e) => { setNewPropValue(e.target.value) }}
+                              >
+                                <option value="">— pick variable —</option>
+                                {scopeLayers.length > 0
+                                  ? scopeLayers.map(layer => [
+                                      layer.props.length > 0 && (
+                                        <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                          {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                        </optgroup>
+                                      ),
+                                      layer.state.length > 0 && (
+                                        <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                          {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                        </optgroup>
+                                      ),
+                                    ])
+                                  : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                }
+                              </select>
+                            ) : (
+                              <input
+                                style={{ ...styles.attrInput, flex: 1 }}
+                                placeholder="default value"
+                                value={newPropValue}
+                                onFocus={(e) => { e.currentTarget.value = ''; setNewPropValue('') }}
+                                onChange={(e) => { setNewPropValue(e.target.value) }}
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                       <div style={styles.addPropActions}>
@@ -3558,7 +3654,7 @@ export function InspectorPanel({
                           onClick={() => void handleCreateProp()}
                           disabled={!newPropName.trim()}
                         >
-                          Create &amp; Bind
+                          {isRootComponent ? 'Add prop' : 'Create & Bind'}
                         </button>
                       </div>
                     </div>

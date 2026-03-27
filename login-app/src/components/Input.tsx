@@ -6,10 +6,9 @@ interface InputProps {
   onChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
-test?: any
 }
 
-export function Input({ label = "test", id, type = 'text', value, onChange, placeholder, disabled , test}: InputProps) {
+export function Input({ label = "test", id, type = 'text', value, onChange, placeholder, disabled }: InputProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }} >
       <label htmlFor={id} style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>

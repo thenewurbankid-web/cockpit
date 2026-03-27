@@ -15,7 +15,11 @@ async function fakeLogin(email: string, _password: string): Promise<void> {
 
 
 
-export function LoginPage() {
+interface LoginPageProps {
+inputStyle?: React.CSSProperties
+}
+
+export function LoginPage({ inputStyle = "{color:'red'}" }: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,10 +53,6 @@ export function LoginPage() {
     <div style={styles.wrapper}>
       <form onSubmit={handleSubmit} style={styles.form} noValidate>
         <h2 style={styles.title}>Sign in</h2>
-
-
-
-
         <Input
           id="email-id"
           label="Email"
@@ -61,7 +61,7 @@ export function LoginPage() {
           onChange={setEmail}
           placeholder="admin@example.com"
           disabled={loading}
-          test="test" />
+        />
 
         <Input
           id="password"
@@ -81,6 +81,7 @@ export function LoginPage() {
       </form>
 
     </div>
+
 
 
 
@@ -121,6 +122,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     color: '#dc2626',
     fontSize: '0.875rem',
+
   },
 }
 
