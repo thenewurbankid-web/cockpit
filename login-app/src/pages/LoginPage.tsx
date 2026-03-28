@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 
@@ -18,18 +18,15 @@ async function fakeLogin(email: string, _password: string): Promise<void> {
 
 
 interface LoginPageProps {
-  inputStyle?: React.CSSProperties
   navigate?: (page: Page) => void
 }
 
-export function LoginPage({ inputStyle = "{color:'red'}", navigate }: LoginPageProps) {
+export function LoginPage({navigate}: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [success, setSuccess] = useState(false)
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -56,6 +53,7 @@ export function LoginPage({ inputStyle = "{color:'red'}", navigate }: LoginPageP
   return (
     <div style={styles.wrapper}>
       <form onSubmit={handleSubmit} style={styles.form} noValidate>
+      
         <h2 style={styles.title}>Sign in</h2>
         <Input
           id="email-id"
@@ -93,6 +91,7 @@ export function LoginPage({ inputStyle = "{color:'red'}", navigate }: LoginPageP
       </form>
 
     </div>
+
 
 
 

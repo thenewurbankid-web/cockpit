@@ -26,13 +26,6 @@ export function highlightElement(el: Element | null): void {
   if (el) applyTo(el)
 }
 
-/** Find an element by data-locatorjs-id and highlight it. */
-export function highlightByLocatorId(locatorId: string | null): void {
-  if (!locatorId) { highlightElement(null); return }
-  const el = document.querySelector(`[data-locatorjs-id="${CSS.escape(locatorId)}"]`)
-  highlightElement(el)
-}
-
 /** Remove any active highlight. */
 export function clearHighlight(): void {
   highlightElement(null)

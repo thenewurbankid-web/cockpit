@@ -4,6 +4,35 @@ import type { editor } from 'monaco-editor'
 import type { IDisposable } from 'monaco-editor'
 import { parse } from '@babel/parser'
 
+/** Tiny "i" icon that shows a popover on hover. */
+function InfoIcon({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 4 }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span style={{
+        width: 14, height: 14, borderRadius: '50%', border: '1px solid #6c7086',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, fontWeight: 700, color: '#6c7086', cursor: 'default',
+        fontFamily: 'serif', fontStyle: 'italic', lineHeight: 1, flexShrink: 0,
+      }}>i</span>
+      {show && (
+        <div style={{
+          position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)',
+          marginTop: 6, padding: '6px 10px', background: '#1e1e2e', border: '1px solid #45475a',
+          borderRadius: 6, color: '#cdd6f4', fontSize: 11, lineHeight: 1.45,
+          whiteSpace: 'normal', width: 220, zIndex: 1000, pointerEvents: 'none',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)', fontFamily: 'system-ui, sans-serif',
+          fontWeight: 400, textTransform: 'none', letterSpacing: 0,
+        }}>{text}</div>
+      )}
+    </span>
+  )
+}
+
 interface ServerDiagnostic {
   code: number
   message: string
@@ -80,9 +109,11 @@ interface InspectorPanelProps {
   onClose: () => void
   /** Called whenever the user resizes the panel so the caller can adjust layout. */
   onWidthChange?: (width: number) => void
+  /** Called when the user clicks the navigate icon on a read-only child component tab. */
+  onNavigateToComponent?: (componentName: string) => void
 }
 
-type Tab = 'source' | 'bindings'
+type Tab = 'source' | 'defaults' | 'bindings'
 
 // ── block extraction ──────────────────────────────────────────────────────────
 
@@ -1558,6 +1589,194 @@ function removePropFromOwnerSignature(source: string, ownerName: string, propNam
   }
 }
 
+/**
+ * Insert a hook variable at the top of the component body.
+ * Supports `useState` (`const [name, setName] = useState(initialValue)`) and
+ * `useRef` (`const name = useRef(initialValue)`).
+ * If the hook is not imported yet, adds the import.
+ */
+function addStateVariable(
+  source: string,
+  ownerName: string,
+  varName: string,
+  initialValue: string,
+  hook: 'useState' | 'useRef' = 'useState',
+): string {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body = (ast.program as unknown as { body: AstNode[] }).body
+    const lines = source.split('\n')
+
+    // 1. Ensure the hook is imported from 'react'.
+    let hasHookImport = false
+    for (const node of body) {
+      if (node.type === 'ImportDeclaration') {
+        const src = (node as AstNode & { source?: AstNode & { value?: string } }).source?.value
+        if (src === 'react') {
+          const specs = (node as AstNode & { specifiers?: AstNode[] }).specifiers ?? []
+          for (const spec of specs) {
+            const imported = (spec as AstNode & { imported?: AstNode & { name?: string } }).imported
+            if (imported?.name === hook) hasHookImport = true
+          }
+          if (!hasHookImport) {
+            const loc = node.loc as AstLocFull | undefined
+            if (loc) {
+              const importLine = lines[loc.start.line - 1]
+              const braceIdx = importLine.lastIndexOf('}')
+              if (braceIdx >= 0) {
+                lines[loc.start.line - 1] =
+                  importLine.slice(0, braceIdx) + ', ' + hook + importLine.slice(braceIdx)
+              }
+            }
+            hasHookImport = true
+          }
+        }
+      }
+    }
+    if (!hasHookImport) {
+      lines.unshift(`import { ${hook} } from 'react'`)
+    }
+
+    // 2. Find the component function body and insert the hook call after existing hook calls
+    //    or at the top of the body.
+    const reparse = parse(lines.join('\n'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body2 = (reparse.program as unknown as { body: AstNode[] }).body
+    let fnBody: AstNode | null = null
+    const tryDecl = (decl: AstNode | undefined) => {
+      if (!decl) return
+      if (decl.type === 'FunctionDeclaration') {
+        if ((decl as AstNode & { id?: { name?: string } }).id?.name === ownerName) {
+          fnBody = (decl as AstNode & { body?: AstNode }).body ?? null
+        }
+      }
+      if (decl.type === 'VariableDeclaration') {
+        for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+          if ((d as AstNode & { id?: { name?: string } }).id?.name === ownerName) {
+            const init = (d as AstNode & { init?: AstNode }).init
+            fnBody = (init as AstNode & { body?: AstNode })?.body ?? null
+          }
+        }
+      }
+    }
+    for (const node of body2) {
+      if (node.type === 'ExportDefaultDeclaration' || node.type === 'ExportNamedDeclaration') {
+        tryDecl((node as AstNode & { declaration?: AstNode }).declaration)
+      }
+      tryDecl(node)
+      if (fnBody) break
+    }
+    if (!fnBody) return lines.join('\n')
+    const resolvedBody: AstNode = fnBody
+
+    const fnStmts = (resolvedBody as AstNode & { body?: AstNode[] }).body ?? []
+    const fnBodyLoc = resolvedBody.loc as AstLocFull | undefined
+    if (!fnBodyLoc) return lines.join('\n')
+
+    // Find the last useState/useRef line to insert after it; else insert at top of body.
+    let insertLine = fnBodyLoc.start.line
+    for (const stmt of fnStmts) {
+      const stmtLoc = stmt.loc as AstLocFull | undefined
+      if (!stmtLoc) continue
+      const stmtText = lines.slice(stmtLoc.start.line - 1, stmtLoc.end.line).join(' ')
+      if (/\b(useState|useRef)\b/.test(stmtText)) {
+        insertLine = stmtLoc.end.line
+      }
+    }
+
+    const indent = '  '
+    let newLine: string
+    if (hook === 'useRef') {
+      newLine = `${indent}const ${varName} = useRef(${initialValue || 'null'})`
+    } else {
+      const setterName = 'set' + varName.charAt(0).toUpperCase() + varName.slice(1)
+      newLine = `${indent}const [${varName}, ${setterName}] = useState(${initialValue || "''"})`
+    }
+    lines.splice(insertLine, 0, newLine)
+    return lines.join('\n')
+  } catch {
+    return source
+  }
+}
+
+/**
+ * Remove a useState variable declaration from a component's body.
+ * Matches patterns like `const [name, setName] = useState(...)`.
+ */
+function removeStateVariable(source: string, ownerName: string, varName: string): string {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body = (ast.program as unknown as { body: AstNode[] }).body
+    const lines = source.split('\n')
+
+    let fnBody: AstNode | null = null
+    const tryDecl = (decl: AstNode | undefined) => {
+      if (!decl) return
+      if (decl.type === 'FunctionDeclaration') {
+        if ((decl as AstNode & { id?: { name?: string } }).id?.name === ownerName) {
+          fnBody = (decl as AstNode & { body?: AstNode }).body ?? null
+        }
+      }
+      if (decl.type === 'VariableDeclaration') {
+        for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+          if ((d as AstNode & { id?: { name?: string } }).id?.name === ownerName) {
+            const init = (d as AstNode & { init?: AstNode }).init
+            fnBody = (init as AstNode & { body?: AstNode })?.body ?? null
+          }
+        }
+      }
+    }
+    for (const node of body) {
+      if (node.type === 'ExportDefaultDeclaration' || node.type === 'ExportNamedDeclaration') {
+        tryDecl((node as AstNode & { declaration?: AstNode }).declaration)
+      }
+      tryDecl(node)
+      if (fnBody) break
+    }
+    if (!fnBody) return source
+
+    const fnStmts = (fnBody as AstNode & { body?: AstNode[] }).body ?? []
+
+    for (const stmt of fnStmts) {
+      if (stmt.type !== 'VariableDeclaration') continue
+      const decls = (stmt as AstNode & { declarations?: AstNode[] }).declarations ?? []
+      for (const d of decls) {
+        const id = (d as AstNode & { id?: AstNode }).id
+        if (!id) continue
+
+        // Match useState array destructuring: const [varName, setVarName] = useState(...)
+        if (id.type === 'ArrayPattern') {
+          const elements = (id as AstNode & { elements?: (AstNode | null)[] }).elements ?? []
+          const firstEl = elements[0]
+          if (!firstEl || firstEl.type !== 'Identifier') continue
+          const name = (firstEl as AstNode & { name?: string }).name
+          if (name !== varName) continue
+          const init = (d as AstNode & { init?: AstNode }).init
+          if (!init) continue
+          const callee = (init as AstNode & { callee?: AstNode & { name?: string } }).callee
+          if (callee?.name !== 'useState') continue
+        }
+        // Match simple identifier: const varName = useRef(...) / useMemo(...) / etc.
+        else if (id.type === 'Identifier') {
+          const name = (id as AstNode & { name?: string }).name
+          if (name !== varName) continue
+        } else {
+          continue
+        }
+
+        // Found it — remove the line(s).
+        const stmtLoc = stmt.loc as AstLocFull | undefined
+        if (!stmtLoc) continue
+        lines.splice(stmtLoc.start.line - 1, stmtLoc.end.line - stmtLoc.start.line + 1)
+        return lines.join('\n')
+      }
+    }
+
+    return source
+  } catch {
+    return source
+  }
+}
+
 // Walks the owning component body and removes all JSX attribute usages of propName
 // where the attribute value is exactly {propName} (direct prop pass-through).
 function removePropUsagesInBody(source: string, ownerName: string, propName: string): string {
@@ -2067,9 +2286,14 @@ interface ScopePanelProps {
   parentComponentName: string
   usageAttrs: JsxAttr[]
   currentTag: string
+  onAddProp?: (layerComponentName: string) => void
+  onRemoveProp?: (layerComponentName: string, propName: string) => void
+  onAddState?: (layerComponentName: string) => void
+  onRemoveState?: (layerComponentName: string, varName: string) => void
+  readOnly?: boolean
 }
 
-function ScopePanel({ layers }: ScopePanelProps) {
+function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState, readOnly }: ScopePanelProps) {
   const [expanded, setExpanded] = useState(true)
   if (layers.length === 0) return null
 
@@ -2081,6 +2305,7 @@ function ScopePanel({ layers }: ScopePanelProps) {
       <button style={scopeStyles.header} onClick={() => setExpanded(v => !v)}>
         <span style={scopeStyles.chevron}>{expanded ? '▾' : '▸'}</span>
         <span>Scope</span>
+        <InfoIcon text="Shows the component hierarchy and all available props & state variables in scope for the selected node. Variables marked as 'used' are currently bound." />
         {totalUsed > 0 && (
           <span style={scopeStyles.usedBadge}>{totalUsed} used</span>
         )}
@@ -2089,6 +2314,7 @@ function ScopePanel({ layers }: ScopePanelProps) {
         <div style={scopeStyles.body}>
           {[...layers].reverse().map((layer, ri) => {
             const depth = layers.length - 1 - ri
+            const canEdit = !readOnly && layer.isCurrent
             return (
               <div key={layer.componentName} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12 }}>
                 <div style={scopeStyles.layerHeader}>
@@ -2097,19 +2323,45 @@ function ScopePanel({ layers }: ScopePanelProps) {
                   </span>
                   {layer.isCurrent && <span style={scopeStyles.currentBadge}>current</span>}
                 </div>
-                {layer.props.length > 0 && (
+                {(layer.props.length > 0 || canEdit) && (
                   <div style={scopeStyles.group}>
                     <span style={scopeStyles.groupLabel}>props</span>
                     <div style={scopeStyles.items}>
-                      {layer.props.map(item => <ScopeItemChip key={item.name} item={item} />)}
+                      {layer.props.map(item => (
+                        <ScopeItemChip
+                          key={item.name}
+                          item={item}
+                          onRemove={canEdit ? () => onRemoveProp?.(layer.componentName, item.name) : undefined}
+                        />
+                      ))}
+                      {canEdit && onAddProp && (
+                        <span
+                          style={scopeStyles.addChipBtn}
+                          title="Add prop"
+                          onClick={() => onAddProp(layer.componentName)}
+                        >+</span>
+                      )}
                     </div>
                   </div>
                 )}
-                {layer.state.length > 0 && (
+                {(layer.state.length > 0 || canEdit) && (
                   <div style={scopeStyles.group}>
                     <span style={scopeStyles.groupLabel}>state</span>
                     <div style={scopeStyles.items}>
-                      {layer.state.map(item => <ScopeItemChip key={item.name} item={item} />)}
+                      {layer.state.map(item => (
+                        <ScopeItemChip
+                          key={item.name}
+                          item={item}
+                          onRemove={canEdit ? () => onRemoveState?.(layer.componentName, item.name) : undefined}
+                        />
+                      ))}
+                      {canEdit && onAddState && (
+                        <span
+                          style={scopeStyles.addChipBtn}
+                          title="Add state variable"
+                          onClick={() => onAddState(layer.componentName)}
+                        >+</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2122,8 +2374,10 @@ function ScopePanel({ layers }: ScopePanelProps) {
   )
 }
 
-function ScopeItemChip({ item }: { item: ScopeItem }) {
+function ScopeItemChip({ item, onRemove }: { item: ScopeItem; onRemove?: () => void }) {
   const [copied, setCopied] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
   function handleClick() {
     navigator.clipboard.writeText(item.name).then(() => {
       setCopied(true)
@@ -2132,13 +2386,35 @@ function ScopeItemChip({ item }: { item: ScopeItem }) {
   }
   return (
     <div
-      style={{ ...scopeStyles.item, ...(item.usedInNode ? scopeStyles.itemUsed : {}), cursor: 'pointer' }}
-      onClick={handleClick}
-      title={`Copy "${item.name}" to clipboard`}
+      style={{ ...scopeStyles.item, ...(item.usedInNode ? scopeStyles.itemUsed : {}), cursor: 'pointer', position: 'relative' }}
+      onClick={confirmRemove ? undefined : handleClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false) }}
+      title={confirmRemove ? '' : `Copy "${item.name}" to clipboard`}
     >
       <span style={scopeStyles.itemDot}>{item.usedInNode ? '●' : '○'}</span>
       <code style={scopeStyles.itemName}>{copied ? '✓' : item.name}</code>
       {!copied && item.typeStr && <span style={scopeStyles.itemType}>{item.typeStr}</span>}
+      {onRemove && hovered && !confirmRemove && (
+        <span
+          style={scopeStyles.removeBtn}
+          title={`Remove ${item.name}`}
+          onClick={(e) => { e.stopPropagation(); setConfirmRemove(true) }}
+        >✕</span>
+      )}
+      {confirmRemove && (
+        <span style={scopeStyles.confirmOverlay}>
+          <span style={{ fontSize: 10 }}>Remove?</span>
+          <span
+            style={scopeStyles.confirmYes}
+            onClick={(e) => { e.stopPropagation(); onRemove?.() }}
+          >Yes</span>
+          <span
+            style={scopeStyles.confirmNo}
+            onClick={(e) => { e.stopPropagation(); setConfirmRemove(false) }}
+          >No</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -2258,6 +2534,59 @@ const scopeStyles: Record<string, React.CSSProperties> = {
     fontStyle: 'italic' as const,
     marginLeft: 1,
   },
+  addChipBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+    borderRadius: '50%',
+    border: '1px dashed #45475a',
+    background: 'transparent',
+    color: '#6c7086',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    lineHeight: 1,
+    padding: 0,
+    flexShrink: 0,
+  },
+  removeBtn: {
+    marginLeft: 2,
+    fontSize: 9,
+    color: '#f38ba8',
+    cursor: 'pointer',
+    lineHeight: 1,
+    fontWeight: 700,
+  } as React.CSSProperties,
+  confirmOverlay: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 4,
+    fontSize: 9,
+    color: '#f38ba8',
+    fontFamily: 'system-ui, sans-serif',
+  } as React.CSSProperties,
+  confirmYes: {
+    cursor: 'pointer',
+    fontWeight: 700,
+    padding: '1px 4px',
+    borderRadius: 3,
+    border: '1px solid #f38ba8',
+    lineHeight: 1.4,
+    fontSize: 9,
+    color: '#f38ba8',
+  } as React.CSSProperties,
+  confirmNo: {
+    cursor: 'pointer',
+    padding: '1px 4px',
+    borderRadius: 3,
+    border: '1px solid #45475a',
+    lineHeight: 1.4,
+    fontSize: 9,
+    color: '#6c7086',
+  } as React.CSSProperties,
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -2271,6 +2600,7 @@ export function InspectorPanel({
   rootComponentName,
   onClose,
   onWidthChange,
+  onNavigateToComponent,
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
 
@@ -2290,7 +2620,14 @@ export function InspectorPanel({
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
   }
-  const [activeTab, setActiveTab] = useState<Tab>('bindings')
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const saved = sessionStorage.getItem('cockpit:activeTab')
+    return (saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings'
+  })
+  const isRestoringRef = useRef(true)
+  useEffect(() => {
+    sessionStorage.setItem('cockpit:activeTab', activeTab)
+  }, [activeTab])
 
   // True when the inspected node belongs to a child component — all edits are disabled.
   // Read-only only for DOM nodes explicitly owned by a non-root child component.
@@ -2304,6 +2641,10 @@ export function InspectorPanel({
   // True when the selected component IS the root — it has no parent, so binding makes no sense.
   // Root props only support default values; child props support binding + default values.
   const isRootComponent = !!(rootComponentName && selectedNode && /^[A-Z]/.test(selectedNode.tag) && selectedNode.tag === rootComponentName)
+  // True when the inspected child component lives in the shared components folder —
+  // these are read-only with a navigate icon; other child components are inline-editable.
+  // The root component itself is always editable even if it's from the components folder.
+  const isFromComponentsFolder = !!(selectedNode?.locatorFile && /[\/]components[\/]/.test(selectedNode.locatorFile) && !isRootComponent)
   const [displayCode, setDisplayCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -2349,6 +2690,11 @@ export function InspectorPanel({
   /** True when the inspected component has a named props interface/type registered. */
   const [hasPropTypeDef, setHasPropTypeDef] = useState(true)
   const [deletingProp, setDeletingProp] = useState<string | null>(null)
+  // State for the "add state variable" inline dialog in the Scope panel.
+  const [addStateOpen, setAddStateOpen] = useState(false)
+  const [newStateName, setNewStateName] = useState('')
+  const [newStateInitial, setNewStateInitial] = useState('')
+  const [newStateHook, setNewStateHook] = useState<'useState' | 'useRef'>('useState')
   // Shared save status used by both source tab and bindings mutations.
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
@@ -2822,8 +3168,19 @@ export function InspectorPanel({
   useEffect(() => {
     if (fullSourceRef.current) refreshBindings(fullSourceRef.current, selectedNode)
     if (!selectedNode) return
+    // Skip resetting tab on initial mount when restoring from session
+    if (isRestoringRef.current) {
+      isRestoringRef.current = false
+      return
+    }
     setActiveTab('bindings')
   }, [selectedNode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep Monaco readOnly in sync when the selected node changes
+  const sourceReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly: sourceReadOnly })
+  }, [sourceReadOnly])
 
   useEffect(() => {
     return () => {
@@ -2863,6 +3220,62 @@ export function InspectorPanel({
       await pushToMonacoAndSave(modified)
     } finally {
       setDeletingProp(null)
+    }
+  }
+
+  // ── Scope panel: add/remove prop ───────────────────────────────────────────
+  function handleScopeAddProp(_componentName: string) {
+    // Open the existing "Add prop" form (in the defaults or bindings tab).
+    setShowAddProp(true)
+    // Switch to a tab that shows the add-prop form.
+    if (isRootComponent) {
+      setActiveTab('defaults')
+    } else {
+      setActiveTab('bindings')
+    }
+  }
+
+  async function handleScopeRemoveProp(targetComponent: string, propName: string) {
+    const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+    if (!freshRes.ok) return
+    let modified = await freshRes.text()
+    modified = removePropFromOwnerSignature(modified, targetComponent, propName)
+    modified = removePropUsagesInBody(modified, targetComponent, propName)
+    await pushToMonacoAndSave(modified)
+  }
+
+  // ── Scope panel: add/remove state ──────────────────────────────────────────
+  function handleScopeAddState(_componentName: string) {
+    setAddStateOpen(true)
+    setNewStateName('')
+    setNewStateInitial('')
+    setNewStateHook('useState')
+  }
+
+  async function handleScopeRemoveState(targetComponent: string, varName: string) {
+    const ownerName = targetComponent || (selectedNode?.ownerComponentName ?? selectedNode?.tag ?? componentName ?? '')
+    const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+    if (!freshRes.ok) return
+    let modified = await freshRes.text()
+    modified = removeStateVariable(modified, ownerName, varName)
+    await pushToMonacoAndSave(modified)
+  }
+
+  async function handleCreateState() {
+    const name = newStateName.trim()
+    if (!name || !/^[a-zA-Z_$][\w$]*$/.test(name)) return
+    const currentLayer = scopeLayers.find(l => l.isCurrent)
+    const ownerName = currentLayer?.componentName ?? selectedNode?.ownerComponentName ?? selectedNode?.tag ?? componentName ?? ''
+    const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+    if (!freshRes.ok) return
+    let modified = await freshRes.text()
+    modified = addStateVariable(modified, ownerName, name, newStateInitial.trim() || (newStateHook === 'useRef' ? 'null' : "''"), newStateHook)
+    const ok = await pushToMonacoAndSave(modified)
+    if (ok) {
+      setAddStateOpen(false)
+      setNewStateName('')
+      setNewStateInitial('')
+      setNewStateHook('useState')
     }
   }
 
@@ -3121,9 +3534,18 @@ export function InspectorPanel({
     } catch { /* ignore */ }
   }
 
+  // Check if the typed prop name already exists in scope.
+  const newPropNameTrimmed = newPropName.trim()
+  const propAlreadyExists = newPropNameTrimmed.length > 0 && (
+    ownerProps.some(p => p.name === newPropNameTrimmed) ||
+    jsxAttrs.some(a => a.name === newPropNameTrimmed) ||
+    scopeLayers.some(l => l.props.some(p => p.name === newPropNameTrimmed) || l.state.some(s => s.name === newPropNameTrimmed))
+  )
+
   async function handleCreateProp() {
     const name = newPropName.trim()
     if (!name || !/^[a-zA-Z_$][\w$]*$/.test(name)) return
+    if (propAlreadyExists) return
     const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
     if (!freshRes.ok) return
     let modified = await freshRes.text()
@@ -3134,9 +3556,9 @@ export function InspectorPanel({
     const isVarMode = (!rootComponentName || selectedNode?.tag !== rootComponentName) && newPropMode === 'variable'
     const rawValue = newPropValue.trim()
     const valueToUse = rawValue || name
-    // Destructure default: variable mode → raw identifier (= varName); entry mode → quoted string literal (= 'value')
+    // Destructure default: insert the value as-is (free-form) — the user controls quoting.
     const destructureDefault = (!inspectingComponent || !usageInfo)
-      ? (rawValue ? (isVarMode ? rawValue : JSON.stringify(rawValue)) : '')
+      ? rawValue
       : ''
     if (inspectingComponent) {
       if (ownerName) modified = addPropToOwnerSignature(modified, ownerName, name, newPropType || 'unknown', destructureDefault || undefined)
@@ -3227,6 +3649,7 @@ export function InspectorPanel({
 
       {/* Scope hierarchy panel — replaces the old imports section */}
       {(selectedNode && (scopeLayers.length > 0 || (inspectingComponent && (ownerProps.length > 0 || parentLocals.length > 0)))) && (
+        <>
         <ScopePanel
           layers={scopeLayers}
           inspectingComponent={inspectingComponent}
@@ -3236,20 +3659,123 @@ export function InspectorPanel({
           parentComponentName={parentComponentName}
           usageAttrs={usageAttrs}
           currentTag={selectedNode.tag}
+          onAddProp={handleScopeAddProp}
+          onRemoveProp={handleScopeRemoveProp}
+          onAddState={handleScopeAddState}
+          onRemoveState={handleScopeRemoveState}
+          readOnly={isReadOnly || isFromComponentsFolder}
         />
+        {/* Inline "add state/ref" form */}
+        {addStateOpen && !isFromComponentsFolder && (
+          <div style={{ padding: '6px 12px', background: '#13131f', borderBottom: '1px solid #1e1e2e', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select
+                value={newStateHook}
+                onChange={(e) => setNewStateHook(e.target.value as 'useState' | 'useRef')}
+                style={{ background: '#1e1e2e', border: '1px solid #45475a', borderRadius: 4, color: '#cdd6f4', padding: '3px 4px', fontSize: 10, outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="useState">useState</option>
+                <option value="useRef">useRef</option>
+              </select>
+              <input
+                autoFocus
+                style={{ flex: 1, background: '#1e1e2e', border: '1px solid #45475a', borderRadius: 4, color: '#cdd6f4', padding: '3px 6px', fontSize: 11, fontFamily: 'monospace', outline: 'none' }}
+                placeholder="variable name"
+                value={newStateName}
+                onChange={(e) => setNewStateName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setAddStateOpen(false); if (e.key === 'Enter' && newStateName.trim()) void handleCreateState() }}
+              />
+              <input
+                style={{ width: 80, background: '#1e1e2e', border: '1px solid #45475a', borderRadius: 4, color: '#cdd6f4', padding: '3px 6px', fontSize: 11, fontFamily: 'monospace', outline: 'none' }}
+                placeholder={newStateHook === 'useRef' ? 'initial (null)' : "initial ('')"}
+                value={newStateInitial}
+                onChange={(e) => setNewStateInitial(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setAddStateOpen(false); if (e.key === 'Enter' && newStateName.trim()) void handleCreateState() }}
+              />
+            </div>
+            {newStateName.trim() && (() => {
+              const name = newStateName.trim()
+              const raw = newStateInitial.trim()
+              const initVal = raw || (newStateHook === 'useRef' ? 'null' : "''")
+              // Auto type inference from initial value
+              const inferType = (v: string): string => {
+                if (v === 'null') return 'null'
+                if (v === 'true' || v === 'false') return 'boolean'
+                if (/^\d+(\.\d+)?$/.test(v)) return 'number'
+                if (/^['"`]/.test(v)) return 'string'
+                if (v.startsWith('[')) return 'unknown[]'
+                if (v.startsWith('{')) return 'object'
+                return ''
+              }
+              const inferred = inferType(initVal)
+              const typeHint = inferred ? ` → ${inferred}` : ''
+              if (newStateHook === 'useRef') {
+                return (
+                  <div style={{ fontSize: 10, color: '#6c7086', fontFamily: 'monospace' }}>
+                    const {name} = useRef({initVal})
+                    {typeHint && <span style={{ color: '#585b70', marginLeft: 4 }}>{typeHint}</span>}
+                  </div>
+                )
+              }
+              const setter = 'set' + name.charAt(0).toUpperCase() + name.slice(1)
+              return (
+                <div style={{ fontSize: 10, color: '#6c7086', fontFamily: 'monospace' }}>
+                  const [{name}, {setter}] = useState({initVal})
+                  {typeHint && <span style={{ color: '#585b70', marginLeft: 4 }}>{typeHint}</span>}
+                </div>
+              )
+            })()}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+              <button
+                style={{ background: 'none', border: '1px solid #45475a', borderRadius: 4, color: '#6c7086', padding: '2px 8px', fontSize: 10, cursor: 'pointer' }}
+                onClick={() => setAddStateOpen(false)}
+              >Cancel</button>
+              <button
+                style={{ background: '#89b4fa', border: 'none', borderRadius: 4, color: '#1e1e2e', padding: '2px 8px', fontSize: 10, fontWeight: 600, cursor: 'pointer', opacity: newStateName.trim() ? 1 : 0.4 }}
+                disabled={!newStateName.trim()}
+                onClick={() => void handleCreateState()}
+              >Create</button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Tabs */}
       <div style={styles.tabs}>
-        {(['bindings', 'source'] as Tab[]).map((tab) => (
+        {(isRootComponent
+          ? (['defaults', 'source'] as Tab[])
+          : inspectingComponent
+            ? (['bindings', 'defaults', 'source'] as Tab[])
+            : (['bindings', 'source'] as Tab[])
+        ).map((tab) => {
+          const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && (tab === 'defaults' || tab === 'source')
+          const tabInfo: Record<Tab, string> = {
+            bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
+            defaults: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
+            source: 'Full source code of the selected component or element. Edits here are saved directly to disk.',
+          }
+          return (
           <button
             key={tab}
             style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : {}) }}
             onClick={() => setActiveTab(tab)}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {activeTab === tab && <InfoIcon text={tabInfo[tab]} />}
+            {tabReadOnly && (
+              <span
+                title={`Open ${selectedNode.tag} for editing`}
+                style={{ marginLeft: 4, fontSize: '0.65rem', opacity: 0.6, cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onNavigateToComponent?.(selectedNode.tag)
+                }}
+              >↗</span>
+            )}
           </button>
-        ))}
+          )
+        })}
       </div>
 
       {/* Content */}
@@ -3271,6 +3797,7 @@ export function InspectorPanel({
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 wordWrap: 'on',
+                readOnly: !isRootComponent && inspectingComponent && isFromComponentsFolder,
                 lineNumbers: (n: number) =>
                   String((blockRangeRef.current?.startLine ?? 0) + n),
               }}
@@ -3311,6 +3838,164 @@ export function InspectorPanel({
           )}
         </div>
 
+        {/* ── Defaults tab ─────────────────────────────────────────── */}
+        {activeTab === 'defaults' && (
+          <div style={styles.bindingsPanel}>
+            {!selectedNode ? (
+              <div style={styles.bindingsEmpty}>
+                <span style={{ fontSize: '1.5rem', opacity: 0.4 }}>&#9632;</span>
+                <span>Select a node in the tree to inspect its props &amp; attributes.</span>
+              </div>
+            ) : (
+              <>
+                {/* Node header */}
+                <div style={styles.bindingsNodeHeader}>
+                  <span style={styles.bindingsNodeTag}>&lt;{selectedNode.tag}&gt;</span>
+                  {selectedNode.ownerComponentName && selectedNode.ownerComponentName !== selectedNode.tag && (
+                    <span style={styles.bindingsNodeOwner}>in {selectedNode.ownerComponentName}</span>
+                  )}
+                </div>
+
+                <div style={styles.bindingsScroll}>
+                  {/* No prop type banner */}
+                  {inspectingComponent && !hasPropTypeDef && (isRootComponent || !isFromComponentsFolder) && (
+                    <div style={styles.noPropTypeBanner}>
+                      <div style={styles.noPropTypeBannerText}>
+                        <span style={{ fontWeight: 600, color: '#f9e2af' }}>No props interface</span>
+                        <span style={{ color: '#a6adc8' }}>
+                          {' '}<code style={{ color: '#89b4fa', fontFamily: 'monospace' }}>{selectedNode.tag}</code> has no typed props declaration.
+                        </span>
+                      </div>
+                      <button
+                        style={styles.noPropTypeCta}
+                        onClick={() => void handleRegisterPropTypes()}
+                      >
+                        Create <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>{selectedNode.tag}Props</code>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Component mode: prop name + default value + type label */}
+                  {inspectingComponent && (
+                    ownerProps.length === 0 ? (
+                      <div style={styles.componentEmptyState}>
+                        <p style={{ margin: '0 0 0.5rem', color: '#6c7086', fontSize: '0.8rem' }}>
+                          No props declared on <code style={{ color: '#89b4fa' }}>{selectedNode.tag}</code>.
+                        </p>
+                      </div>
+                    ) : (
+                      ownerProps.map((prop) => (
+                        <div key={prop.name} style={styles.attrRowWrap}>
+                          <div style={{ ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px' }}>
+                            <span style={styles.attrName}>{prop.name}</span>
+                            <div style={styles.attrValueCell}>
+                              <input
+                                style={{ ...styles.attrInput, flex: 1 }}
+                                placeholder="default value"
+                                readOnly={!isRootComponent && isFromComponentsFolder}
+                                value={propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''}
+                                onChange={(e) => { if (isRootComponent || !isFromComponentsFolder) setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
+                              />
+                            </div>
+                            <span style={{ color: '#6c7086', fontSize: 11, fontFamily: 'monospace' }}>{prop.typeStr || ''}</span>
+                          </div>
+                        </div>
+                      ))
+                    )
+                  )}
+
+                  {/* DOM mode: read-only summary of JSX attributes */}
+                  {!inspectingComponent && jsxAttrs.length === 0 && (
+                    <div style={styles.bindingsEmptyAttrs}>No JSX attributes found on this element.</div>
+                  )}
+                  {!inspectingComponent && jsxAttrs.map((attr) => (
+                    <div key={attr.name} style={styles.attrRowDom}>
+                      <span style={styles.attrName}>{attr.name}</span>
+                      <span style={styles.attrReadonly}>{attr.rawValue}</span>
+                    </div>
+                  ))}
+
+                  {/* Add prop inline form — defaults tab */}
+                  {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && (showAddProp ? (
+                    <div style={styles.addPropForm}>
+                      <div style={styles.addPropRow}>
+                        <input
+                          autoFocus
+                          style={{ ...styles.attrInput, flex: 1 }}
+                          placeholder="prop name"
+                          value={newPropName}
+                          onChange={(e) => setNewPropName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setShowAddProp(false) }}
+                        />
+                        <span style={{ color: '#6c7086', fontSize: 11 }}>:</span>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          <input
+                            style={{ ...styles.attrInput, width: 70 }}
+                            placeholder="type"
+                            value={newPropType}
+                            onChange={(e) => { setNewPropType(e.target.value); setNewPropTypeInferred(false) }}
+                          />
+                          <button
+                            style={{ ...styles.inferBtn, opacity: newPropValue.trim() ? 1 : 0.35 }}
+                            title="Infer type from value"
+                            onClick={() => {
+                              const inferred = inferTypeFromValueString(newPropValue)
+                              if (inferred) { setNewPropType(inferred); setNewPropTypeInferred(true) }
+                            }}
+                          >⟳</button>
+                        </div>
+                      </div>
+                      <div style={styles.addPropRow}>
+                        <input
+                          style={{ ...styles.attrInput, flex: 1 }}
+                          placeholder="default value"
+                          value={newPropValue}
+                          onChange={(e) => { setNewPropValue(e.target.value) }}
+                        />
+                      </div>
+                      {propAlreadyExists && (
+                        <div style={{ color: '#f38ba8', fontSize: 11, padding: '2px 0', fontFamily: 'system-ui, sans-serif' }}>
+                          A prop or variable named “{newPropNameTrimmed}” already exists in scope.
+                        </div>
+                      )}
+                      <div style={styles.addPropActions}>
+                        <button style={styles.cancelBtn} onClick={() => setShowAddProp(false)}>Cancel</button>
+                        <button
+                          style={{ ...styles.confirmBtn, ...(propAlreadyExists ? { opacity: 0.45, cursor: 'not-allowed' } : {}) }}
+                          onClick={() => void handleCreateProp()}
+                          disabled={!newPropName.trim() || propAlreadyExists}
+                        >
+                          Create prop
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button style={styles.addAttrBtn} onClick={() => setShowAddProp(true)}>
+                      + Add prop
+                    </button>
+                  ))}
+                </div>
+
+                {/* Apply-changes bar — defaults (root only) */}
+                {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && Object.keys(propDefaultEdits).length > 0 && (
+                  <div style={styles.saveBar}>
+                    {saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
+                    {saveStatus === 'error' && <span style={styles.errorMsg}>&#x2717; Save failed</span>}
+                    <button style={styles.saveBtn}
+                      onClick={() => void handlePropTypeSave()}
+                      disabled={bindingsSaving}
+                    >
+                      {bindingsSaving ? 'Saving…' : 'Apply changes'}
+                    </button>
+                    <button style={styles.cancelBtn} onClick={() => { setPropDefaultEdits({}) }}>Cancel</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Bindings tab ─────────────────────────────────────────── */}
         {activeTab === 'bindings' && (
           <div style={styles.bindingsPanel}>
             {!selectedNode ? (
@@ -3328,26 +4013,8 @@ export function InspectorPanel({
                   )}
                 </div>
 
-                {/* Attribute rows */}
                 <div style={styles.bindingsScroll}>
-                  {/* ── No prop type banner ───────────────────────────────── */}
-                  {inspectingComponent && !hasPropTypeDef && (
-                    <div style={styles.noPropTypeBanner}>
-                      <div style={styles.noPropTypeBannerText}>
-                        <span style={{ fontWeight: 600, color: '#f9e2af' }}>No props interface</span>
-                        <span style={{ color: '#a6adc8' }}>
-                          {' '}<code style={{ color: '#89b4fa', fontFamily: 'monospace' }}>{selectedNode.tag}</code> has no typed props declaration.
-                        </span>
-                      </div>
-                      <button
-                        style={styles.noPropTypeCta}
-                        onClick={() => void handleRegisterPropTypes()}
-                      >
-                        Create <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>{selectedNode.tag}Props</code>
-                      </button>
-                    </div>
-                  )}
-                  {/* ── Component mode: show declared props with types ─────── */}
+                  {/* ── Component mode: binding + type + badge + delete ──── */}
                   {inspectingComponent && (
                     ownerProps.length === 0 ? (
                       <div style={styles.componentEmptyState}>
@@ -3355,169 +4022,124 @@ export function InspectorPanel({
                           No props declared on <code style={{ color: '#89b4fa' }}>{selectedNode.tag}</code>.
                         </p>
                         <p style={{ margin: 0, color: '#6c7086', fontSize: '0.75rem' }}>
-                          Use “+ Add prop” below to create the first prop.
+                          Use "+ Add prop" below to create the first prop.
                           The component signature and a <code style={{ color: '#cba6f7' }}>{selectedNode.tag}Props</code> interface
                           will be created automatically.
                         </p>
                       </div>
                     ) : (
-                      ownerProps.map((prop) => {
-                        const isExpanded = expandedRows.has(prop.name)
-                        return (
-                          <div key={prop.name} style={styles.attrRowWrap}>
-                            {/* Main header row — root drops the chevron column from the grid */}
-                            <div style={isRootComponent
-                              ? { ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px auto auto' }
-                              : styles.attrRow
-                            }>
-                              {/* Chevron only for child components (root shows default inline, no expand needed) */}
-                              {!isRootComponent && (
-                                <button
-                                  style={styles.rowChevron}
-                                  title={isExpanded ? 'Collapse' : 'Expand to edit default value'}
-                                  onClick={() => setExpandedRows(prev => {
-                                    const next = new Set(prev)
-                                    isExpanded ? next.delete(prop.name) : next.add(prop.name)
-                                    return next
-                                  })}
-                                >
-                                  {isExpanded ? '▾' : '▸'}
-                                </button>
-                              )}
-                              <span style={styles.attrName}>{prop.name}</span>
-                              {/* Value cell: root → default value input (no binding); child → binding with var/val mode */}
-                              <div style={styles.attrValueCell}>
-                                {isRootComponent ? (
-                                  <input
-                                    style={{ ...styles.attrInput, flex: 1 }}
-                                    placeholder="default value"
-                                    value={propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''}
-                                    onChange={(e) => { setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
-                                  />
-                                ) : (
-                                  <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                    {!isReadOnly && (
-                                      <div style={{ ...styles.modeToggle, flexShrink: 0 }}>
-                                        <button
-                                          style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'variable' ? styles.modeBtnActive : {}) }}
-                                          onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'variable' }))}
-                                        >var</button>
-                                        <button
-                                          style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'entry' ? styles.modeBtnActive : {}) }}
-                                          onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'entry' }))}
-                                        >val</button>
-                                      </div>
-                                    )}
-                                    {(propValueMode[prop.name] ?? 'variable') === 'variable' ? (
-                                      <select
-                                        style={{ ...styles.attrInput, flex: 1 }}
-                                        disabled={isReadOnly}
-                                        value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
-                                        onChange={(e) => {
-                                          if (isReadOnly) return
-                                          setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
-                                        }}
-                                      >
-                                        <option value="">— pick variable —</option>
-                                        {scopeLayers.length > 0
-                                          ? scopeLayers.map(layer => [
-                                              layer.props.length > 0 && (
-                                                <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
-                                                  {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
-                                                </optgroup>
-                                              ),
-                                              layer.state.length > 0 && (
-                                                <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
-                                                  {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
-                                                </optgroup>
-                                              ),
-                                            ])
-                                          : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
-                                        }
-                                      </select>
-                                    ) : (
-                                      <input
-                                        style={{ ...styles.attrInput, flex: 1 }}
-                                        readOnly={isReadOnly}
-                                        value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
-                                        onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                        onBlur={(e) => {
-                                          if (isReadOnly) return
-                                          const typed = e.target.value
-                                          const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
-                                          setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
-                                        }}
-                                        placeholder={prop.defaultValue ?? 'value'}
-                                      />
-                                    )}
+                      ownerProps.map((prop) => (
+                        <div key={prop.name} style={styles.attrRowWrap}>
+                          <div style={{ ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px auto auto' }}>
+                            <span style={styles.attrName}>{prop.name}</span>
+                            {/* Binding value cell */}
+                            <div style={styles.attrValueCell}>
+                              <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                {!isReadOnly && (
+                                  <div style={{ ...styles.modeToggle, flexShrink: 0 }}>
+                                    <button
+                                      style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'variable' ? styles.modeBtnActive : {}) }}
+                                      onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'variable' }))}
+                                    >var</button>
+                                    <button
+                                      style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'entry' ? styles.modeBtnActive : {}) }}
+                                      onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'entry' }))}
+                                    >val</button>
                                   </div>
                                 )}
-                              </div>
-                              {/* Type cell — always editable; ⟳ infers on click (var mode: from variable type, val mode: from literal) */}
-                              <div style={{ ...styles.attrValueCell, maxWidth: 90 }}>
-                                <div style={{ display: 'flex', gap: 2 }}>
+                                {(propValueMode[prop.name] ?? 'variable') === 'variable' ? (
+                                  <select
+                                    style={{ ...styles.attrInput, flex: 1 }}
+                                    disabled={isReadOnly}
+                                    value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
+                                    onChange={(e) => {
+                                      if (isReadOnly) return
+                                      setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
+                                    }}
+                                  >
+                                    <option value="">— pick variable —</option>
+                                    {scopeLayers.length > 0
+                                      ? scopeLayers.map(layer => [
+                                          layer.props.length > 0 && (
+                                            <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                              {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                            </optgroup>
+                                          ),
+                                          layer.state.length > 0 && (
+                                            <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                              {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                            </optgroup>
+                                          ),
+                                        ])
+                                      : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                    }
+                                  </select>
+                                ) : (
                                   <input
-                                    style={{ ...styles.attrInput, flex: 1, minWidth: 0 }}
+                                    style={{ ...styles.attrInput, flex: 1 }}
                                     readOnly={isReadOnly}
-                                    value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
-                                    onChange={(e) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
+                                    value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
+                                    onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
                                     onBlur={(e) => {
                                       if (isReadOnly) return
                                       const typed = e.target.value
-                                      if (typed) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: typed }))
+                                      const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
+                                      setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
                                     }}
-                                    placeholder="type"
+                                    placeholder={prop.defaultValue ?? 'value'}
                                   />
-                                  {!isReadOnly && (
-                                    <button
-                                      style={styles.inferBtn}
-                                      title="Infer type from current value"
-                                      onClick={() => {
-                                        const curVal = isRootComponent
-                                          ? (propDefaultEdits[prop.name] ?? prop.defaultValue ?? '')
-                                          : (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
-                                        const varMode = !isRootComponent && (propValueMode[prop.name] ?? 'variable') === 'variable'
-                                        const inferred = varMode && parentSource && parentComponentName
-                                          ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
-                                          : inferTypeFromValueString(curVal)
-                                        if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
-                                      }}
-                                    >⟳</button>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                              <span style={styles.badgeOwner}>prop</span>
-                              {!isReadOnly && (
-                                <button
-                                  style={styles.deleteBtn}
-                                  title={`Remove prop ${prop.name}`}
-                                  disabled={deletingProp === prop.name}
-                                  onClick={() => void handleDeleteProp(prop.name)}
-                                >
-                                  {deletingProp === prop.name ? '…' : '✕'}
-                                </button>
-                              )}
                             </div>
-                            {/* Expanded panel — default value (child components only; root shows default inline) */}
-                            {isExpanded && !isRootComponent && (
-                              <div style={styles.attrRowExpanded}>
-                                <span style={styles.attrExpandLabel}>default</span>
+                            {/* Type cell */}
+                            <div style={{ ...styles.attrValueCell, maxWidth: 90 }}>
+                              <div style={{ display: 'flex', gap: 2 }}>
                                 <input
-                                  style={{ ...styles.attrInput, flex: 1 }}
+                                  style={{ ...styles.attrInput, flex: 1, minWidth: 0 }}
                                   readOnly={isReadOnly}
-                                  placeholder="no default"
-                                  value={propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''}
-                                  onChange={(e) => { if (!isReadOnly) setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
+                                  value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
+                                  onChange={(e) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
+                                  onBlur={(e) => {
+                                    if (isReadOnly) return
+                                    const typed = e.target.value
+                                    if (typed) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: typed }))
+                                  }}
+                                  placeholder="type"
                                 />
+                                {!isReadOnly && (
+                                  <button
+                                    style={styles.inferBtn}
+                                    title="Infer type from current value"
+                                    onClick={() => {
+                                      const curVal = (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
+                                      const varMode = (propValueMode[prop.name] ?? 'variable') === 'variable'
+                                      const inferred = varMode && parentSource && parentComponentName
+                                        ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
+                                        : inferTypeFromValueString(curVal)
+                                      if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
+                                    }}
+                                  >⟳</button>
+                                )}
                               </div>
+                            </div>
+                            <span style={styles.badgeOwner}>prop</span>
+                            {!isReadOnly && (
+                              <button
+                                style={styles.deleteBtn}
+                                title={`Remove prop ${prop.name}`}
+                                disabled={deletingProp === prop.name}
+                                onClick={() => void handleDeleteProp(prop.name)}
+                              >
+                                {deletingProp === prop.name ? '…' : '✕'}
+                              </button>
                             )}
                           </div>
-                        )
-                      })
+                        </div>
+                      ))
                     )
                   )}
 
-                  {/* ── DOM mode: show editable JSX attributes ─────────────── */}
+                  {/* ── DOM mode: editable JSX attributes ─────────────── */}
                   {!inspectingComponent && jsxAttrs.length === 0 && (
                     <div style={styles.bindingsEmptyAttrs}>No JSX attributes found on this element.</div>
                   )}
@@ -3568,7 +4190,7 @@ export function InspectorPanel({
                     </div>
                   ))}
 
-                  {/* Add prop inline form — hidden for read-only (child) nodes */}
+                  {/* Add prop inline form */}
                   {!isReadOnly && (showAddProp ? (
                     <div style={styles.addPropForm}>
                       <div style={styles.addPropRow}>
@@ -3601,70 +4223,62 @@ export function InspectorPanel({
                         </div>
                       </div>
                       <div style={styles.addPropRow}>
-                        {isRootComponent ? (
-                          /* Root component: no parent to bind from — default value only */
+                        <div style={styles.modeToggle}>
+                          <button
+                            style={{ ...styles.modeBtn, ...(newPropMode === 'variable' ? styles.modeBtnActive : {}) }}
+                            onClick={() => { setNewPropMode('variable'); setNewPropValue(''); setNewPropTypeInferred(false) }}
+                          >var</button>
+                          <button
+                            style={{ ...styles.modeBtn, ...(newPropMode === 'entry' ? styles.modeBtnActive : {}) }}
+                            onClick={() => { setNewPropMode('entry'); setNewPropValue(''); setNewPropTypeInferred(false) }}
+                          >val</button>
+                        </div>
+                        {newPropMode === 'variable' ? (
+                          <select
+                            style={{ ...styles.attrInput, flex: 1 }}
+                            value={newPropValue}
+                            onChange={(e) => { setNewPropValue(e.target.value) }}
+                          >
+                            <option value="">— pick variable —</option>
+                            {scopeLayers.length > 0
+                              ? scopeLayers.map(layer => [
+                                  layer.props.length > 0 && (
+                                    <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                      {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                    </optgroup>
+                                  ),
+                                  layer.state.length > 0 && (
+                                    <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                      {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                    </optgroup>
+                                  ),
+                                ])
+                              : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                            }
+                          </select>
+                        ) : (
                           <input
                             style={{ ...styles.attrInput, flex: 1 }}
                             placeholder="default value"
                             value={newPropValue}
+                            onFocus={(e) => { e.currentTarget.value = ''; setNewPropValue('') }}
                             onChange={(e) => { setNewPropValue(e.target.value) }}
                           />
-                        ) : (
-                          <>
-                            {/* Mode toggle: variable vs literal entry */}
-                            <div style={styles.modeToggle}>
-                              <button
-                                style={{ ...styles.modeBtn, ...(newPropMode === 'variable' ? styles.modeBtnActive : {}) }}
-                                onClick={() => { setNewPropMode('variable'); setNewPropValue(''); setNewPropTypeInferred(false) }}
-                              >var</button>
-                              <button
-                                style={{ ...styles.modeBtn, ...(newPropMode === 'entry' ? styles.modeBtnActive : {}) }}
-                                onClick={() => { setNewPropMode('entry'); setNewPropValue(''); setNewPropTypeInferred(false) }}
-                              >val</button>
-                            </div>
-                            {newPropMode === 'variable' ? (
-                              <select
-                                style={{ ...styles.attrInput, flex: 1 }}
-                                value={newPropValue}
-                                onChange={(e) => { setNewPropValue(e.target.value) }}
-                              >
-                                <option value="">— pick variable —</option>
-                                {scopeLayers.length > 0
-                                  ? scopeLayers.map(layer => [
-                                      layer.props.length > 0 && (
-                                        <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
-                                          {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
-                                        </optgroup>
-                                      ),
-                                      layer.state.length > 0 && (
-                                        <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
-                                          {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
-                                        </optgroup>
-                                      ),
-                                    ])
-                                  : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
-                                }
-                              </select>
-                            ) : (
-                              <input
-                                style={{ ...styles.attrInput, flex: 1 }}
-                                placeholder="default value"
-                                value={newPropValue}
-                                onFocus={(e) => { e.currentTarget.value = ''; setNewPropValue('') }}
-                                onChange={(e) => { setNewPropValue(e.target.value) }}
-                              />
-                            )}
-                          </>
                         )}
                       </div>
+                      {propAlreadyExists && (
+                        <div style={{ color: '#f38ba8', fontSize: 11, padding: '2px 0', fontFamily: 'system-ui, sans-serif' }}>
+                          A prop or variable named “{newPropNameTrimmed}” already exists in scope.
+                        </div>
+                      )}
                       <div style={styles.addPropActions}>
                         <button style={styles.cancelBtn} onClick={() => setShowAddProp(false)}>Cancel</button>
                         <button
-                          style={styles.confirmBtn}
+                          style={{ ...styles.confirmBtn, ...(propAlreadyExists ? { opacity: 0.45, cursor: 'not-allowed' } : {}) }}
                           onClick={() => void handleCreateProp()}
-                          disabled={!newPropName.trim()}
+                          disabled={!newPropName.trim() || propAlreadyExists}
                         >
-                          {isRootComponent ? 'Add prop' : 'Create & Bind'}
+                          Create &amp; Bind
                         </button>
                       </div>
                     </div>
@@ -3681,8 +4295,8 @@ export function InspectorPanel({
                   )}
                 </div>
 
-                {/* Apply-changes bar — component prop type edits */}
-                {!isReadOnly && inspectingComponent && (Object.keys(propTypeEdits).length > 0 || Object.keys(propValueEdits).length > 0 || Object.keys(propDefaultEdits).length > 0) && (
+                {/* Apply-changes bar — bindings */}
+                {!isReadOnly && inspectingComponent && (Object.keys(propTypeEdits).length > 0 || Object.keys(propValueEdits).length > 0) && (
                   <div style={styles.saveBar}>
                     {saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
                     {saveStatus === 'error' && <span style={styles.errorMsg}>&#x2717; Save failed</span>}
@@ -3692,11 +4306,11 @@ export function InspectorPanel({
                     >
                       {bindingsSaving ? 'Saving…' : 'Apply changes'}
                     </button>
-                    <button style={styles.cancelBtn} onClick={() => { setPropTypeEdits({}); setPropValueEdits({}); setPropDefaultEdits({}) }}>Cancel</button>
+                    <button style={styles.cancelBtn} onClick={() => { setPropTypeEdits({}); setPropValueEdits({}) }}>Cancel</button>
                   </div>
                 )}
 
-                {/* Apply-changes bar — DOM attr mode only; undo/redo is in header */}
+                {/* Apply-changes bar — DOM attr mode */}
                 {!isReadOnly && !inspectingComponent && (
                   <div style={styles.saveBar}>
                     {saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
@@ -3717,7 +4331,7 @@ export function InspectorPanel({
       </div>
 
       {/* Save bar */}
-      {activeTab === 'source' && (
+      {activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder) && (
         <div style={styles.saveBar}>
           {saveStatus === 'saved' && <span style={styles.savedMsg}>✓ Saved — HMR will reload</span>}
           {saveStatus === 'error' && <span style={styles.errorMsg}>✗ Save failed</span>}

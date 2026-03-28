@@ -64,11 +64,18 @@ function pushUrlState(section: 'pages' | 'components', page: string, component: 
   window.history.replaceState(null, '', next)
 }
 
+function readSessionJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? JSON.parse(raw) as T : fallback
+  } catch { return fallback }
+}
+
 export default function App() {
   const initial = readUrlState()
-  const [location, setLocation] = useState<SourceLocation | null>(null)
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(null)
+  const [location, setLocation] = useState<SourceLocation | null>(() => readSessionJson('cockpit:location', null))
+  const [panelOpen, setPanelOpen] = useState(() => readSessionJson('cockpit:panelOpen', false))
+  const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(() => readSessionJson('cockpit:selectedNode', null))
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [activeSection, setActiveSection] = useState<'pages' | 'components'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
@@ -77,6 +84,17 @@ export default function App() {
   const [addPageOpen, setAddPageOpen] = useState(false)
   const [components, setComponents] = useState<{ id: string; label: string; name: string }[]>([])
   const [addComponentOpen, setAddComponentOpen] = useState(false)
+
+  // Persist inspector state to sessionStorage so it survives reload.
+  useEffect(() => {
+    sessionStorage.setItem('cockpit:location', JSON.stringify(location))
+  }, [location])
+  useEffect(() => {
+    sessionStorage.setItem('cockpit:panelOpen', JSON.stringify(panelOpen))
+  }, [panelOpen])
+  useEffect(() => {
+    sessionStorage.setItem('cockpit:selectedNode', JSON.stringify(selectedNode))
+  }, [selectedNode])
 
   // Sync URL whenever the routable state changes.
   useEffect(() => {
@@ -239,9 +257,15 @@ export default function App() {
             inspectMode={location.inspectMode}
             componentName={location.componentName}
             selectedNode={selectedNode}
-            rootComponentName={activePage.root}
+            rootComponentName={activeSection === 'components' ? (previewComponent ?? activePage.root) : activePage.root}
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
+            onNavigateToComponent={(name) => {
+              setPreviewComponent(name)
+              setActiveSection('components')
+              setSelectedNode(null)
+              setPanelOpen(false)
+            }}
           />
         )}
       </div>

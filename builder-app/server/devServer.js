@@ -13,6 +13,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import ts from 'typescript'
 
+import { parse as babelParse } from '@babel/parser'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Monorepo root is one level up from builder-app/server/
 const REPO_ROOT = path.resolve(__dirname, '../../')
@@ -23,7 +25,12 @@ app.use(express.json({ limit: '2mb' }))
 /** Ensure the resolved path is inside the monorepo root (path-traversal guard). */
 function isSafeFile(filePath) {
   const resolved = path.resolve(filePath)
-  return resolved.startsWith(REPO_ROOT + path.sep) || resolved.startsWith(REPO_ROOT + '/')
+  // On Windows, drive letter casing can differ (d: vs D:), so compare
+  // case-insensitively when on a case-insensitive file system.
+  const isWin = process.platform === 'win32'
+  const r = isWin ? resolved.toLowerCase() : resolved
+  const root = isWin ? REPO_ROOT.toLowerCase() : REPO_ROOT
+  return r.startsWith(root + path.sep) || r.startsWith(root + '/')
 }
 
 function findTsConfigForFile(filePath) {
@@ -342,6 +349,114 @@ app.post('/__diagnostics', (req, res) => {
     return res.status(400).json({ error, diagnostics: [] })
   }
   return res.json({ diagnostics })
+})
+
+// ── On-demand AST info ────────────────────────────────────────────────────────
+// Parses a file with @babel/parser and returns component & JSX expression metadata.
+// Replaces the compile-time __LOCATOR_DATA__ that @locator/babel-jsx used to inject.
+
+function extractAstInfo(source, filePath) {
+  let ast
+  try {
+    ast = babelParse(source, {
+      sourceType: 'module',
+      plugins: ['jsx', 'typescript'],
+      errorRecovery: true,
+    })
+  } catch {
+    return { components: [], expressions: [] }
+  }
+
+  const components = []
+  const expressions = []
+  let currentComponent = null
+
+  function walkNode(node) {
+    if (!node || typeof node !== 'object') return
+    if (!node.type) {
+      // Array or plain object — recurse children
+      if (Array.isArray(node)) node.forEach(walkNode)
+      return
+    }
+
+    // Track component boundaries
+    const prevComponent = currentComponent
+    if (
+      node.type === 'FunctionDeclaration' &&
+      node.id?.name &&
+      /^[A-Z]/.test(node.id.name)
+    ) {
+      currentComponent = { name: node.id.name, line: node.loc?.start?.line ?? 1 }
+      components.push(currentComponent)
+    } else if (node.type === 'VariableDeclarator' && node.id?.name && /^[A-Z]/.test(node.id.name)) {
+      const init = node.init
+      if (
+        init &&
+        (init.type === 'ArrowFunctionExpression' || init.type === 'FunctionExpression')
+      ) {
+        currentComponent = { name: node.id.name, line: node.loc?.start?.line ?? 1 }
+        components.push(currentComponent)
+      }
+    }
+
+    // Collect JSX elements
+    if (node.type === 'JSXElement' || node.type === 'JSXFragment') {
+      let name = null
+      if (node.type === 'JSXElement' && node.openingElement?.name) {
+        const n = node.openingElement.name
+        name = n.type === 'JSXIdentifier' ? n.name : n.type === 'JSXMemberExpression' ? readJSXMemberName(n) : null
+      }
+      expressions.push({
+        name,
+        line: node.loc?.start?.line ?? 1,
+        column: node.loc?.start?.column ?? 0,
+        ownerComponent: currentComponent?.name ?? null,
+      })
+    }
+
+    // Recurse into child nodes
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'start' || key === 'end') continue
+      const child = node[key]
+      if (Array.isArray(child)) {
+        child.forEach(walkNode)
+      } else if (child && typeof child === 'object' && child.type) {
+        walkNode(child)
+      }
+    }
+
+    currentComponent = prevComponent
+  }
+
+  function readJSXMemberName(node) {
+    if (node.type === 'JSXIdentifier') return node.name
+    if (node.type === 'JSXMemberExpression') {
+      return `${readJSXMemberName(node.object)}.${readJSXMemberName(node.property)}`
+    }
+    return '?'
+  }
+
+  walkNode(ast.program)
+  return { components, expressions }
+}
+
+app.get('/__source/ast-info', (req, res) => {
+  const rawFile = req.query.file
+  if (typeof rawFile !== 'string' || !rawFile) {
+    return res.status(400).json({ error: 'Missing ?file= query parameter' })
+  }
+
+  const filePath = path.resolve(rawFile)
+  if (!isSafeFile(filePath)) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `File not found: ${filePath}` })
+  }
+
+  const source = fs.readFileSync(filePath, 'utf-8')
+  const info = extractAstInfo(source, filePath)
+  res.json(info)
 })
 
 const PORT = 3001

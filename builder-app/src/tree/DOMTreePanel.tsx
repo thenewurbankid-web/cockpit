@@ -1,12 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
 import { highlightElement, clearHighlight } from '../highlight'
+import { getElementSourceInfo, type ElementSourceInfo } from '../fiberSource'
 
-interface ResolvedLocator {
-  file: string
-  line: number
-  expressionName: string | null
-  ownerComponentName: string | null
-  ownerComponentLine: number | null
+/** Tiny "i" icon that shows a popover on hover. */
+function InfoIcon({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 4 }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span style={{
+        width: 14, height: 14, borderRadius: '50%', border: '1px solid #6c7086',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, fontWeight: 700, color: '#6c7086', cursor: 'default',
+        fontFamily: 'serif', fontStyle: 'italic', lineHeight: 1, flexShrink: 0,
+      }}>i</span>
+      {show && (
+        <div style={{
+          position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)',
+          marginTop: 6, padding: '6px 10px', background: '#1e1e2e', border: '1px solid #45475a',
+          borderRadius: 6, color: '#cdd6f4', fontSize: 11, lineHeight: 1.45,
+          whiteSpace: 'normal', width: 200, zIndex: 1000, pointerEvents: 'none',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)', fontFamily: 'system-ui, sans-serif',
+          fontWeight: 400, textTransform: 'none', letterSpacing: 0,
+        }}>{text}</div>
+      )}
+    </span>
+  )
 }
 
 function isLikelyReactComponentName(name: string | null | undefined): boolean {
@@ -18,8 +40,7 @@ interface RawDomNode {
   kind: 'dom'
   el: Element
   tag: string
-  locatorId: string | null
-  locator: ResolvedLocator | null
+  sourceInfo: ElementSourceInfo | null
   children: RawDomNode[]
 }
 
@@ -28,8 +49,7 @@ interface DisplayDomNode {
   key: string
   el: Element
   tag: string
-  locatorId: string | null
-  locator: ResolvedLocator | null
+  sourceInfo: ElementSourceInfo | null
   depth: number
   children: DisplayNode[]
 }
@@ -47,8 +67,7 @@ interface DisplayComponentNode {
 type DisplayNode = DisplayDomNode | DisplayComponentNode
 
 function buildRawDomTree(root: Element): RawDomNode {
-  const locatorId = root.getAttribute('data-locatorjs-id')
-  const locator = locatorId ? resolveLocatorId(locatorId) : null
+  const sourceInfo = getElementSourceInfo(root)
   const children: RawDomNode[] = []
   for (const child of Array.from(root.children)) {
     children.push(buildRawDomTree(child))
@@ -57,8 +76,7 @@ function buildRawDomTree(root: Element): RawDomNode {
     kind: 'dom',
     el: root,
     tag: root.tagName.toLowerCase(),
-    locatorId,
-    locator,
+    sourceInfo,
     children,
   }
 }
@@ -67,49 +85,49 @@ function normalizeSlashes(p: string): string {
   return p.replace(/\\/g, '/').toLowerCase()
 }
 
-function collectLocators(node: RawDomNode, out: ResolvedLocator[]): void {
-  if (node.locator) out.push(node.locator)
-  for (const child of node.children) collectLocators(child, out)
+function collectSourceInfos(node: RawDomNode, out: ElementSourceInfo[]): void {
+  if (node.sourceInfo) out.push(node.sourceInfo)
+  for (const child of node.children) collectSourceInfos(child, out)
 }
 
 function inferPageRoot(
   rawRoots: RawDomNode[],
   preferredRootComponentName?: string
 ): { name: string; file: string; line: number } | null {
-  const all: ResolvedLocator[] = []
-  for (const root of rawRoots) collectLocators(root, all)
+  const all: ElementSourceInfo[] = []
+  for (const root of rawRoots) collectSourceInfos(root, all)
 
   // If caller provides a preferred root name (e.g. LoginPage, Button), use it first.
   if (preferredRootComponentName && isLikelyReactComponentName(preferredRootComponentName)) {
     // Best case: exact owner match from /pages/ or /components/ file.
-    for (const loc of all) {
-      const f = normalizeSlashes(loc.file)
+    for (const info of all) {
+      const f = normalizeSlashes(info.file)
       if (
-        loc.ownerComponentName === preferredRootComponentName &&
+        info.ownerComponentName === preferredRootComponentName &&
         (f.includes('/pages/') || f.includes('/components/'))
       ) {
         return {
           name: preferredRootComponentName,
-          file: loc.file,
-          line: loc.ownerComponentLine ?? loc.line,
+          file: info.file,
+          line: info.ownerLine ?? info.line,
         }
       }
     }
 
     // Fallback: no exact owner metadata — pick any anchor from pages or components.
-    const srcLoc = all.find((loc) => {
-      const f = normalizeSlashes(loc.file)
+    const srcInfo = all.find((info) => {
+      const f = normalizeSlashes(info.file)
       return f.includes('/pages/') || f.includes('/components/')
     })
-    if (srcLoc) {
+    if (srcInfo) {
       return {
         name: preferredRootComponentName,
-        file: srcLoc.file,
-        line: srcLoc.line,
+        file: srcInfo.file,
+        line: srcInfo.line,
       }
     }
 
-    // Last fallback: use first available locator anchor.
+    // Last fallback: use first available source info.
     const first = all[0]
     if (first) {
       return {
@@ -119,7 +137,7 @@ function inferPageRoot(
       }
     }
 
-    // Still no locators? return synthetic root with safe defaults.
+    // Still no source info? return synthetic root with safe defaults.
     return {
       name: preferredRootComponentName,
       file: '',
@@ -128,27 +146,27 @@ function inferPageRoot(
   }
 
   // Prefer owners from files in /pages/ or /components/.
-  for (const loc of all) {
-    const f = normalizeSlashes(loc.file)
+  for (const info of all) {
+    const f = normalizeSlashes(info.file)
     if (
-      isLikelyReactComponentName(loc.ownerComponentName) &&
+      isLikelyReactComponentName(info.ownerComponentName) &&
       (f.includes('/pages/') || f.includes('/components/'))
     ) {
       return {
-        name: loc.ownerComponentName as string,
-        file: loc.file,
-        line: loc.ownerComponentLine ?? loc.line,
+        name: info.ownerComponentName as string,
+        file: info.file,
+        line: info.ownerLine ?? info.line,
       }
     }
   }
 
   // Fallback: first valid owner we see.
-  for (const loc of all) {
-    if (isLikelyReactComponentName(loc.ownerComponentName)) {
+  for (const info of all) {
+    if (isLikelyReactComponentName(info.ownerComponentName)) {
       return {
-        name: loc.ownerComponentName as string,
-        file: loc.file,
-        line: loc.ownerComponentLine ?? loc.line,
+        name: info.ownerComponentName as string,
+        file: info.file,
+        line: info.ownerLine ?? info.line,
       }
     }
   }
@@ -162,17 +180,11 @@ function toMixedTree(
   parentOwnerName: string | null,
   keyPrefix: string
 ): DisplayNode {
-  const ownerName = isLikelyReactComponentName(node.locator?.ownerComponentName)
-    ? node.locator?.ownerComponentName ?? null
-    : null
-  const expressionComponent = isLikelyReactComponentName(node.locator?.expressionName)
-    ? node.locator?.expressionName ?? null
+  const ownerName = isLikelyReactComponentName(node.sourceInfo?.ownerComponentName)
+    ? node.sourceInfo?.ownerComponentName ?? null
     : null
 
-  // Prefer explicit owner component. If locator owner is invalid (e.g.
-  // lowercase helper function like handleSubmit), fall back to expression name
-  // when it looks like a React component (<Input />, <Button />).
-  const effectiveOwnerName = ownerName ?? expressionComponent
+  const effectiveOwnerName = ownerName
   const currentOwnerName = effectiveOwnerName ?? parentOwnerName
 
   const domNode: DisplayDomNode = {
@@ -180,8 +192,7 @@ function toMixedTree(
     key: `${keyPrefix}-dom`,
     el: node.el,
     tag: node.tag,
-    locatorId: node.locatorId,
-    locator: node.locator,
+    sourceInfo: node.sourceInfo,
     depth,
     children: node.children.map((child, i) =>
       toMixedTree(child, depth + 1, currentOwnerName, `${keyPrefix}-${i}`)
@@ -190,17 +201,16 @@ function toMixedTree(
 
   // If ownership changes at this node, insert a synthetic component node
   // above the DOM node so the UI shows React + DOM hierarchy.
+  // Use the element's own file (node.sourceInfo.file) — this IS the component's
+  // definition file. ownerFile points to where the component is *used* (e.g.
+  // ComponentLoader), which is wrong for navigation.
   if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName) {
     return {
       kind: 'component',
       key: `${keyPrefix}-comp-${effectiveOwnerName}`,
       name: effectiveOwnerName,
-      file: node.locator?.file ?? '',
-      // Prefer explicit owner line when owner is valid; otherwise use expression line.
-      line:
-        ownerName && node.locator?.ownerComponentLine
-          ? node.locator.ownerComponentLine
-          : (node.locator?.line ?? 1),
+      file: node.sourceInfo?.file ?? '',
+      line: node.sourceInfo?.line ?? 1,
       depth,
       children: [domNode],
     }
@@ -252,11 +262,11 @@ interface RowProps {
   node: DisplayNode
   selected: Element | null
   onSelect: (node: DisplayNode) => void
-  /** locatorId of the element currently hovered in the preview canvas */
-  hoveredLocatorId: string | null
+  /** Element currently hovered in the preview canvas */
+  hoveredElement: Element | null
 }
 
-function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
+function TreeRow({ node, selected, onSelect, hoveredElement }: RowProps) {
   // Root component (depth 0) and all DOM nodes start open;
   // child component nodes (depth > 0) start collapsed.
   const [open, setOpen] = useState(node.kind !== 'component' || node.depth === 0)
@@ -273,9 +283,9 @@ function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
 
   // This row is highlighted when canvas mouse hovers its element.
   const isCanvasHovered =
-    hoveredLocatorId !== null &&
+    hoveredElement !== null &&
     node.kind === 'dom' &&
-    node.locatorId === hoveredLocatorId
+    node.el === hoveredElement
 
   const rowEl = nodeElement
 
@@ -332,7 +342,7 @@ function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
         ) : (
           <>
             {/* tag name */}
-            <span style={{ color: node.locatorId ? '#89b4fa' : '#cdd6f4' }}>{node.tag}</span>
+            <span style={{ color: node.sourceInfo ? '#89b4fa' : '#cdd6f4' }}>{node.tag}</span>
 
             {/* id */}
             {el?.id && <span style={{ color: '#a6e3a1', fontSize: 11 }}>#{el.id}</span>}
@@ -355,7 +365,7 @@ function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
         )}
 
         {/* source badge */}
-        {(node.kind === 'component' || node.locatorId) && (
+        {(node.kind === 'component' || (node.kind === 'dom' && node.sourceInfo)) && (
           <span
             style={{
               marginLeft: 'auto',
@@ -376,78 +386,10 @@ function TreeRow({ node, selected, onSelect, hoveredLocatorId }: RowProps) {
       {open &&
         hasChildren &&
         node.children.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredLocatorId={hoveredLocatorId} />
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} />
         ))}
     </div>
   )
-}
-
-// ---- locatorjs path resolution (mirrors useLocator.ts) ----
-
-declare global {
-  interface Window {
-    __LOCATOR_DATA__?: Record<
-      string,
-      {
-        filePath: string
-        projectPath: string
-        expressions: Array<{
-          name: string
-          loc: { start: { line: number; column: number } }
-          wrappingComponentId?: number | null
-        }>
-        components?: Array<{
-          name: string
-          loc: { start: { line: number; column: number } }
-        }>
-      }
-    >
-  }
-}
-
-function normalizeConcatenatedPath(raw: string): string {
-  const hits = [...raw.matchAll(/[A-Za-z]:[\\/]/g)]
-  if (hits.length >= 2 && hits[1].index !== undefined) return raw.slice(hits[1].index)
-  return raw
-}
-
-function resolveLocatorId(
-  locatorId: string
-): ResolvedLocator | null {
-  const sep = locatorId.lastIndexOf('::')
-  if (sep === -1) return null
-  const rawKey = locatorId.slice(0, sep)
-  const key = normalizeConcatenatedPath(rawKey)
-  const idx = parseInt(locatorId.slice(sep + 2), 10)
-  const locatorData = window.__LOCATOR_DATA__ ?? {}
-  let fileData: (typeof locatorData)[string] | undefined = locatorData[key] ?? locatorData[rawKey]
-
-  if (!fileData) {
-    const hit = Object.entries(locatorData).find(([k, v]) => {
-      return (
-        normalizeConcatenatedPath(k) === key ||
-        normalizeConcatenatedPath(v.filePath) === key
-      )
-    })
-    fileData = hit?.[1]
-  }
-
-  const expr = fileData?.expressions[idx]
-  const compId = expr?.wrappingComponentId
-  const ownerComp =
-    typeof compId === 'number' && compId >= 0 ? fileData?.components?.[compId] : undefined
-  let file = key
-  if (fileData) {
-    const fp = normalizeConcatenatedPath(fileData.filePath)
-    file = /^[A-Za-z]:[\\/]|^\//.test(fp) ? fp : `${fileData.projectPath}${fp}`
-  }
-  return {
-    file,
-    line: expr?.loc.start.line ?? 1,
-    expressionName: expr?.name ?? null,
-    ownerComponentName: isLikelyReactComponentName(ownerComp?.name) ? ownerComp?.name ?? null : null,
-    ownerComponentLine: ownerComp?.loc?.start?.line ?? null,
-  }
 }
 
 function countNodes(nodes: DisplayNode[]): number {
@@ -508,16 +450,6 @@ interface DOMTreePanelProps {
   onDeleteComponent?: (id: string, name: string) => void
 }
 
-function findNearestLocatorId(el: Element): string | null {
-  let current: Element | null = el
-  while (current) {
-    const id = current.getAttribute('data-locatorjs-id')
-    if (id) return id
-    current = current.parentElement
-  }
-  return null
-}
-
 export function DOMTreePanel({
   canvasRef,
   onLocate,
@@ -537,7 +469,7 @@ export function DOMTreePanel({
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
   const [selected, setSelected] = useState<Element | null>(null)
-  const [hoveredCanvasLocatorId, setHoveredCanvasLocatorId] = useState<string | null>(null)
+  const [hoveredCanvasElement, setHoveredCanvasElement] = useState<Element | null>(null)
   const rafRef = useRef<number>(0)
 
   // Track which element the mouse is over in the preview canvas so the
@@ -547,16 +479,15 @@ export function DOMTreePanel({
     if (!canvas) return
 
     function onMouseMove(e: MouseEvent) {
-      let el = e.target as Element | null
-      while (el && canvas!.contains(el)) {
-        const id = el.getAttribute('data-locatorjs-id')
-        if (id) { setHoveredCanvasLocatorId(id); return }
-        el = el.parentElement
+      const el = e.target as Element | null
+      if (el && canvas!.contains(el) && el !== canvas) {
+        setHoveredCanvasElement(el)
+      } else {
+        setHoveredCanvasElement(null)
       }
-      setHoveredCanvasLocatorId(null)
     }
 
-    function onMouseLeave() { setHoveredCanvasLocatorId(null) }
+    function onMouseLeave() { setHoveredCanvasElement(null) }
 
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('mouseleave', onMouseLeave)
@@ -594,8 +525,6 @@ export function DOMTreePanel({
         setSelected(el)
         el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       }
-      // Pass a component-level snapshot so the Inspector bindings tab can show
-      // the component's declared props. Tag is capitalised to signal component mode.
       onNodeSelect?.({
         tag: node.name,
         locatorId: null,
@@ -608,28 +537,24 @@ export function DOMTreePanel({
     }
 
     setSelected(node.el)
-    const locatorId = node.locatorId ?? findNearestLocatorId(node.el)
-    if (locatorId) {
-      const loc = resolveLocatorId(locatorId)
-      if (loc) onLocate(loc.file, loc.line, 'node')
+    // Use fiber source info to navigate to source
+    const info = node.sourceInfo
+    if (info) {
+      onLocate(info.file, info.line, 'node')
     }
     node.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 
-    // --- Post-selection: build snapshot for the inspector bindings panel.
-    // This is additive and runs AFTER all existing navigate/locate logic above.
     if (onNodeSelect) {
       const domAttrs: Array<{ name: string; value: string }> = []
       for (const attr of Array.from(node.el.attributes)) {
-        // Skip internal locator attributes — not useful to expose in the UI.
-        if (attr.name === 'data-locatorjs-id') continue
         domAttrs.push({ name: attr.name, value: attr.value })
       }
       onNodeSelect({
         tag: node.tag,
-        locatorId: node.locatorId,
-        locatorFile: node.locator?.file ?? null,
-        locatorLine: node.locator?.line ?? null,
-        ownerComponentName: node.locator?.ownerComponentName ?? null,
+        locatorId: null,
+        locatorFile: info?.file ?? null,
+        locatorLine: info?.line ?? null,
+        ownerComponentName: info?.ownerComponentName ?? null,
         domAttributes: domAttrs,
       })
     }
@@ -672,6 +597,7 @@ export function DOMTreePanel({
           >
             <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: pagesOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
             Pages
+            <InfoIcon text="Your app's page-level components. Click a page to preview it in the canvas. Use '+ Add page' to scaffold a new one." />
             <span style={{ color: '#6c7086', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 'auto' }}>{pages.length}</span>
           </div>
           {pagesOpen && (
@@ -788,6 +714,7 @@ export function DOMTreePanel({
           >
             <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: componentsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
             Components
+            <InfoIcon text="Reusable UI components shared across pages. Click a component to preview and edit it. Use '+ Add component' to create a new one." />
             <span style={{ color: '#6c7086', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 'auto' }}>{components.length}</span>
           </div>
           {componentsOpen && (
@@ -904,6 +831,7 @@ export function DOMTreePanel({
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: treeOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
           React + DOM Tree
+          <InfoIcon text="Live component hierarchy of the current preview. Click any node to inspect its source, props, and bindings in the right panel." />
         </span>
         {treeOpen && <span style={styles.nodeCount}>{total} node{total !== 1 ? 's' : ''}</span>}
       </div>
@@ -911,7 +839,7 @@ export function DOMTreePanel({
         <div style={styles.scroll}>
           {tree.length > 0 ? (
             tree.map((child) => (
-              <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredLocatorId={hoveredCanvasLocatorId} />
+              <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredElement={hoveredCanvasElement} />
             ))
           ) : (
             <div style={styles.empty}>Waiting for render…</div>
