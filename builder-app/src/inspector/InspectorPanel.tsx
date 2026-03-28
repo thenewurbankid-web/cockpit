@@ -433,6 +433,54 @@ function extractImports(source: string): string[] {
   return result
 }
 
+// Count the number of top-level React components (uppercase-named functions) in a file.
+function countReactComponentsInSource(source: string): number {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body = (ast.program as unknown as { body: AstNode[] }).body
+    const names = new Set<string>()
+    for (const node of body) {
+      // function Foo() {}
+      if (node.type === 'FunctionDeclaration') {
+        const name = (node as AstNode & { id?: { name?: string } }).id?.name
+        if (name && /^[A-Z]/.test(name)) names.add(name)
+      }
+      // export function Foo() {} / export default function Foo() {}
+      if (node.type === 'ExportDefaultDeclaration' || node.type === 'ExportNamedDeclaration') {
+        const decl = (node as AstNode & { declaration?: AstNode }).declaration
+        if (decl?.type === 'FunctionDeclaration') {
+          const name = (decl as AstNode & { id?: { name?: string } }).id?.name
+          if (name && /^[A-Z]/.test(name)) names.add(name)
+        }
+        if (decl?.type === 'VariableDeclaration') {
+          for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+            const id = (d as AstNode & { id?: { name?: string } }).id
+            const init = (d as AstNode & { init?: AstNode }).init
+            if (id?.name && /^[A-Z]/.test(id.name) &&
+                init && (init.type === 'ArrowFunctionExpression' || init.type === 'FunctionExpression')) {
+              names.add(id.name)
+            }
+          }
+        }
+      }
+      // const Foo = () => {}
+      if (node.type === 'VariableDeclaration') {
+        for (const d of ((node as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+          const id = (d as AstNode & { id?: { name?: string } }).id
+          const init = (d as AstNode & { init?: AstNode }).init
+          if (id?.name && /^[A-Z]/.test(id.name) &&
+              init && (init.type === 'ArrowFunctionExpression' || init.type === 'FunctionExpression')) {
+            names.add(id.name)
+          }
+        }
+      }
+    }
+    return names.size
+  } catch {
+    return 0
+  }
+}
+
 interface BareModuleUsage {
   hasDefault: boolean
   hasNamespace: boolean
@@ -2698,6 +2746,8 @@ export function InspectorPanel({
   // Shared save status used by both source tab and bindings mutations.
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
+  // True when the current file contains more than one React component definition.
+  const [multipleComponentsInFile, setMultipleComponentsInFile] = useState(false)
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
@@ -3145,6 +3195,7 @@ export function InspectorPanel({
         .then((text) => {
           fullSourceRef.current = text
           setFileImports(extractImports(text))
+          setMultipleComponentsInFile(countReactComponentsInSource(text) > 1)
           void syncContextModels(file, text)
           scheduleDiagnostics(file, text)
           applyBlock(text, line)
@@ -3154,6 +3205,7 @@ export function InspectorPanel({
         .finally(() => setLoading(false))
     } else if (fullSourceRef.current) {
       // Same file, different element — re-extract without a network round-trip.
+      setMultipleComponentsInFile(countReactComponentsInSource(fullSourceRef.current) > 1)
       void syncContextModels(file, fullSourceRef.current)
       scheduleDiagnostics(file, fullSourceRef.current)
       applyBlock(fullSourceRef.current, line)
@@ -3647,6 +3699,16 @@ export function InspectorPanel({
         </div>
       </div>
 
+      {/* Multiple-components banner — under the breadcrumb header */}
+      {multipleComponentsInFile && (
+        <div style={styles.multiComponentBanner}>
+          <span style={styles.multiComponentBannerIcon}>⚠</span>
+          <span style={styles.multiComponentBannerText}>
+            This file defines <strong>multiple components</strong>. Consider splitting them into separate files.
+          </span>
+        </div>
+      )}
+
       {/* Scope hierarchy panel — replaces the old imports section */}
       {(selectedNode && (scopeLayers.length > 0 || (inspectingComponent && (ownerProps.length > 0 || parentLocals.length > 0)))) && (
         <>
@@ -3777,6 +3839,8 @@ export function InspectorPanel({
           )
         })}
       </div>
+
+      {/* Multiple-components banner — after tabs (kept as after-tabs slot, now unused, removed) */}
 
       {/* Content */}
       <div style={styles.content}>
@@ -4499,6 +4563,26 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     overflowY: 'auto' as const,
     padding: '0.4rem 0',
+  },
+  multiComponentBanner: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: '0.45rem 0.75rem',
+    background: 'rgba(249,226,175,0.08)',
+    borderBottom: '1px solid rgba(249,226,175,0.22)',
+    flexShrink: 0,
+  },
+  multiComponentBannerIcon: {
+    color: '#f9e2af',
+    fontSize: '0.8rem',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  multiComponentBannerText: {
+    color: '#a6adc8',
+    fontSize: '0.73rem',
+    lineHeight: 1.45,
   },
   noPropTypeBanner: {
     margin: '0.5rem 0.75rem',

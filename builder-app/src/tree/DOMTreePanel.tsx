@@ -1,6 +1,51 @@
 import { useEffect, useRef, useState } from 'react'
+import { parse } from '@babel/parser'
 import { highlightElement, clearHighlight } from '../highlight'
 import { getElementSourceInfo, type ElementSourceInfo } from '../fiberSource'
+
+function hasMultipleComponents(source: string): boolean {
+  try {
+    const body = (parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] }).program as any).body as any[]
+    const names = new Set<string>()
+    for (const node of body) {
+      // function Foo() {}
+      if (node.type === 'FunctionDeclaration' && /^[A-Z]/.test(node.id?.name ?? '')) names.add(node.id.name)
+      // export (default) function Foo() {} / export const Foo = () => {}
+      if (node.type === 'ExportDefaultDeclaration' || node.type === 'ExportNamedDeclaration') {
+        const d = node.declaration
+        if (d?.type === 'FunctionDeclaration' && /^[A-Z]/.test(d.id?.name ?? '')) names.add(d.id.name)
+        if (d?.type === 'VariableDeclaration') {
+          for (const vd of d.declarations ?? []) {
+            if (/^[A-Z]/.test(vd.id?.name ?? '') &&
+                (vd.init?.type === 'ArrowFunctionExpression' || vd.init?.type === 'FunctionExpression')) {
+              names.add(vd.id.name)
+            }
+          }
+        }
+      }
+      // const Foo = () => {}
+      if (node.type === 'VariableDeclaration') {
+        for (const vd of node.declarations ?? []) {
+          if (/^[A-Z]/.test(vd.id?.name ?? '') &&
+              (vd.init?.type === 'ArrowFunctionExpression' || vd.init?.type === 'FunctionExpression')) {
+            names.add(vd.id.name)
+          }
+        }
+      }
+      if (names.size > 1) return true
+    }
+    return names.size > 1
+  } catch {
+    return false
+  }
+}
+
+function collectComponentFiles(nodes: DisplayNode[], out: Set<string>): void {
+  for (const node of nodes) {
+    if (node.kind === 'component' && node.file) out.add(node.file)
+    collectComponentFiles(node.children, out)
+  }
+}
 
 /** Tiny "i" icon that shows a popover on hover. */
 function InfoIcon({ text }: { text: string }) {
@@ -264,9 +309,11 @@ interface RowProps {
   onSelect: (node: DisplayNode) => void
   /** Element currently hovered in the preview canvas */
   hoveredElement: Element | null
+  /** Set of file paths that contain more than one React component definition */
+  multiCompFiles: Set<string>
 }
 
-function TreeRow({ node, selected, onSelect, hoveredElement }: RowProps) {
+function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles }: RowProps) {
   // Root component (depth 0) and all DOM nodes start open;
   // child component nodes (depth > 0) start collapsed.
   const [open, setOpen] = useState(node.kind !== 'component' || node.depth === 0)
@@ -337,6 +384,22 @@ function TreeRow({ node, selected, onSelect, hoveredElement }: RowProps) {
             <span style={{ color: '#f9e2af', fontWeight: 600 }} title={node.name}>
               {node.name}
             </span>
+            {multiCompFiles.has(node.file) && (
+              <span
+                title="This file defines multiple React components. Consider splitting them into separate files."
+                style={{
+                  color: '#1e1e2e',
+                  background: '#f9e2af',
+                  fontSize: 9,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  padding: '2px 5px',
+                  borderRadius: 3,
+                  flexShrink: 0,
+                  letterSpacing: '0.02em',
+                }}
+              >!</span>
+            )}
             <span style={{ color: '#6c7086', fontSize: 11 }}>(component)</span>
           </>
         ) : (
@@ -386,7 +449,7 @@ function TreeRow({ node, selected, onSelect, hoveredElement }: RowProps) {
       {open &&
         hasChildren &&
         node.children.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} />
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} />
         ))}
     </div>
   )
@@ -471,6 +534,8 @@ export function DOMTreePanel({
   const [selected, setSelected] = useState<Element | null>(null)
   const [hoveredCanvasElement, setHoveredCanvasElement] = useState<Element | null>(null)
   const rafRef = useRef<number>(0)
+  const fileMultiCacheRef = useRef<Map<string, boolean>>(new Map())
+  const [multiCompFiles, setMultiCompFiles] = useState<Set<string>>(new Set())
 
   // Track which element the mouse is over in the preview canvas so the
   // corresponding tree row can glow amber (canvas hover → tree highlight).
@@ -506,7 +571,23 @@ export function DOMTreePanel({
         const html = root.innerHTML
         if (html !== lastHTML) {
           lastHTML = html
-          setTree(buildMixedTree(root, preferredRootComponentName))
+          const newTree = buildMixedTree(root, preferredRootComponentName)
+          setTree(newTree)
+          // Check component files for multiple-component declarations.
+          const files = new Set<string>()
+          collectComponentFiles(newTree, files)
+          for (const f of files) {
+            if (fileMultiCacheRef.current.has(f)) continue
+            fileMultiCacheRef.current.set(f, false) // mark as in-flight
+            fetch(`/__source?file=${encodeURIComponent(f)}`)
+              .then(r => r.ok ? r.text() : '')
+              .then(text => {
+                const isMulti = hasMultipleComponents(text)
+                fileMultiCacheRef.current.set(f, isMulti)
+                if (isMulti) setMultiCompFiles(prev => new Set([...prev, f]))
+              })
+              .catch(() => {})
+          }
         }
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -839,7 +920,7 @@ export function DOMTreePanel({
         <div style={styles.scroll}>
           {tree.length > 0 ? (
             tree.map((child) => (
-              <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredElement={hoveredCanvasElement} />
+              <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredElement={hoveredCanvasElement} multiCompFiles={multiCompFiles} />
             ))
           ) : (
             <div style={styles.empty}>Waiting for render…</div>
