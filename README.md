@@ -1,4 +1,4 @@
-# Architecture Builder
+# Cockpit
 
 A visual dev tool for inspecting and editing React component source code in real time — built for agentic development workflows where an AI agent modifies source files and a human reviews the live result.
 
