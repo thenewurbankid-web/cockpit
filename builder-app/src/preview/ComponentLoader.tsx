@@ -1,14 +1,52 @@
 import { Component, lazy, Suspense, useEffect, useState } from 'react'
 
-// Dynamically import the full login-app via the @login-app alias.
-// Using a factory function so React.lazy gets a fresh import on HMR.
-function loadApp() {
-  return import('@login-app/App').then((mod) => ({
-    default: mod.default,
-  }))
+// Exposed by vite.config.ts — forward-slash absolute paths to login-app source dirs.
+declare const __LOGIN_APP_PAGES_DIR__: string
+declare const __LOGIN_APP_COMPONENTS_DIR__: string
+
+// /@fs/ imports bypass Vite's static module graph entirely: any .tsx file that
+// exists on disk is compiled and served on demand, so newly-created files load
+// instantly without a page reload or a static glob re-evaluation.
+
+// Per-folder lazy caches so Suspense doesn't remount on every render.
+// Cleared on HMR so edits always produce a fresh import.
+const pageCache = new Map<string, ReturnType<typeof lazy>>()
+const componentCache = new Map<string, ReturnType<typeof lazy>>()
+
+if (import.meta.hot) {
+  import.meta.hot.on('vite:afterUpdate', () => {
+    pageCache.clear()
+    componentCache.clear()
+  })
 }
 
-const LoginApp = lazy(loadApp)
+function getLazyPage(componentName: string) {
+  if (!pageCache.has(componentName)) {
+    pageCache.set(
+      componentName,
+      lazy(() =>
+        import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_PAGES_DIR__}/${componentName}.tsx`).then(
+          (m) => ({ default: m[componentName] as React.ComponentType<unknown> })
+        )
+      )
+    )
+  }
+  return pageCache.get(componentName)!
+}
+
+function getLazyComponent(componentName: string) {
+  if (!componentCache.has(componentName)) {
+    componentCache.set(
+      componentName,
+      lazy(() =>
+        import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_COMPONENTS_DIR__}/${componentName}.tsx`).then(
+          (m) => ({ default: m[componentName] as React.ComponentType<unknown> })
+        )
+      )
+    )
+  }
+  return componentCache.get(componentName)!
+}
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -38,15 +76,55 @@ function PreviewCanvas({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-export function ComponentLoader() {
+// Wraps a component for isolated preview. Catches prop-related render errors and
+// re-renders with a friendly explanation rather than a raw crash message.
+class ComponentPreviewShell extends Component<
+  { Component: React.ComponentType<Record<string, unknown>> },
+  { crashed: boolean; error: Error | null }
+> {
+  state = { crashed: false, error: null }
+  static getDerivedStateFromError(error: Error) { return { crashed: true, error } }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <div style={styles.propError}>
+          <strong style={{ display: 'block', marginBottom: 6 }}>Component requires props to render</strong>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+            This component has required props. Open the file in your editor and add default values or a story/demo wrapper.
+          </p>
+          {this.state.error && (
+            <pre style={{ ...styles.pre, marginTop: 8, color: '#991b1b' }}>
+              {(this.state.error as Error).message}
+            </pre>
+          )}
+        </div>
+      )
+    }
+    const { Component } = this.props
+    return <Component />
+  }
+}
+
+export function ComponentLoader({
+  page,
+  componentName,
+  folder = 'pages',
+}: {
+  page: string
+  componentName: string
+  folder?: 'pages' | 'components'
+}) {
   // Increment to reset the ErrorBoundary after HMR updates (remounts the subtree).
   const [resetKey, setResetKey] = useState(0)
   const [loadError, setLoadError] = useState<Error | null>(null)
 
+  // Reset error boundary when the page or folder switches.
   useEffect(() => {
     setLoadError(null)
-    // Reset error boundary every time a Vite HMR update lands so the
-    // component retries rendering with the fresh module.
+    setResetKey(k => k + 1)
+  }, [page, folder])
+
+  useEffect(() => {
     if (import.meta.hot) {
       import.meta.hot.on('vite:afterUpdate', () => {
         setLoadError(null)
@@ -57,11 +135,17 @@ export function ComponentLoader() {
 
   if (loadError) return <ErrorFallback error={loadError} />
 
+  const Loaded = folder === 'components'
+    ? getLazyComponent(componentName)
+    : getLazyPage(componentName)
+
   return (
     <PreviewCanvas>
       <Suspense fallback={<div style={styles.loading}>Loading component…</div>}>
-        <ErrorBoundary key={resetKey}>
-          <LoginApp />
+        <ErrorBoundary key={`${folder}-${page}-${resetKey}`}>
+          {folder === 'components'
+            ? <ComponentPreviewShell Component={Loaded} />
+            : <Loaded />}
         </ErrorBoundary>
       </Suspense>
     </PreviewCanvas>
@@ -94,5 +178,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.8rem',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-all',
+  },
+  propError: {
+    margin: '2rem',
+    padding: '1rem',
+    background: '#fffbeb',
+    border: '1px solid #fbbf24',
+    borderRadius: 6,
+    color: '#92400e',
+    fontSize: '0.85rem',
   },
 }

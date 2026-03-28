@@ -79,13 +79,14 @@ function inferPageRoot(
   const all: ResolvedLocator[] = []
   for (const root of rawRoots) collectLocators(root, all)
 
-  // If caller provides a preferred root name (e.g. LoginPage), use it first.
+  // If caller provides a preferred root name (e.g. LoginPage, Button), use it first.
   if (preferredRootComponentName && isLikelyReactComponentName(preferredRootComponentName)) {
-    // Best case: exact owner match from /pages/ file.
+    // Best case: exact owner match from /pages/ or /components/ file.
     for (const loc of all) {
+      const f = normalizeSlashes(loc.file)
       if (
         loc.ownerComponentName === preferredRootComponentName &&
-        normalizeSlashes(loc.file).includes('/pages/')
+        (f.includes('/pages/') || f.includes('/components/'))
       ) {
         return {
           name: preferredRootComponentName,
@@ -95,14 +96,16 @@ function inferPageRoot(
       }
     }
 
-    // Fallback: no exact owner metadata, but we still force this name as root.
-    // Pick a useful file/line anchor from page file if possible.
-    const pageLoc = all.find((loc) => normalizeSlashes(loc.file).includes('/pages/'))
-    if (pageLoc) {
+    // Fallback: no exact owner metadata — pick any anchor from pages or components.
+    const srcLoc = all.find((loc) => {
+      const f = normalizeSlashes(loc.file)
+      return f.includes('/pages/') || f.includes('/components/')
+    })
+    if (srcLoc) {
       return {
         name: preferredRootComponentName,
-        file: pageLoc.file,
-        line: pageLoc.line,
+        file: srcLoc.file,
+        line: srcLoc.line,
       }
     }
 
@@ -124,11 +127,12 @@ function inferPageRoot(
     }
   }
 
-  // Prefer owners from files in /pages/ so root matches the loaded page component.
+  // Prefer owners from files in /pages/ or /components/.
   for (const loc of all) {
+    const f = normalizeSlashes(loc.file)
     if (
       isLikelyReactComponentName(loc.ownerComponentName) &&
-      normalizeSlashes(loc.file).includes('/pages/')
+      (f.includes('/pages/') || f.includes('/components/'))
     ) {
       return {
         name: loc.ownerComponentName as string,
@@ -465,6 +469,18 @@ export interface SelectedNodeSnapshot {
   domAttributes: Array<{ name: string; value: string }>
 }
 
+interface PageEntry {
+  id: string
+  label: string
+  root: string
+}
+
+interface ComponentEntry {
+  id: string
+  label: string
+  name: string
+}
+
 interface DOMTreePanelProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
   onLocate: (
@@ -476,6 +492,20 @@ interface DOMTreePanelProps {
   /** Called after a DOM node is selected in the tree. Does NOT change locate/navigation behaviour. */
   onNodeSelect?: (snapshot: SelectedNodeSnapshot | null) => void
   preferredRootComponentName?: string
+  /** Controls which section is shown in the panel. */
+  activeSection?: 'pages' | 'components'
+  /** Optional list of pages to display at the top of the panel. */
+  pages?: PageEntry[]
+  activePage?: string
+  onPageChange?: (id: string) => void
+  onAddPage?: () => void
+  onDeletePage?: (id: string, root: string) => void
+  /** Optional list of components to display in the panel. */
+  components?: ComponentEntry[]
+  activeComponent?: string
+  onComponentClick?: (id: string, name: string) => void
+  onAddComponent?: () => void
+  onDeleteComponent?: (id: string, name: string) => void
 }
 
 function findNearestLocatorId(el: Element): string | null {
@@ -493,6 +523,17 @@ export function DOMTreePanel({
   onLocate,
   onNodeSelect,
   preferredRootComponentName,
+  activeSection,
+  pages,
+  activePage,
+  onPageChange,
+  onAddPage,
+  onDeletePage,
+  components,
+  activeComponent,
+  onComponentClick,
+  onAddComponent,
+  onDeleteComponent,
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
   const [selected, setSelected] = useState<Element | null>(null)
@@ -595,22 +636,288 @@ export function DOMTreePanel({
   }
 
   const total = countNodes(tree)
+  const [pagesOpen, setPagesOpen] = useState(true)
+  const [pageSearch, setPageSearch] = useState('')
+  const [treeOpen, setTreeOpen] = useState(true)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [hoveredPageId, setHoveredPageId] = useState<string | null>(null)
+  const [componentsOpen, setComponentsOpen] = useState(true)
+  const [componentSearch, setComponentSearch] = useState('')
+  const [confirmDeleteCompId, setConfirmDeleteCompId] = useState<string | null>(null)
+  const [hoveredCompId, setHoveredCompId] = useState<string | null>(null)
+
+  const filteredPages = pages
+    ? pages.filter(
+        (p) =>
+          p.root.toLowerCase().includes(pageSearch.toLowerCase()) ||
+          p.label.toLowerCase().includes(pageSearch.toLowerCase())
+      )
+    : []
+
+  const filteredComponents = components
+    ? components.filter(
+        (c) =>
+          c.name.toLowerCase().includes(componentSearch.toLowerCase()) ||
+          c.label.toLowerCase().includes(componentSearch.toLowerCase())
+      )
+    : []
 
   return (
     <div style={styles.panel}>
-      <div style={styles.header}>
-        <span>React + DOM Tree</span>
-        <span style={styles.nodeCount}>{total} node{total !== 1 ? 's' : ''}</span>
+      {activeSection === 'pages' && pages && pages.length > 0 && (
+        <>
+          <div
+            style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => setPagesOpen(o => !o)}
+          >
+            <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: pagesOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            Pages
+            <span style={{ color: '#6c7086', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 'auto' }}>{pages.length}</span>
+          </div>
+          {pagesOpen && (
+            <div style={styles.pagesSection}>
+              <div style={styles.pageSearch}>
+                <div style={styles.pageSearchBox}>
+                  <span style={styles.pageSearchIcon}>⌕</span>
+                  <input
+                    style={styles.pageSearchInput}
+                    placeholder="Filter pages…"
+                    value={pageSearch}
+                    onChange={(e) => setPageSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {pageSearch && (
+                    <span
+                      style={{ ...styles.pageSearchIcon, cursor: 'pointer', marginLeft: 0 }}
+                      onClick={() => setPageSearch('')}
+                    >×</span>
+                  )}
+                </div>
+              </div>
+              <div style={styles.pagesScroll}>
+                {filteredPages.length === 0 ? (
+                  <div style={{ color: '#6c7086', fontSize: 11, padding: '0.4rem 0.75rem', fontFamily: 'system-ui, sans-serif' }}>No pages match</div>
+                ) : filteredPages.map((p) => {
+                  const isActive = activePage === p.id
+                  const isHovered = hoveredPageId === p.id
+                  const isConfirming = confirmDeleteId === p.id
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        paddingLeft: 8,
+                        paddingTop: 3,
+                        paddingBottom: 3,
+                        paddingRight: 6,
+                        background: isActive ? '#313244' : isHovered ? 'rgba(250,179,135,0.12)' : 'transparent',
+                        borderLeft: isActive ? '2px solid #89b4fa' : isHovered ? '2px solid #fab387' : '2px solid transparent',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        transition: 'background 0.12s, border-left-color 0.12s',
+                      }}
+                      onMouseEnter={() => setHoveredPageId(p.id)}
+                      onMouseLeave={() => { setHoveredPageId(null); if (confirmDeleteId === p.id) setConfirmDeleteId(null) }}
+                      onClick={() => { if (!isConfirming) onPageChange?.(p.id) }}
+                    >
+                      <span style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0 }}>▸</span>
+                      <span style={{ color: '#f9e2af' }}>{'<>'}</span>
+                      <span style={{ color: isActive ? '#f9e2af' : '#cdd6f4', fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p.root}
+                      </span>
+                      <span style={{ color: '#6c7086', fontSize: 11, marginLeft: 2 }}>(page)</span>
+
+                      {/* Fixed-width right slot — trash or confirm, always reserves space */}
+                      <span style={{ marginLeft: 4, flexShrink: 0, display: 'flex', alignItems: 'center', minWidth: 20 }}>
+                        {isConfirming ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ color: '#f38ba8', fontSize: 10, fontFamily: 'system-ui', whiteSpace: 'nowrap' }}>Delete?</span>
+                            <span
+                              title="Confirm delete"
+                              style={{ fontSize: 10, color: '#f38ba8', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 700, padding: '1px 4px', borderRadius: 3, border: '1px solid #f38ba8', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); onDeletePage?.(p.id, p.root) }}
+                            >Yes</span>
+                            <span
+                              title="Cancel"
+                              style={{ fontSize: 10, color: '#6c7086', cursor: 'pointer', fontFamily: 'system-ui', padding: '1px 4px', borderRadius: 3, border: '1px solid #45475a', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                            >No</span>
+                          </span>
+                        ) : (
+                          <span
+                            title="Delete page"
+                            style={{ fontSize: 14, color: '#6c7086', cursor: 'pointer', lineHeight: 1, padding: '1px 3px', borderRadius: 3, transition: 'color 0.1s, opacity 0.1s', visibility: isHovered ? 'visible' : 'hidden', opacity: isHovered ? 1 : 0 }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#f38ba8' }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id) }}
+                          >🗑</span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={styles.addPageOuter}>
+                <div
+                  style={styles.addPageBtn}
+                  onClick={() => onAddPage?.()}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(166,227,161,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = '#a6e3a1' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = '#45475a' }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1, color: '#a6e3a1' }}>+</span>
+                  <span>Add page</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={styles.pageSectionDivider} />
+        </>
+      )}
+
+      {/* ── Components section ── */}
+      {activeSection === 'components' && components !== undefined && (
+        <>
+          <div
+            style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => setComponentsOpen(o => !o)}
+          >
+            <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: componentsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            Components
+            <span style={{ color: '#6c7086', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 'auto' }}>{components.length}</span>
+          </div>
+          {componentsOpen && (
+            <div style={styles.pagesSection}>
+              <div style={styles.pageSearch}>
+                <div style={styles.pageSearchBox}>
+                  <span style={styles.pageSearchIcon}>⌕</span>
+                  <input
+                    style={styles.pageSearchInput}
+                    placeholder="Filter components…"
+                    value={componentSearch}
+                    onChange={(e) => setComponentSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {componentSearch && (
+                    <span
+                      style={{ ...styles.pageSearchIcon, cursor: 'pointer', marginLeft: 0 }}
+                      onClick={() => setComponentSearch('')}
+                    >×</span>
+                  )}
+                </div>
+              </div>
+              <div style={styles.pagesScroll}>
+                {filteredComponents.length === 0 ? (
+                  <div style={{ color: '#6c7086', fontSize: 11, padding: '0.4rem 0.75rem', fontFamily: 'system-ui, sans-serif' }}>
+                    {components.length === 0 ? 'No components yet' : 'No components match'}
+                  </div>
+                ) : filteredComponents.map((c) => {
+                  const isActive = activeComponent === c.name
+                  const isHovered = hoveredCompId === c.id
+                  const isConfirming = confirmDeleteCompId === c.id
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        paddingLeft: 8,
+                        paddingTop: 3,
+                        paddingBottom: 3,
+                        paddingRight: 6,
+                        background: isActive ? '#2d2040' : isHovered ? 'rgba(203,166,247,0.10)' : 'transparent',
+                        borderLeft: isActive ? '2px solid #cba6f7' : isHovered ? '2px solid rgba(203,166,247,0.4)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        transition: 'background 0.12s, border-left-color 0.12s',
+                      }}
+                      onMouseEnter={() => setHoveredCompId(c.id)}
+                      onMouseLeave={() => { setHoveredCompId(null); if (confirmDeleteCompId === c.id) setConfirmDeleteCompId(null) }}
+                      onClick={() => { if (!isConfirming) onComponentClick?.(c.id, c.name) }}
+                    >
+                      <span style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0 }}>▸</span>
+                      <span style={{ color: '#cba6f7' }}>{'fn'}</span>
+                      <span style={{ color: isActive ? '#cba6f7' : '#cdd6f4', fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {c.name}
+                      </span>
+                      <span style={{ color: '#6c7086', fontSize: 11, marginLeft: 2 }}>(cmp)</span>
+
+                      {/* Fixed-width right slot — trash or confirm, always reserves space */}
+                      <span style={{ marginLeft: 4, flexShrink: 0, display: 'flex', alignItems: 'center', minWidth: 20 }}>
+                        {isConfirming ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ color: '#f38ba8', fontSize: 10, fontFamily: 'system-ui', whiteSpace: 'nowrap' }}>Delete?</span>
+                            <span
+                              title="Confirm delete"
+                              style={{ fontSize: 10, color: '#f38ba8', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 700, padding: '1px 4px', borderRadius: 3, border: '1px solid #f38ba8', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteCompId(null); onDeleteComponent?.(c.id, c.name) }}
+                            >Yes</span>
+                            <span
+                              title="Cancel"
+                              style={{ fontSize: 10, color: '#6c7086', cursor: 'pointer', fontFamily: 'system-ui', padding: '1px 4px', borderRadius: 3, border: '1px solid #45475a', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteCompId(null) }}
+                            >No</span>
+                          </span>
+                        ) : (
+                          <span
+                            title="Delete component"
+                            style={{ fontSize: 14, color: '#6c7086', cursor: 'pointer', lineHeight: 1, padding: '1px 3px', borderRadius: 3, transition: 'color 0.1s, opacity 0.1s', visibility: isHovered ? 'visible' : 'hidden', opacity: isHovered ? 1 : 0 }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#f38ba8' }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteCompId(c.id) }}
+                          >🗑</span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={styles.addPageOuter}>
+                <div
+                  style={{ ...styles.addPageBtn, color: '#cba6f7' }}
+                  onClick={() => onAddComponent?.()}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(203,166,247,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = '#cba6f7' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = '#45475a' }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1, color: '#cba6f7' }}>+</span>
+                  <span>Add component</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={styles.pageSectionDivider} />
+        </>
+      )}
+
+      <div
+        style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        onClick={() => setTreeOpen(o => !o)}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: treeOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+          React + DOM Tree
+        </span>
+        {treeOpen && <span style={styles.nodeCount}>{total} node{total !== 1 ? 's' : ''}</span>}
       </div>
-      <div style={styles.scroll}>
-        {tree.length > 0 ? (
-          tree.map((child) => (
-            <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredLocatorId={hoveredCanvasLocatorId} />
-          ))
-        ) : (
-          <div style={styles.empty}>Waiting for render…</div>
-        )}
-      </div>
+      {treeOpen && (
+        <div style={styles.scroll}>
+          {tree.length > 0 ? (
+            tree.map((child) => (
+              <TreeRow key={child.key} node={child} selected={selected} onSelect={handleSelect} hoveredLocatorId={hoveredCanvasLocatorId} />
+            ))
+          ) : (
+            <div style={styles.empty}>Waiting for render…</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -626,26 +933,95 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0.5rem 0.75rem',
-    background: '#181825',
-    borderBottom: '1px solid #313244',
-    color: '#cdd6f4',
-    fontWeight: 600,
-    fontSize: 11,
-    flexShrink: 0,
-    fontFamily: 'system-ui, sans-serif',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
   nodeCount: {
     color: '#6c7086',
     fontWeight: 400,
     textTransform: 'none',
     letterSpacing: 0,
+    fontSize: 10,
+  },
+  sectionHeader: {
+    padding: '0.5rem 0.75rem',
+    background: '#181825',
+    borderBottom: '1px solid #313244',
+    color: '#6c7086',
+    fontWeight: 600,
+    fontSize: 10,
+    flexShrink: 0,
+    fontFamily: 'system-ui, sans-serif',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.07em',
+  },
+  pageSectionDivider: {
+    height: 1,
+    background: '#313244',
+    flexShrink: 0,
+  },
+  pagesSection: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    maxHeight: '50vh',
+    flexShrink: 0,
+    borderBottom: '1px solid #313244',
+  },
+  pagesScroll: {
+    overflowY: 'auto' as const,
+    flex: 1,
+  },
+  addPageOuter: {
+    padding: '0.45rem 0.6rem',
+    background: '#181825',
+    borderTop: '1px solid #313244',
+    flexShrink: 0,
+  },
+  addPageBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: '0.3rem 0.5rem',
+    cursor: 'pointer',
+    color: '#a6e3a1',
+    fontSize: 11,
+    fontFamily: 'system-ui, sans-serif',
+    fontWeight: 500,
+    background: 'transparent',
+    border: '1px solid #45475a',
+    borderRadius: 6,
+    userSelect: 'none' as const,
+    transition: 'background 0.12s, border-color 0.12s',
+  },
+  pageSearch: {
+    padding: '0.45rem 0.6rem',
+    background: '#181825',
+    borderBottom: '1px solid #313244',
+    flexShrink: 0,
+  },
+  pageSearchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '0.3rem 0.5rem',
+    background: '#1e1e2e',
+    border: '1px solid #45475a',
+    borderRadius: 6,
+  },
+  pageSearchIcon: {
+    color: '#6c7086',
+    fontSize: 13,
+    flexShrink: 0,
+    userSelect: 'none' as const,
+    lineHeight: 1,
+  },
+  pageSearchInput: {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    color: '#cdd6f4',
+    fontSize: 11,
+    fontFamily: 'system-ui, sans-serif',
+    padding: 0,
   },
   scroll: {
     overflowY: 'auto',

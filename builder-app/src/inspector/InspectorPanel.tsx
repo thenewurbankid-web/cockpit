@@ -3,7 +3,6 @@ import Editor, { type Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { IDisposable } from 'monaco-editor'
 import { parse } from '@babel/parser'
-import { highlightByLocatorId, clearHighlight } from '../highlight'
 
 interface ServerDiagnostic {
   code: number
@@ -57,8 +56,6 @@ interface ScopeItem {
   typeStr: string
   /** True when this item is actually used by the currently selected node's JSX. */
   usedInNode: boolean
-  /** Name of the connected variable in the adjacent scope layer (cross-component prop link). */
-  pairedWith?: string
 }
 
 /** One level of the component hierarchy with its available scope. */
@@ -2022,16 +2019,26 @@ function rewriteDefaultValue(source: string, ownerName: string, propName: string
         const valNode = (prop as AstNode & { value?: AstNode }).value
 
         if (valNode?.type === 'AssignmentPattern') {
-          // Replace existing default value.
+          // Replace or remove existing default value.
           const right = (valNode as AstNode & { right?: AstNode }).right
           const loc = right?.loc as AstLocFull | undefined
           if (loc && loc.start.line === loc.end.line) {
             const ln = lines[loc.start.line - 1]
-            lines[loc.start.line - 1] = ln.slice(0, loc.start.column) + newDefault + ln.slice(loc.end.column)
+            if (!newDefault.trim()) {
+              // Remove the entire ` = <value>` — find the `=` that precedes the right node.
+              const before = ln.slice(0, loc.start.column)
+              const eqIdx = before.lastIndexOf('=')
+              if (eqIdx !== -1) {
+                lines[loc.start.line - 1] = before.slice(0, eqIdx).trimEnd() + ln.slice(loc.end.column)
+              }
+            } else {
+              lines[loc.start.line - 1] = ln.slice(0, loc.start.column) + newDefault + ln.slice(loc.end.column)
+            }
             return lines.join('\n')
           }
         } else {
-          // No existing default — insert after the prop name.
+          // No existing default — insert after the prop name (only if non-empty).
+          if (!newDefault.trim()) return source
           const loc = prop.loc as AstLocFull | undefined
           if (loc && loc.start.line === loc.end.line) {
             const ln = lines[loc.start.line - 1]
@@ -2060,13 +2067,10 @@ interface ScopePanelProps {
   parentComponentName: string
   usageAttrs: JsxAttr[]
   currentTag: string
-  /** locatorId of the currently selected DOM node — used to highlight it on pill hover. */
-  selectedLocatorId?: string | null
 }
 
-function ScopePanel({ layers, selectedLocatorId }: ScopePanelProps) {
+function ScopePanel({ layers }: ScopePanelProps) {
   const [expanded, setExpanded] = useState(true)
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null)
   if (layers.length === 0) return null
 
   const totalUsed = layers.reduce((s, l) =>
@@ -2097,17 +2101,7 @@ function ScopePanel({ layers, selectedLocatorId }: ScopePanelProps) {
                   <div style={scopeStyles.group}>
                     <span style={scopeStyles.groupLabel}>props</span>
                     <div style={scopeStyles.items}>
-                      {layer.props.map(item => (
-                        <ScopeItemChip
-                          key={item.name}
-                          item={item}
-                          isCurrent={layer.isCurrent}
-                          hoveredKey={hoveredKey}
-                          onHoverIn={setHoveredKey}
-                          onHoverOut={() => setHoveredKey(null)}
-                          selectedLocatorId={selectedLocatorId ?? null}
-                        />
-                      ))}
+                      {layer.props.map(item => <ScopeItemChip key={item.name} item={item} />)}
                     </div>
                   </div>
                 )}
@@ -2115,17 +2109,7 @@ function ScopePanel({ layers, selectedLocatorId }: ScopePanelProps) {
                   <div style={scopeStyles.group}>
                     <span style={scopeStyles.groupLabel}>state</span>
                     <div style={scopeStyles.items}>
-                      {layer.state.map(item => (
-                        <ScopeItemChip
-                          key={item.name}
-                          item={item}
-                          isCurrent={layer.isCurrent}
-                          hoveredKey={hoveredKey}
-                          onHoverIn={setHoveredKey}
-                          onHoverOut={() => setHoveredKey(null)}
-                          selectedLocatorId={selectedLocatorId ?? null}
-                        />
-                      ))}
+                      {layer.state.map(item => <ScopeItemChip key={item.name} item={item} />)}
                     </div>
                   </div>
                 )}
@@ -2138,80 +2122,23 @@ function ScopePanel({ layers, selectedLocatorId }: ScopePanelProps) {
   )
 }
 
-function ScopeItemChip({
-  item,
-  isCurrent,
-  hoveredKey,
-  onHoverIn,
-  onHoverOut,
-  selectedLocatorId,
-}: {
-  item: ScopeItem
-  isCurrent: boolean
-  hoveredKey: string | null
-  onHoverIn: (key: string) => void
-  onHoverOut: () => void
-  selectedLocatorId: string | null
-}) {
+function ScopeItemChip({ item }: { item: ScopeItem }) {
   const [copied, setCopied] = useState(false)
-  const isLinked = item.pairedWith !== undefined
-  // Highlight when this pill or its paired partner is hovered.
-  const isHighlighted =
-    isLinked &&
-    hoveredKey !== null &&
-    (item.name === hoveredKey || item.pairedWith === hoveredKey)
-
   function handleClick() {
     navigator.clipboard.writeText(item.name).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1200)
     })
   }
-
-  let chipStyle: React.CSSProperties = {
-    ...scopeStyles.item,
-    ...(item.usedInNode ? scopeStyles.itemUsed : {}),
-    ...(isHighlighted ? scopeStyles.itemHighlighted : {}),
-    cursor: 'pointer',
-    transition: 'background 0.15s, border-color 0.15s, color 0.15s',
-  }
-
-  // Static pairing annotation: parent shows "→ childProp", child shows "← parentVar"
-  const pairAnnotation = isLinked && !copied
-    ? (isCurrent ? `← ${item.pairedWith}` : `→ ${item.pairedWith}`)
-    : null
-
   return (
     <div
-      style={chipStyle}
+      style={{ ...scopeStyles.item, ...(item.usedInNode ? scopeStyles.itemUsed : {}), cursor: 'pointer' }}
       onClick={handleClick}
-      onMouseEnter={() => {
-        if (isLinked) onHoverIn(item.name)
-        highlightByLocatorId(selectedLocatorId)
-      }}
-      onMouseLeave={() => {
-        if (isLinked) onHoverOut()
-        clearHighlight()
-      }}
-      title={isLinked
-        ? (isCurrent
-            ? `Received from parent as "${item.pairedWith}" — click to copy`
-            : `Passed to child as "${item.pairedWith}" — click to copy`)
-        : `Copy "${item.name}" to clipboard`
-      }
+      title={`Copy "${item.name}" to clipboard`}
     >
       <span style={scopeStyles.itemDot}>{item.usedInNode ? '●' : '○'}</span>
       <code style={scopeStyles.itemName}>{copied ? '✓' : item.name}</code>
       {!copied && item.typeStr && <span style={scopeStyles.itemType}>{item.typeStr}</span>}
-      {pairAnnotation && (
-        <span style={{
-          ...scopeStyles.pairLabel,
-          opacity: isHighlighted ? 1 : 0.45,
-          transition: 'opacity 0.15s',
-        }}>
-          {pairAnnotation}
-        </span>
-      )}
     </div>
   )
 }
@@ -2318,18 +2245,6 @@ const scopeStyles: Record<string, React.CSSProperties> = {
     color: '#b4cefa',
     background: 'rgba(137,180,250,0.1)',
     border: '1px solid rgba(137,180,250,0.28)',
-  },
-  itemHighlighted: {
-    color: '#fab387',
-    background: 'rgba(250,179,135,0.18)',
-    border: '1px solid rgba(250,179,135,0.55)',
-  },
-  pairLabel: {
-    fontSize: '0.6rem',
-    color: '#fab387',
-    fontStyle: 'italic' as const,
-    marginLeft: 3,
-    letterSpacing: '0.01em',
   },
   itemDot: { fontSize: '0.5rem' },
   itemName: {
@@ -2777,27 +2692,17 @@ export function InspectorPanel({
                 // Rebuild scope layers now that we have parent data.
                 const passedNames = new Set(attrs.filter(a => !a.isSpread).map(a => a.name))
                 const passedValues = new Set(attrs.filter(a => !a.isSpread).map(a => a.rawValue.replace(/^\{|\}$/g, '').trim()))
-                // Build cross-component pairing maps for visual connection lines.
-                // pairMap: parentVar → childProp (e.g. 'foo' → 'label' from <Child label={foo} />)
-                // reversePairMap: childProp → parentVar
-                const pairMap = new Map<string, string>()
-                const reversePairMap = new Map<string, string>()
-                for (const a of attrs.filter(a => !a.isSpread && a.isExpression)) {
-                  const parentVar = a.rawValue.replace(/^\{|\}$/g, '').trim()
-                  pairMap.set(parentVar, a.name)
-                  reversePairMap.set(a.name, parentVar)
-                }
                 const childProps = ownerPCapture.filter(p => p.source === 'owner')
-                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedNames.has(p.name), pairedWith: reversePairMap.get(p.name) }))
+                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedNames.has(p.name) }))
                 const childState = extractComponentLocals(sourceCapture, tagCapture)
                   .filter(n => !ownerPCapture.find(p => p.name === n))
                   .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: false }))
                 const parentPropsArr = extractOwnerProps(usageSource, parentName)
                 const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
-                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name), pairedWith: pairMap.get(p.name) }))
+                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
                 const parentStateItems = pLocals
                   .filter(n => !parentPropsArr.find(p => p.name === n))
-                  .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n), pairedWith: pairMap.get(n) }))
+                  .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
                 setScopeLayers([
                   { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
                   { componentName: tagCapture, isCurrent: true, props: childProps, state: childState },
@@ -3331,7 +3236,6 @@ export function InspectorPanel({
           parentComponentName={parentComponentName}
           usageAttrs={usageAttrs}
           currentTag={selectedNode.tag}
-          selectedLocatorId={selectedNode.locatorId}
         />
       )}
 

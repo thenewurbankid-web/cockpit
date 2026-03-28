@@ -165,6 +165,167 @@ app.post('/__source', (req, res) => {
   res.json({ ok: true })
 })
 
+app.get('/__source/list-pages', (req, res) => {
+  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  if (!fs.existsSync(loginAppPages)) {
+    return res.json({ pages: [] })
+  }
+
+  const files = fs.readdirSync(loginAppPages)
+  const pages = files
+    .filter((f) => f.endsWith('Page.tsx'))
+    .map((f) => {
+      const componentName = f.replace(/\.tsx$/, '')
+      // "ForgotPasswordPage" → "Forgot Password", "TestPage" → "Test"
+      const label = componentName
+        .replace(/Page$/, '')
+        .replace(/([A-Z])/g, ' $1')
+        .trim()
+      const id = label.toLowerCase().replace(/\s+/g, '-')
+      return { id, label, root: componentName }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  res.json({ pages })
+})
+
+app.post('/__source/create-page', (req, res) => {
+  const { name } = req.body ?? {}
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Body must contain { name: string }' })
+  }
+
+  const trimmed = name.trim()
+  // "my page" → "MyPage", "settings" → "SettingsPage"
+  const componentName =
+    trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '') + 'Page'
+  const id = trimmed.toLowerCase().replace(/\s+/g, '-')
+
+  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  const filePath = path.join(loginAppPages, `${componentName}.tsx`)
+
+  if (!isSafeFile(filePath)) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+  if (fs.existsSync(filePath)) {
+    return res.status(409).json({ error: `File already exists: ${componentName}.tsx` })
+  }
+
+  const template = [
+    `import React from 'react'`,
+    ``,
+    `interface ${componentName}Props {`,
+    `  navigate?: (page: string) => void`,
+    `}`,
+    ``,
+    `export function ${componentName}({ navigate }: ${componentName}Props) {`,
+    `  return (`,
+    `    <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>`,
+    `      <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem' }}>${trimmed}</h1>`,
+    `      <p style={{ color: '#6b7280', margin: 0 }}>New page \u2014 start editing in your editor.</p>`,
+    `    </div>`,
+    `  )`,
+    `}`,
+  ].join('\n')
+
+  fs.mkdirSync(loginAppPages, { recursive: true })
+  fs.writeFileSync(filePath, template, 'utf-8')
+  console.log(`[create-page] Created ${filePath}`)
+  res.json({ ok: true, componentName, id })
+})
+
+app.delete('/__source/page/:componentName', (req, res) => {
+  const { componentName } = req.params
+  if (!componentName || !/^[A-Z][a-zA-Z0-9]+Page$/.test(componentName)) {
+    return res.status(400).json({ error: 'Invalid component name' })
+  }
+
+  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  const filePath = path.join(loginAppPages, `${componentName}.tsx`)
+
+  if (!isSafeFile(filePath)) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `File not found: ${componentName}.tsx` })
+  }
+
+  fs.unlinkSync(filePath)
+  console.log(`[delete-page] Deleted ${filePath}`)
+  res.json({ ok: true })
+})
+
+app.get('/__source/list-components', (req, res) => {
+  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  if (!fs.existsSync(dir)) return res.json({ components: [] })
+
+  const files = fs.readdirSync(dir)
+  const components = files
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => {
+      const name = f.replace(/\.tsx$/, '')
+      const label = name.replace(/([A-Z])/g, ' $1').trim()
+      const id = label.toLowerCase().replace(/\s+/g, '-')
+      return { id, label, name }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+  res.json({ components })
+})
+
+app.post('/__source/create-component', (req, res) => {
+  const { name } = req.body ?? {}
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Body must contain { name: string }' })
+  }
+  const trimmed = name.trim()
+  const componentName =
+    trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
+  const id = trimmed.toLowerCase().replace(/\s+/g, '-')
+  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  const filePath = path.join(dir, `${componentName}.tsx`)
+
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(filePath)) {
+    return res.status(409).json({ error: `File already exists: ${componentName}.tsx` })
+  }
+
+  const template = [
+    `import React from 'react'`,
+    ``,
+    `interface ${componentName}Props {}`,
+    ``,
+    `export function ${componentName}({}: ${componentName}Props) {`,
+    `  return (`,
+    `    <div style={{ padding: '1rem', fontFamily: 'system-ui, sans-serif' }}>`,
+    `      <span>${trimmed}</span>`,
+    `    </div>`,
+    `  )`,
+    `}`,
+  ].join('\n')
+
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(filePath, template, 'utf-8')
+  console.log(`[create-component] Created ${filePath}`)
+  res.json({ ok: true, componentName, id })
+})
+
+app.delete('/__source/component/:componentName', (req, res) => {
+  const { componentName } = req.params
+  if (!componentName || !/^[A-Z][a-zA-Z0-9]+$/.test(componentName)) {
+    return res.status(400).json({ error: 'Invalid component name' })
+  }
+  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  const filePath = path.join(dir, `${componentName}.tsx`)
+
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `File not found: ${componentName}.tsx` })
+  }
+  fs.unlinkSync(filePath)
+  console.log(`[delete-component] Deleted ${filePath}`)
+  res.json({ ok: true })
+})
+
 app.post('/__diagnostics', (req, res) => {
   const { file: rawFile, content } = req.body ?? {}
   if (typeof rawFile !== 'string' || !rawFile) {

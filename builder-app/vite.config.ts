@@ -19,6 +19,15 @@ export default defineConfig({
           : undefined,
     }),
   ],
+  define: {
+    // Forward-slash paths exposed to the browser for /@fs/ dynamic imports.
+    __LOGIN_APP_PAGES_DIR__: JSON.stringify(
+      path.resolve(__dirname, '../login-app/src/pages').replace(/\\/g, '/')
+    ),
+    __LOGIN_APP_COMPONENTS_DIR__: JSON.stringify(
+      path.resolve(__dirname, '../login-app/src/components').replace(/\\/g, '/')
+    ),
+  },
   resolve: {
     alias: {
       // Lets builder-app import login-app source files directly.
@@ -27,9 +36,12 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    // Allow serving files from the whole monorepo (needed for /@fs/ imports).
+    fs: { allow: ['..'] },
     proxy: {
       // Proxy source API requests to the Express dev server.
       '/__source': 'http://localhost:3001',
+      '/__diagnostics': 'http://localhost:3001',
     },
   },
 })

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 
+type Page = 'login' | 'forgot-password' | 'home'
+
 async function fakeLogin(email: string, _password: string): Promise<void> {
   return new Promise((resolve, reject) =>
     setTimeout(() => {
@@ -16,10 +18,11 @@ async function fakeLogin(email: string, _password: string): Promise<void> {
 
 
 interface LoginPageProps {
-inputStyle?: React.CSSProperties
+  inputStyle?: React.CSSProperties
+  navigate?: (page: Page) => void
 }
 
-export function LoginPage({ inputStyle = "{color:'red'}" }: LoginPageProps) {
+export function LoginPage({ inputStyle = "{color:'red'}", navigate }: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,6 +37,7 @@ export function LoginPage({ inputStyle = "{color:'red'}" }: LoginPageProps) {
     try {
       await fakeLogin(email, password)
       setSuccess(true)
+      navigate?.('home')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -41,7 +45,7 @@ export function LoginPage({ inputStyle = "{color:'red'}" }: LoginPageProps) {
     }
   }
 
-  if (success) {
+  if (success && !navigate) {
     return (
       <div style={styles.wrapper}>
         <p style={{ color: '#16a34a', fontWeight: 600 }}>Logged in successfully!</p>
@@ -78,6 +82,14 @@ export function LoginPage({ inputStyle = "{color:'red'}" }: LoginPageProps) {
         <Button type="submit" disabled={loading}>
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
+
+        <button
+          type="button"
+          style={styles.forgotBtn}
+          onClick={() => navigate?.('forgot-password')}
+        >
+          Forgot password?
+        </button>
       </form>
 
     </div>
