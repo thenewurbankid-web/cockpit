@@ -174,7 +174,6 @@ function findNextDomSiblingEl(expressionFiber: any, parentDomEl: Element): Eleme
  */
 export function collectExpressionInstances(
   canvasEl: Element,
-  expressionNames: Set<string>,
 ): ExpressionInstance[] {
   const rootFiber = getReactFiber(canvasEl)
   if (!rootFiber) return []
@@ -187,7 +186,10 @@ export function collectExpressionInstances(
         ? (fiber.type.displayName || fiber.type.name || null)
         : null
 
-    if (name && expressionNames.has(name)) {
+    // Only track user-land components (PascalCase). Skip anonymous, lowercase,
+    // and React internals (e.g. Context.Provider / Context.Consumer whose name
+    // may be an empty string or contain dots).
+    if (name && /^[A-Z]/.test(name) && !name.includes('.')) {
       const parentDomEl = findParentDomEl(fiber)
       results.push({
         name,
@@ -197,10 +199,8 @@ export function collectExpressionInstances(
         parentDomEl,
         nextDomSiblingEl: parentDomEl ? findNextDomSiblingEl(fiber, parentDomEl) : null,
       })
-      walk(fiber.child)
-    } else {
-      walk(fiber.child)
     }
+    walk(fiber.child)
     walk(fiber.sibling)
   }
 

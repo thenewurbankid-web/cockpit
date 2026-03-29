@@ -99,7 +99,7 @@ interface ScopeLayer {
 interface InspectorPanelProps {
   file: string
   line: number
-  inspectMode?: 'node' | 'component' | 'file'
+  inspectMode?: 'node' | 'component' | 'file' | 'expression'
   componentName?: string
   /** Populated by DOMTreePanel after a DOM node is selected — drives the Bindings tab. */
   selectedNode?: SelectedNodeContext | null
@@ -360,7 +360,7 @@ function extractJsxBlock(lines: string[], target: number): { code: string; range
 function extractBlock(
   source: string,
   targetLine: number,
-  options?: { inspectMode?: 'node' | 'component' | 'file'; componentName?: string }
+  options?: { inspectMode?: 'node' | 'component' | 'file' | 'expression'; componentName?: string }
 ): { code: string; range: BlockRange; name: string } {
   const lines = source.split('\n')
   const target = Math.min(Math.max(targetLine - 1, 0), lines.length - 1)
@@ -381,6 +381,27 @@ function extractBlock(
     })
     const root = ast.program as unknown as AstNode
     const targetLine1 = target + 1
+
+    // If selection is an expression node, find the containing CallExpression
+    // whose callback spans the target line (e.g. a .map() or .filter() call).
+    if (options?.inspectMode === 'expression') {
+      const callNode = findSmallestContainingNode(
+        root,
+        targetLine1,
+        (node) => {
+          if (node.type !== 'CallExpression') return false
+          const args = (node as unknown as { arguments?: AstNode[] }).arguments ?? []
+          return args.some(
+            (a) =>
+              (a.type === 'ArrowFunctionExpression' || a.type === 'FunctionExpression') &&
+              nodeContainsLine(a, targetLine1)
+          )
+        }
+      )
+      if (callNode?.loc) {
+        return extractFromLoc(lines, callNode.loc, 'JSExpression')
+      }
+    }
 
     // If selection came from a component node in the tree, resolve the
     // component definition directly (prevents starting from nearest <div>).    
@@ -2815,17 +2836,17 @@ export function InspectorPanel({
   }
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (wrapMode) return 'expression'
-    if (expressionMode) return 'source'
+    if (expressionMode || inspectMode === 'expression') return 'source'
     const saved = sessionStorage.getItem('cockpit:activeTab')
     return (saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings'
   })
   const isRestoringRef = useRef(true)
   useEffect(() => {
-    if (!expressionMode && !wrapMode) sessionStorage.setItem('cockpit:activeTab', activeTab)
+    if (!expressionMode && !wrapMode && inspectMode !== 'expression') sessionStorage.setItem('cockpit:activeTab', activeTab)
   }, [activeTab])
   useEffect(() => {
-    if (expressionMode) setActiveTab('source')
-  }, [expressionMode])
+    if (expressionMode || inspectMode === 'expression') setActiveTab('source')
+  }, [expressionMode, inspectMode])
   useEffect(() => {
     if (wrapMode) setActiveTab('expression')
   }, [wrapMode])
@@ -3971,7 +3992,7 @@ export function InspectorPanel({
       {/* Multiple-components banner — after tabs (kept as after-tabs slot, now unused, removed) */}
 
       {/* Expression component picker section — sits between scope and tabs */}
-      {expressionMode && (expressionPages.length > 0 || expressionComponents.length > 0) && (
+      {expressionMode && inspectMode !== 'expression' && (expressionPages.length > 0 || expressionComponents.length > 0) && (
         <ExpressionPickerPanel
           pages={expressionPages}
           components={expressionComponents}
@@ -3994,7 +4015,7 @@ export function InspectorPanel({
             ))}
           </>
         ) : (
-          (expressionMode
+          (expressionMode || inspectMode === 'expression'
             ? (['source'] as Tab[])
             : isRootComponent
               ? (['defaults', 'source'] as Tab[])

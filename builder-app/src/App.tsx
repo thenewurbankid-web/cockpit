@@ -53,7 +53,7 @@ async function fetchExpressions(): Promise<ExpressionMeta[]> {
 export interface SourceLocation {
   file: string
   line: number
-  inspectMode?: 'node' | 'component' | 'file'
+  inspectMode?: 'node' | 'component' | 'file' | 'expression'
   componentName?: string
 }
 
@@ -144,11 +144,16 @@ export default function App() {
   function openInspector(
     file: string,
     line: number,
-    inspectMode: 'node' | 'component' | 'file' = 'node',
+    inspectMode: 'node' | 'component' | 'file' | 'expression' = 'node',
     componentName?: string
   ) {
     setLocation({ file, line, inspectMode, componentName })
     setPanelOpen(true)
+    if (inspectMode === 'expression') {
+      setWrapIntent(null)
+      setWrapChosenExpr(null)
+      setHoveredWrapKey(null)
+    }
   }
 
   function handleExpressionSelect(expr: ExpressionMeta) {
@@ -233,7 +238,14 @@ export default function App() {
         <DOMTreePanel
           canvasRef={canvasRef}
           onLocate={openInspector}
-          onNodeSelect={setSelectedNode}
+          onNodeSelect={(snapshot) => {
+            setSelectedNode(snapshot)
+            if (snapshot) {
+              setWrapIntent(null)
+              setWrapChosenExpr(null)
+              setHoveredWrapKey(null)
+            }
+          }}
           hoveredWrapNodeKey={hoveredWrapKey}
           preferredRootComponentName={activeSection === 'components' ? (previewComponent ?? undefined) : activePage?.root}
           activeSection={activeSection}

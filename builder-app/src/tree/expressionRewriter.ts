@@ -100,6 +100,89 @@ function findChildrenKey(parent: AnyNode, child: AnyNode): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Iterator expression detection
+// ---------------------------------------------------------------------------
+
+export interface MapCallInfo {
+  /** The text of the array expression, e.g. "CATEGORIES" or "filtered" */
+  arrayText: string
+  /** The method name, e.g. "map", "flatMap", "forEach" */
+  methodName: string
+  /** The first parameter name in the callback, e.g. "c" or "product" */
+  paramText: string
+  /** Line number of the call itself */
+  callLine: number
+}
+
+/**
+ * Given source text and a target line number (1-based) that falls inside any
+ * iterator callback (.map, .flatMap, .forEach, .filter, .reduce, etc.),
+ * returns display info about that call.
+ *
+ * Returns the *innermost* containing call (smallest line range).
+ * Returns null if no containing iterator call is found.
+ */
+export function findContainingMapCall(source: string, targetLine: number): MapCallInfo | null {
+  let ast: AnyNode
+  try {
+    ast = parse(source, {
+      sourceType: 'module',
+      plugins: ['typescript', 'jsx'],
+      errorRecovery: true,
+    }) as unknown as AnyNode
+  } catch {
+    return null
+  }
+
+  const candidates: Array<MapCallInfo & { rangeSize: number }> = []
+
+  walk(ast, (node) => {
+    if (node.type !== 'CallExpression') return
+    const call = node as any
+    const callee = call.callee
+
+    // Handle both member calls (arr.map(…)) and plain calls (map(arr, …))
+    let obj: AnyNode | null = null
+    let methodName = ''
+
+    if (callee?.type === 'MemberExpression') {
+      const prop = callee.property
+      if (!prop || prop.type !== 'Identifier') return
+      obj = callee.object as AnyNode
+      methodName = prop.name as string
+    } else {
+      return
+    }
+
+    const callback = call.arguments?.[0]
+    if (!callback) return
+    if (callback.type !== 'ArrowFunctionExpression' && callback.type !== 'FunctionExpression') return
+
+    const cbStart: number | undefined = callback.loc?.start.line
+    const cbEnd: number | undefined = callback.loc?.end.line
+    if (cbStart == null || cbEnd == null) return
+    if (targetLine < cbStart || targetLine > cbEnd) return
+
+    const arrayText = source.slice(obj.start ?? 0, obj.end ?? 0) || '…'
+    const param = callback.params?.[0] as AnyNode | undefined
+    const paramText = param ? source.slice(param.start ?? 0, param.end ?? 0) : '_'
+
+    candidates.push({
+      arrayText,
+      methodName,
+      paramText,
+      callLine: node.loc?.start.line ?? 0,
+      rangeSize: cbEnd - cbStart,
+    })
+  })
+
+  if (!candidates.length) return null
+  candidates.sort((a, b) => a.rangeSize - b.rangeSize)
+  const { rangeSize: _r, ...result } = candidates[0]
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // Import management
 // ---------------------------------------------------------------------------
 

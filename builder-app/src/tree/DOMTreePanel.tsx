@@ -53,6 +53,7 @@ function hasMultipleComponents(source: string): boolean {
 function collectComponentFiles(nodes: DisplayNode[], out: Set<string>): void {
   for (const node of nodes) {
     if (node.kind === 'component' && node.file) out.add(node.file)
+    if (node.kind === 'loop' && node.sourceFile) out.add(node.sourceFile)
     collectComponentFiles(node.children, out)
   }
 }
@@ -139,7 +140,19 @@ interface DisplayGhostNode {
   children: DisplayNode[]
 }
 
-type DisplayNode = DisplayDomNode | DisplayComponentNode | DisplayGhostNode
+/** Synthetic node grouping repeated component/ghost/dom siblings from the same JS expression. */
+interface DisplayLoopNode {
+  kind: 'loop'
+  key: string
+  depth: number
+  /** Source line of the expression (for display) */
+  sourceLine: number
+  sourceFile: string | null
+  count: number
+  children: DisplayNode[]
+}
+
+type DisplayNode = DisplayDomNode | DisplayComponentNode | DisplayGhostNode | DisplayLoopNode
 
 function buildRawDomTree(root: Element): RawDomNode {
   const sourceInfo = getElementSourceInfo(root)
@@ -379,6 +392,45 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
 
   const rowEl = nodeElement
 
+  // ── Loop node (.map() call grouping) ─────────────────────────────────────
+  if (node.kind === 'loop') {
+    return (
+      <div>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            paddingLeft: 8 + node.depth * 14,
+            paddingTop: 2, paddingBottom: 2, paddingRight: 8,
+            cursor: 'pointer', userSelect: 'none',
+            fontFamily: 'monospace', fontSize: 12,
+            background: ghostHovered ? 'rgba(166,227,161,0.06)' : 'transparent',
+            borderLeft: ghostHovered ? '2px solid rgba(166,227,161,0.3)' : '2px solid transparent',
+            transition: 'background 0.12s, border-left-color 0.12s',
+          }}
+          onMouseEnter={() => setGhostHovered(true)}
+          onMouseLeave={() => setGhostHovered(false)}
+          onClick={() => onSelect(node)}
+          onDoubleClick={() => setOpen(o => !o)}
+        >
+          <span
+            style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0, visibility: hasChildren ? 'visible' : 'hidden' }}
+            onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+          >{open ? '▾' : '▸'}</span>
+          <span style={{ color: '#a6e3a1' }}>{'{ }'}</span>
+          <span style={{ color: '#a6e3a1', fontWeight: 600 }}> JSExpression</span>
+          <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>:{node.sourceLine}</span>
+          <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>×{node.count}</span>
+        </div>
+        {open && node.children.map((child, i) => (
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect}
+            hoveredElement={hoveredElement} multiCompFiles={multiCompFiles}
+            multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle}
+            onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} />
+        ))}
+      </div>
+    )
+  }
+
   // ── Ghost (inactive expression) ── clickable, navigates to source ──────
   if (node.kind === 'ghost') {
     return (
@@ -397,6 +449,7 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           onMouseEnter={() => setGhostHovered(true)}
           onMouseLeave={() => setGhostHovered(false)}
           onClick={() => onSelect(node)}
+          onDoubleClick={() => setOpen(o => !o)}
         >
           <span
             style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0, visibility: hasChildren ? 'visible' : 'hidden' }}
@@ -456,6 +509,7 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           }
           onSelect(node)
         }}
+        onDoubleClick={() => setOpen(o => !o)}
         onContextMenu={(e) => {
           e.preventDefault()
           onRowContextMenu(e, node)
@@ -602,7 +656,7 @@ interface DOMTreePanelProps {
   onLocate: (
     file: string,
     line: number,
-    inspectMode?: 'node' | 'component' | 'file',
+    inspectMode?: 'node' | 'component' | 'file' | 'expression',
     componentName?: string
   ) => void
   /** Called after a DOM node is selected in the tree. Does NOT change locate/navigation behaviour. */
@@ -642,12 +696,70 @@ interface DOMTreePanelProps {
 
 function getNodeFile(node: DisplayNode): string | null {
   if (node.kind === 'component') return node.file || null
+  if (node.kind === 'loop') return node.sourceFile
+  if (node.kind === 'ghost') return node.file
   return node.sourceInfo?.file ?? null
 }
 
 function getNodeLine(node: DisplayNode): number | null {
   if (node.kind === 'component') return node.line
+  if (node.kind === 'loop') return node.sourceLine || null
+  if (node.kind === 'ghost') return node.line
   return node.sourceInfo?.line ?? null
+}
+
+/** Recursively increment depth of a node and all its descendants (used when wrapping in a loop node). */
+function bumpDepth(node: DisplayNode): DisplayNode {
+  return { ...node, depth: node.depth + 1, children: node.children.map(bumpDepth) } as DisplayNode
+}
+
+/** Returns a stable key for grouping siblings that originate from the same source line. */
+function nodeSourceKey(node: DisplayNode): string | null {
+  if (node.kind === 'component' && node.usageFile && node.usageLine != null) {
+    return `${node.usageFile}:${node.usageLine}`
+  }
+  if (node.kind === 'ghost' && node.file && node.line != null) {
+    return `${node.file}:${node.line}`
+  }
+  if (node.kind === 'dom' && node.sourceInfo) {
+    return `${node.sourceInfo.file}:${node.sourceInfo.line}`
+  }
+  return null
+}
+
+/**
+ * Group consecutive siblings that share the same source location (file:line)
+ * under a synthetic DisplayLoopNode. Only groups runs of 2+.
+ */
+function groupSiblingLoops(
+  children: DisplayNode[],
+  _fileSources: Map<string, string>,
+): DisplayNode[] {
+  if (children.length < 2) return children
+  const result: DisplayNode[] = []
+  let i = 0
+  while (i < children.length) {
+    const key = nodeSourceKey(children[i])
+    if (!key) { result.push(children[i]); i++; continue }
+    let j = i + 1
+    while (j < children.length && nodeSourceKey(children[j]) === key) j++
+    if (j - i < 2) { result.push(children[i]); i++; continue }
+    const sepIdx = key.lastIndexOf(':')
+    const file = key.slice(0, sepIdx)
+    const line = parseInt(key.slice(sepIdx + 1), 10)
+    const groupDepth = children[i].depth
+    result.push({
+      kind: 'loop',
+      key: `loop-${i}-${file.slice(-20)}-${line}`,
+      depth: groupDepth,
+      sourceLine: line,
+      sourceFile: file || null,
+      count: j - i,
+      children: children.slice(i, j).map(bumpDepth),
+    })
+    i = j
+  }
+  return result
 }
 
 function computeRelativeImportPath(fromFile: string, toFile: string): string {
@@ -724,19 +836,24 @@ function buildGhostChildren(children: unknown, depth: number): DisplayNode[] {
 function mergeExpressionData(
   nodes: DisplayNode[],
   instances: ExpressionInstance[],
-  exprNames: Set<string>,
+  fileSources: Map<string, string>,
 ): DisplayNode[] {
   const activeCounters: Record<string, number> = {}
   const activeByName: Record<string, ExpressionInstance[]> = {}
+  const inactiveByParent = new Map<Element, ExpressionInstance[]>()
   for (const inst of instances) {
     if (inst.active) {
       ;(activeByName[inst.name] ??= []).push(inst)
+    } else if (inst.parentDomEl) {
+      let arr = inactiveByParent.get(inst.parentDomEl)
+      if (!arr) { arr = []; inactiveByParent.set(inst.parentDomEl, arr) }
+      arr.push(inst)
     }
   }
 
   function process(nodes: DisplayNode[]): DisplayNode[] {
-    return nodes.map(node => {
-      if (node.kind === 'component' && exprNames.has(node.name)) {
+    const mapped = nodes.map(node => {
+      if (node.kind === 'component') {
         const idx = activeCounters[node.name] ?? 0
         activeCounters[node.name] = idx + 1
         const inst = activeByName[node.name]?.[idx]
@@ -745,13 +862,13 @@ function mergeExpressionData(
           exprProps: inst ? propsToStrings(inst.props) : {},
           usageFile: inst?.source?.fileName ?? null,
           usageLine: inst?.source?.lineNumber ?? null,
-          children: process(node.children),
+          children: groupSiblingLoops(process(node.children), fileSources),
         }
       }
       if (node.kind === 'dom') {
-        const inactiveHere = instances.filter(inst => !inst.active && inst.parentDomEl === node.el)
-        if (inactiveHere.length === 0) {
-          return { ...node, children: process(node.children) }
+        const inactiveHere = inactiveByParent.get(node.el)
+        if (!inactiveHere || inactiveHere.length === 0) {
+          return { ...node, children: groupSiblingLoops(process(node.children), fileSources) }
         }
 
         const ghosts: Array<{ ghost: DisplayGhostNode; nextEl: Element | null }> =
@@ -782,10 +899,11 @@ function mergeExpressionData(
         for (const { ghost, nextEl } of ghosts) {
           if (nextEl === null) result.push(ghost)
         }
-        return { ...node, children: result }
+        return { ...node, children: groupSiblingLoops(result, fileSources) }
       }
-      return { ...node, children: process(node.children as DisplayNode[]) }
+      return { ...node, children: groupSiblingLoops(process(node.children as DisplayNode[]), fileSources) }
     })
+    return groupSiblingLoops(mapped, fileSources)
   }
 
   return process(nodes)
@@ -821,6 +939,8 @@ export function DOMTreePanel({
   const [hoveredCanvasElement, setHoveredCanvasElement] = useState<Element | null>(null)
   const rafRef = useRef<number>(0)
   const fileMultiCacheRef = useRef<Map<string, boolean>>(new Map())
+  const fileSourcesRef = useRef<Map<string, string>>(new Map())
+  const [fileSourcesVersion, setFileSourcesVersion] = useState(0)
   const [multiCompFiles, setMultiCompFiles] = useState<Set<string>>(new Set())
 
   // ── Multi-select state ───────────────────────────────────────────────────
@@ -876,7 +996,7 @@ export function DOMTreePanel({
   }
 
   function handleMultiToggle(_e: React.MouseEvent, node: DisplayNode) {
-    if (node.kind === 'ghost') return
+    if (node.kind === 'ghost' || node.kind === 'loop') return
     const file = getNodeFile(node)
     const line = getNodeLine(node)
     if (!file || line == null) return
@@ -905,8 +1025,9 @@ export function DOMTreePanel({
 
   const treeWithGhosts = useMemo(() => {
     if (!exprInstances.length) return tree
-    return mergeExpressionData(tree, exprInstances, exprNamesRef.current)
-  }, [tree, exprInstances])
+    return mergeExpressionData(tree, exprInstances, fileSourcesRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, exprInstances, fileSourcesVersion])
 
   async function applyWrapping() {
     if (!applyExprState?.expr || multiSelected.length === 0) return
@@ -984,13 +1105,15 @@ export function DOMTreePanel({
           lastHTML = html
           const newTree = buildMixedTree(root, preferredRootComponentName)
           setTree(newTree)
-          if (exprNamesRef.current.size > 0) {
-            setExprInstances(collectExpressionInstances(root, exprNamesRef.current))
+          const newInstances = collectExpressionInstances(root)
+          setExprInstances(newInstances)
+          // Check component files for multiple-component declarations and collect sources.
+          const allFiles = new Set<string>()
+          collectComponentFiles(newTree, allFiles)
+          for (const inst of newInstances) {
+            if (inst.source?.fileName) allFiles.add(inst.source.fileName)
           }
-          // Check component files for multiple-component declarations.
-          const files = new Set<string>()
-          collectComponentFiles(newTree, files)
-          for (const f of files) {
+          for (const f of allFiles) {
             if (fileMultiCacheRef.current.has(f)) continue
             fileMultiCacheRef.current.set(f, false) // mark as in-flight
             fetch(`/__source?file=${encodeURIComponent(f)}`)
@@ -999,6 +1122,8 @@ export function DOMTreePanel({
                 const isMulti = hasMultipleComponents(text)
                 fileMultiCacheRef.current.set(f, isMulti)
                 if (isMulti) setMultiCompFiles(prev => new Set([...prev, f]))
+                fileSourcesRef.current.set(f, text)
+                setFileSourcesVersion(v => v + 1)
               })
               .catch(() => {})
           }
@@ -1011,6 +1136,10 @@ export function DOMTreePanel({
   }, [canvasRef, preferredRootComponentName])
 
   function handleSelect(node: DisplayNode) {
+    if (node.kind === 'loop') {
+      if (node.sourceFile) onLocate(node.sourceFile, node.sourceLine, 'expression')
+      return
+    }
     if (node.kind === 'ghost') {
       onExpressionNodeClick?.(
         [{ key: node.key, file: node.file ?? '', line: node.line ?? 1, tag: node.name }],
