@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ComponentLoader } from './preview/ComponentLoader'
+import { ExpressionTester } from './preview/ExpressionTester'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import type { SelectedNodeContext } from './inspector/InspectorPanel'
 import { useLocator } from './locator/useLocator'
 import { DOMTreePanel } from './tree/DOMTreePanel'
+import type { ExpressionMeta } from './tree/DOMTreePanel'
+import { ExpressionAssignPanel } from './preview/ExpressionAssignPanel'
+import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
 
 export type PreviewPage = string
 
@@ -35,6 +39,17 @@ async function fetchComponents(): Promise<{ id: string; label: string; name: str
   }
 }
 
+async function fetchExpressions(): Promise<ExpressionMeta[]> {
+  try {
+    const res = await fetch('/__source/list-expressions')
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.expressions ?? []
+  } catch {
+    return []
+  }
+}
+
 export interface SourceLocation {
   file: string
   line: number
@@ -48,14 +63,14 @@ const DEFAULT_PANEL_WIDTH = 480
 function readUrlState() {
   const p = new URLSearchParams(window.location.search)
   return {
-    section: (p.get('section') ?? 'pages') as 'pages' | 'components',
+    section: (p.get('section') ?? 'pages') as 'pages' | 'components' | 'expressions',
     page: p.get('page') ?? 'login',
     component: p.get('component') ?? null,
   }
 }
 
 /** Push updated params to the URL without triggering a navigation / reload. */
-function pushUrlState(section: 'pages' | 'components', page: string, component: string | null) {
+function pushUrlState(section: 'pages' | 'components' | 'expressions', page: string, component: string | null) {
   const p = new URLSearchParams()
   p.set('section', section)
   if (page) p.set('page', page)
@@ -77,13 +92,20 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(() => readSessionJson('cockpit:panelOpen', false))
   const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(() => readSessionJson('cockpit:selectedNode', null))
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
-  const [activeSection, setActiveSection] = useState<'pages' | 'components'>(initial.section)
+  const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
   const [previewComponent, setPreviewComponent] = useState<string | null>(initial.component)
   const [pages, setPages] = useState(INITIAL_PAGES)
   const [addPageOpen, setAddPageOpen] = useState(false)
   const [components, setComponents] = useState<{ id: string; label: string; name: string }[]>([])
   const [addComponentOpen, setAddComponentOpen] = useState(false)
+  const [expressions, setExpressions] = useState<ExpressionMeta[]>([])
+  const [addExpressionOpen, setAddExpressionOpen] = useState(false)
+  const [activeExpression, setActiveExpression] = useState<string | null>(null)
+  const [wrapIntent, setWrapIntent] = useState<{ nodes: WrapIntentNode[] } | null>(null)
+  const [wrapChosenExpr, setWrapChosenExpr] = useState<ExpressionMeta | null>(null)
+  const [hoveredWrapKey, setHoveredWrapKey] = useState<string | null>(null)
+  const [wrapCenterTab, setWrapCenterTab] = useState<'nodes' | 'preview'>('nodes')
 
   // Persist inspector state to sessionStorage so it survives reload.
   useEffect(() => {
@@ -102,13 +124,20 @@ export default function App() {
   }, [activeSection, previewPage, previewComponent])
 
   useEffect(() => {
+    if (activeSection !== 'expressions') setActiveExpression(null)
+  }, [activeSection])
+
+  useEffect(() => {
     fetchPages().then((loaded) => {
       setPages(loaded)
       setPreviewPage((cur) => loaded.some((p) => p.id === cur) ? cur : (loaded[0]?.id ?? cur))
     })
     fetchComponents().then(setComponents)
+    fetchExpressions().then(setExpressions)
   }, [])
   const canvasRef = useRef<HTMLDivElement>(null)
+  // Callback bridge: InspectorPanel picker → ExpressionTester insert
+  const insertTagRef = useRef<((tag: string) => void) | null>(null)
 
   const activePage = pages.find(p => p.id === previewPage) ?? pages[0]
 
@@ -120,6 +149,11 @@ export default function App() {
   ) {
     setLocation({ file, line, inspectMode, componentName })
     setPanelOpen(true)
+  }
+
+  function handleExpressionSelect(expr: ExpressionMeta) {
+    setActiveExpression(expr.name)
+    openInspector(expr.file, 1, 'file', expr.name)
   }
 
   useLocator((loc) => openInspector(loc.file, loc.line))
@@ -148,6 +182,15 @@ export default function App() {
     setComponents((prev) => prev.filter((c) => c.id !== id))
   }
 
+  async function deleteExpression(name: string) {
+    try {
+      await fetch(`/__source/expression/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    } catch {
+      // best-effort
+    }
+    setExpressions((prev) => prev.filter((e) => e.name !== name))
+  }
+
   return (
     <div style={styles.root}>
       {/* Top bar */}
@@ -173,6 +216,12 @@ export default function App() {
           >
             Components
           </button>
+          <button
+            style={{ ...styles.tab, ...(activeSection === 'expressions' ? styles.tabActive : {}), ...(activeSection === 'expressions' ? { borderColor: '#94e2d5', color: '#94e2d5', background: 'rgba(148,226,213,0.12)' } : {}) }}
+            onClick={() => setActiveSection('expressions')}
+          >
+            Expressions
+          </button>
         </div>
 
         <span style={styles.hint}>Alt+Click any element — or click a node in the tree</span>
@@ -185,6 +234,7 @@ export default function App() {
           canvasRef={canvasRef}
           onLocate={openInspector}
           onNodeSelect={setSelectedNode}
+          hoveredWrapNodeKey={hoveredWrapKey}
           preferredRootComponentName={activeSection === 'components' ? (previewComponent ?? undefined) : activePage?.root}
           activeSection={activeSection}
           pages={pages}
@@ -207,6 +257,27 @@ export default function App() {
           }}
           onAddComponent={() => setAddComponentOpen(true)}
           onDeleteComponent={deleteComponent}
+          expressions={expressions}
+          onAddExpression={() => setAddExpressionOpen(true)}
+          onDeleteExpression={deleteExpression}
+          activeExpression={activeExpression ?? undefined}
+          onExpressionSelect={handleExpressionSelect}
+          onWrapIntent={(nodes) => {
+            setWrapIntent({ nodes })
+            setWrapChosenExpr(null)
+            // open the right panel pointing at the first node's file
+            setLocation({ file: nodes[0].file, line: 1, inspectMode: 'file' })
+            setPanelOpen(true)
+          }}
+          onExpressionNodeClick={(nodes, exprName) => {
+            const matchedExpr = expressions.find(e => e.name === exprName) ?? null
+            setWrapIntent({ nodes })
+            setWrapChosenExpr(matchedExpr)
+            if (nodes[0]?.file) {
+              setLocation({ file: nodes[0].file, line: nodes[0].line, inspectMode: 'file', componentName: exprName })
+            }
+            setPanelOpen(true)
+          }}
         />
 
         {/* Center: preview canvas */}
@@ -216,7 +287,7 @@ export default function App() {
           {/* Breadcrumb sub-header */}
           <div style={styles.breadcrumb}>
             <span style={styles.breadcrumbItem}>
-              {activeSection === 'pages' ? '📄 Pages' : '🧩 Components'}
+              {activeSection === 'pages' ? '📄 Pages' : activeSection === 'components' ? '🧩 Components' : '🔀 Expressions'}
             </span>
             {activeSection === 'pages' && activePage && (
               <>
@@ -230,12 +301,67 @@ export default function App() {
                 <span style={{ ...styles.breadcrumbCurrent, color: '#cba6f7' }}>{previewComponent}</span>
               </>
             )}
+            {activeSection === 'expressions' && activeExpression && (
+              <>
+                <span style={styles.breadcrumbSep}>›</span>
+                <span style={{ ...styles.breadcrumbCurrent, color: '#94e2d5' }}>{activeExpression}</span>
+              </>
+            )}
           </div>
 
           {/* Scrollable canvas */}
+          {wrapIntent ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+              {/* Tab bar */}
+              <div style={{ display: 'flex', background: '#181825', borderBottom: '1px solid #313244', flexShrink: 0 }}>
+                {(['nodes', 'preview'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setWrapCenterTab(tab)}
+                    style={{
+                      padding: '6px 16px', fontSize: 12, fontFamily: 'system-ui, sans-serif',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: wrapCenterTab === tab ? '#cdd6f4' : '#6c7086',
+                      borderBottom: wrapCenterTab === tab ? '2px solid #89b4fa' : '2px solid transparent',
+                      fontWeight: wrapCenterTab === tab ? 600 : 400,
+                    }}
+                  >
+                    {tab === 'nodes' ? 'Selected Nodes' : 'Page Preview'}
+                  </button>
+                ))}
+              </div>
+              {/* Tab content */}
+              {wrapCenterTab === 'nodes' && (
+                <ExpressionAssignPanel
+                  nodes={wrapIntent.nodes}
+                  expressions={expressions}
+                  selectedNode={selectedNode}
+                  chosenExpr={wrapChosenExpr}
+                  onChooseExpr={setWrapChosenExpr}
+                  onHoverNode={(node) => setHoveredWrapKey(node.key)}
+                  onLeaveNode={() => setHoveredWrapKey(null)}
+                  onCancel={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
+                  onDone={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
+                />
+              )}
+              {wrapCenterTab === 'preview' && (
+                <div
+                  ref={canvasRef}
+                  style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}
+                >
+                  {activeSection === 'pages' && activePage && (
+                    <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" />
+                  )}
+                  {activeSection === 'components' && previewComponent && (
+                    <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" />
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
           <div
             ref={canvasRef}
-            style={styles.canvas}
+            style={{ ...styles.canvas, background: activeSection === 'expressions' ? '#24273a' : '#f5f5f5' }}
           >
           {activeSection === 'pages' && activePage && (
             <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" />
@@ -246,20 +372,37 @@ export default function App() {
           {activeSection === 'components' && !previewComponent && (
             <div style={styles.emptyState}>Select a component to preview it here.</div>
           )}
+          {activeSection === 'expressions' && (
+            <ExpressionTester
+              expr={expressions.find((e) => e.name === activeExpression) ?? null}
+              pages={pages}
+              components={components}
+              registerInsert={(fn) => { insertTagRef.current = fn }}
+            />
+          )}
           </div>
+          )}
         </div>
 
         {/* Right: inspector */}
-        {panelOpen && location && (
+        {(panelOpen || !!wrapIntent) && (location || wrapIntent) && (
           <InspectorPanel
-            file={location.file}
-            line={location.line}
-            inspectMode={location.inspectMode}
-            componentName={location.componentName}
+            file={location?.file ?? wrapIntent!.nodes[0].file}
+            line={location?.line ?? 1}
+            inspectMode={location?.inspectMode ?? 'file'}
+            componentName={location?.componentName}
             selectedNode={selectedNode}
             rootComponentName={activeSection === 'components' ? (previewComponent ?? activePage.root) : activePage.root}
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
+            expressionMode={activeSection === 'expressions'}
+            expressionPages={activeSection === 'expressions' ? pages : []}
+            expressionComponents={activeSection === 'expressions' ? components : []}
+            onInsertComponent={(tag) => insertTagRef.current?.(tag)}
+            wrapMode={!!wrapIntent}
+            wrapExpressions={wrapIntent ? expressions : []}
+            wrapChosenExpr={wrapChosenExpr}
+            onWrapChooseExpr={setWrapChosenExpr}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)
               setActiveSection('components')
@@ -290,6 +433,139 @@ export default function App() {
           }}
         />
       )}
+
+      {addExpressionOpen && (
+        <AddExpressionModal
+          onClose={() => setAddExpressionOpen(false)}
+          onAdd={(expr) => {
+            setExpressions((prev) => [...prev, expr])
+            setAddExpressionOpen(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Add Expression Modal ────────────────────────────────────────────────────
+
+function AddExpressionModal({
+  onClose,
+  onAdd,
+}: {
+  onClose: () => void
+  onAdd: (expr: ExpressionMeta) => void
+}) {
+  const [name, setName] = useState('')
+  const [props, setProps] = useState<string[]>([])
+  const [propInput, setPropInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const componentName = name.trim()
+    ? name.trim().replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
+    : ''
+
+  function addProp() {
+    const p = propInput.trim().replace(/\s+/g, '')
+    if (!p || props.includes(p)) { setPropInput(''); return }
+    setProps((v) => [...v, p])
+    setPropInput('')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/__source/create-expression', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), props }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create expression')
+      onAdd({ name: data.componentName, file: data.file ?? '', props })
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>New expression</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Expression name</label>
+          <input
+            autoFocus
+            style={modalStyles.input}
+            placeholder="e.g. IfAdmin"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null) }}
+          />
+
+          {name.trim() && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>Component</span>
+              <span style={{ ...modalStyles.previewVal, color: '#94e2d5' }}>{componentName}</span>
+              <span style={modalStyles.previewKey}>File</span>
+              <span style={{ ...modalStyles.previewVal, color: '#94e2d5' }}>{componentName}.tsx</span>
+            </div>
+          )}
+
+          <label style={modalStyles.label}>
+            Props
+            <span style={{ fontWeight: 400, color: '#6c7086', marginLeft: 4 }}>(optional)</span>
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              style={{ ...modalStyles.input, flex: 1 }}
+              placeholder="propName — press Enter to add"
+              value={propInput}
+              onChange={(e) => setPropInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addProp() } }}
+            />
+            <button type="button" style={{ ...modalStyles.cancelBtn, padding: '0 14px' }} onClick={addProp}>Add</button>
+          </div>
+          {props.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 2 }}>
+              {props.map((p) => (
+                <span key={p} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 4,
+                  background: 'rgba(137,180,250,0.15)',
+                  border: '1px solid rgba(137,180,250,0.35)',
+                  color: '#89b4fa', fontSize: 11, fontFamily: 'monospace',
+                }}>
+                  {p}
+                  <span onClick={() => setProps((v) => v.filter((x) => x !== p))} style={{ cursor: 'pointer', color: '#6c7086', fontSize: 10 }}>✕</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {error && <div style={modalStyles.error}>{error}</div>}
+
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !name.trim() || loading ? '#45475a' : '#94e2d5', opacity: !name.trim() || loading ? 0.6 : 1 }}
+              disabled={!name.trim() || loading}
+            >
+              {loading ? 'Creating…' : 'Create expression'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

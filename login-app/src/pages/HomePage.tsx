@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { IfExpression } from '../expressions/IfExpression'
 
 type Page = 'login' | 'forgot-password' | 'home'
 
@@ -71,38 +72,32 @@ export function HomePage({ navigate }: HomePageProps) {
         </div>
       </header>
 
+      {/* Main */}
       <main style={styles.main}>
-        {/* Page heading */}
-        <div style={styles.heading}>
-          <div>
-            <h1 style={styles.title}>Products</h1>
-            <p style={styles.subtitle}>{filtered.length} of {PRODUCTS.length} products</p>
-          </div>
-        </div>
-
-        {/* Search + Filters */}
         <div style={styles.toolbar}>
-          {/* Search */}
-          <div style={styles.searchWrap}>
-            <span style={styles.searchIcon}>🔎</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products…"
-              style={styles.searchInput}
-            />
-          </div>
-
-          {/* Status filter */}
-          <div style={styles.filterGroup}>
+          <input
+            style={styles.searchInput}
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div style={styles.filters}>
+            {CATEGORIES.map((c) => (
+              <IfExpression condition={false} children={<button
+                key={c}
+                style={{ ...styles.filterChip, ...(category === c ? styles.filterChipActive : {}) }}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>}>
+           
+              </IfExpression>
+            ))}
+            <span style={{ width: 1, background: '#e5e7eb', alignSelf: 'stretch' }} />
             {STATUSES.map((s) => (
               <button
                 key={s}
-                style={{
-                  ...styles.filterChip,
-                  ...(statusFilter === s ? styles.filterChipActive : {}),
-                }}
+                style={{ ...styles.filterChip, ...(statusFilter === s ? styles.filterChipActive : {}) }}
                 onClick={() => setStatusFilter(s)}
               >
                 {s}
@@ -110,29 +105,17 @@ export function HomePage({ navigate }: HomePageProps) {
             ))}
           </div>
 
-          {/* Category filter */}
-          <div style={styles.filterGroup}>
-            {CATEGORIES.map((c) => (
-              <button
-                key={c}
-                style={{
-                  ...styles.filterChip,
-                  ...(category === c ? styles.filterChipActive : {}),
-                }}
-                onClick={() => setCategory(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+
+
         </div>
 
-        {/* Grid */}
         {filtered.length === 0 ? (
           <div style={styles.empty}>
-            <span style={{ fontSize: '2rem' }}>🔦</span>
-            <p>No products match your filters.</p>
-            <button style={styles.clearBtn} onClick={() => { setSearch(''); setCategory('All'); setStatusFilter('All') }}>
+            <span>No products match your filters.</span>
+            <button
+              style={styles.clearBtn}
+              onClick={() => { setSearch(''); setCategory('All'); setStatusFilter('All') }}
+            >
               Clear filters
             </button>
           </div>
@@ -149,7 +132,6 @@ export function HomePage({ navigate }: HomePageProps) {
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const catColor = CATEGORY_COLORS[product.category]
   return (
     <div style={styles.card}>
       <div style={styles.cardHeader}>
@@ -157,11 +139,27 @@ function ProductCard({ product }: { product: Product }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={styles.cardName}>{product.name}</p>
           <div style={styles.cardMeta}>
-            <span style={{ ...styles.catBadge, background: catColor + '18', color: catColor, border: `1px solid ${catColor}44` }}>
+            <span
+              style={{
+                ...styles.catBadge,
+                background: CATEGORY_COLORS[product.category] + '22',
+                color: CATEGORY_COLORS[product.category],
+              }}
+            >
               {product.category}
             </span>
-            <span style={{ ...styles.statusDot, background: product.status === 'Active' ? '#16a34a' : '#9ca3af' }} />
-            <span style={{ ...styles.statusLabel, color: product.status === 'Active' ? '#15803d' : '#6b7280' }}>
+            <span
+              style={{
+                ...styles.statusDot,
+                background: product.status === 'Active' ? '#22c55e' : '#9ca3af',
+              }}
+            />
+            <span
+              style={{
+                ...styles.statusLabel,
+                color: product.status === 'Active' ? '#16a34a' : '#6b7280',
+              }}
+            >
               {product.status}
             </span>
           </div>
@@ -186,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 1.5rem',
+    padding: '0 2rem',
     height: 56,
     background: '#fff',
     borderBottom: '1px solid #e5e7eb',
@@ -196,9 +194,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   navLogo: {
     fontWeight: 700,
-    fontSize: '1rem',
+    fontSize: '1.1rem',
     color: '#111827',
-    letterSpacing: '-0.01em',
+    letterSpacing: '-0.02em',
   },
   navRight: {
     display: 'flex',
@@ -206,78 +204,49 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '1rem',
   },
   navUser: {
-    fontSize: '0.8rem',
+    fontSize: '0.85rem',
     color: '#6b7280',
   },
   signOutBtn: {
     background: 'none',
     border: '1px solid #d1d5db',
     borderRadius: 6,
-    padding: '0.3rem 0.75rem',
-    fontSize: '0.8rem',
-    color: '#374151',
+    padding: '0.35rem 0.85rem',
+    fontSize: '0.85rem',
     cursor: 'pointer',
+    color: '#374151',
   },
   main: {
     maxWidth: 1100,
     margin: '0 auto',
     padding: '2rem 1.5rem',
   },
-  heading: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: '1.5rem',
-  },
-  title: {
-    margin: 0,
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#111827',
-  },
-  subtitle: {
-    margin: '0.25rem 0 0',
-    fontSize: '0.85rem',
-    color: '#6b7280',
-  },
   toolbar: {
     display: 'flex',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: '0.75rem',
-    alignItems: 'center',
     marginBottom: '1.5rem',
   },
-  searchWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    background: '#fff',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    padding: '0.4rem 0.75rem',
-    flex: '1 1 220px',
-    minWidth: 200,
-  },
-  searchIcon: { fontSize: '0.85rem', flexShrink: 0 },
   searchInput: {
-    border: 'none',
-    outline: 'none',
-    fontSize: '0.875rem',
     width: '100%',
-    background: 'transparent',
-    color: '#111827',
+    padding: '0.6rem 1rem',
+    borderRadius: 8,
+    border: '1px solid #d1d5db',
+    fontSize: '0.9rem',
+    outline: 'none',
+    boxSizing: 'border-box',
   },
-  filterGroup: {
+  filters: {
     display: 'flex',
-    gap: '0.35rem',
     flexWrap: 'wrap',
+    gap: '0.5rem',
+    alignItems: 'center',
   },
   filterChip: {
-    padding: '0.3rem 0.75rem',
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
     borderRadius: 99,
-    border: '1px solid #d1d5db',
-    background: '#fff',
-    color: '#374151',
+    padding: '0.3rem 0.85rem',
     fontSize: '0.8rem',
     cursor: 'pointer',
     fontWeight: 500,
@@ -345,6 +314,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-block',
   },
   statusLabel: {
+
+
+
+
+
+
     fontSize: '0.75rem',
     fontWeight: 500,
   },

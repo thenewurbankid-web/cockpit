@@ -459,6 +459,189 @@ app.get('/__source/ast-info', (req, res) => {
   res.json(info)
 })
 
+// ── Expressions ──────────────────────────────────────────────────────────────
+
+const EXPRESSIONS_DIR = path.resolve(REPO_ROOT, 'login-app/src/expressions')
+
+/**
+ * Read prop names from a TSInterfaceDeclaration or TSTypeAliasDeclaration named
+ * `{componentName}Props`. This is more reliable than reading from the destructuring
+ * parameter because Babel's error-recovery can misparse reserved words (like `else`,
+ * `then`) in parameter destructuring position, while property names in interface
+ * bodies are always parsed as IdentifierName tokens without ambiguity.
+ */
+function propsFromInterface(ast, componentName) {
+  const ifaceName = `${componentName}Props`
+  for (const node of ast.program.body) {
+    // interface FooProps { a: T; b: T }
+    if (
+      (node.type === 'TSInterfaceDeclaration') &&
+      node.id?.name === ifaceName
+    ) {
+      return (node.body?.body ?? [])
+        .filter((m) => m.type === 'TSPropertySignature')
+        .map((m) => m.key?.name ?? null)
+        .filter((name) => name !== null)
+    }
+    // type FooProps = { a: T; b: T }
+    if (
+      node.type === 'TSTypeAliasDeclaration' &&
+      node.id?.name === ifaceName &&
+      node.typeAnnotation?.type === 'TSTypeLiteral'
+    ) {
+      return (node.typeAnnotation.members ?? [])
+        .filter((m) => m.type === 'TSPropertySignature')
+        .map((m) => m.key?.name ?? null)
+        .filter((name) => name !== null)
+    }
+  }
+  return null
+}
+
+/** Extract prop names (excluding children) from the first param of the exported function. */
+function extractExpressionProps(source) {
+  let ast
+  try {
+    ast = babelParse(source, {
+      sourceType: 'module',
+      plugins: ['jsx', 'typescript'],
+      errorRecovery: true,
+    })
+  } catch {
+    return []
+  }
+
+  for (const node of ast.program.body) {
+    // export function Foo({ a, b }: FooProps) {}
+    if (
+      node.type === 'ExportNamedDeclaration' &&
+      node.declaration?.type === 'FunctionDeclaration'
+    ) {
+      const compName = node.declaration.id?.name
+      // Prefer reading from the interface (avoids keyword-in-destructuring parse issues)
+      const fromIface = compName ? propsFromInterface(ast, compName) : null
+      return fromIface ?? propsFromParams(node.declaration.params)
+    }
+    // export const Foo = ({ a, b }) => {}
+    if (node.type === 'ExportNamedDeclaration' && node.declaration?.type === 'VariableDeclaration') {
+      for (const decl of node.declaration.declarations) {
+        const init = decl.init
+        if (init?.type === 'ArrowFunctionExpression' || init?.type === 'FunctionExpression') {
+          const compName = decl.id?.name
+          const fromIface = compName ? propsFromInterface(ast, compName) : null
+          return fromIface ?? propsFromParams(init.params)
+        }
+      }
+    }
+  }
+  return []
+}
+
+function propsFromParams(params) {
+  if (!params || params.length === 0) return []
+  const first = params[0]
+  // Strip TS type annotation wrapper
+  const pattern = first.type === 'AssignmentPattern' ? first.left : first
+
+  if (pattern.type !== 'ObjectPattern') return []
+  return pattern.properties
+    .filter((p) => p.type === 'ObjectProperty' || p.type === 'RestElement')
+    .map((p) => {
+      if (p.type === 'RestElement') return null
+      const key = p.key
+      // key.name works for both Identifier and keyword nodes
+      return key?.name ?? null
+    })
+    .filter((name) => name !== null)
+}
+
+app.get('/__source/list-expressions', (req, res) => {
+  if (!fs.existsSync(EXPRESSIONS_DIR)) return res.json({ expressions: [] })
+
+  const files = fs.readdirSync(EXPRESSIONS_DIR).filter((f) => f.endsWith('.tsx'))
+  const expressions = files.map((f) => {
+    const filePath = path.join(EXPRESSIONS_DIR, f)
+    const source = fs.readFileSync(filePath, 'utf-8')
+    const name = f.replace(/\.tsx$/, '')
+    const props = extractExpressionProps(source)
+    return { name, file: filePath, props }
+  }).sort((a, b) => a.name.localeCompare(b.name))
+
+  res.json({ expressions })
+})
+
+app.post('/__source/create-expression', (req, res) => {
+  const { name, props: rawProps } = req.body ?? {}
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Body must contain { name: string }' })
+  }
+
+  const trimmed = name.trim()
+  // Ensure PascalCase
+  const componentName =
+    trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
+
+  if (!/^[A-Z][a-zA-Z0-9]+$/.test(componentName)) {
+    return res.status(400).json({ error: 'Invalid expression name' })
+  }
+
+  const filePath = path.join(EXPRESSIONS_DIR, `${componentName}.tsx`)
+
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(filePath)) {
+    return res.status(409).json({ error: `File already exists: ${componentName}.tsx` })
+  }
+
+  // Validate and sanitise prop names
+  const props = Array.isArray(rawProps)
+    ? rawProps.filter((p) => typeof p === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(p) && p !== 'children')
+    : []
+
+  // Build interface props lines (children always included at end)
+  const ifaceProps = [...props.map((p) => `  ${p}: unknown`), `  children: ReactNode`]
+  // Build destructure params
+  const destructure = [...props, 'children'].join(', ')
+  // Build a trivial body — return children, ignore extra props for now
+  const body = props.length > 0
+    ? `  // TODO: use ${props.join(', ')}\n  return <>{children}</>`
+    : `  return <>{children}</>`
+
+  const template = [
+    `import type { ReactNode } from 'react'`,
+    ``,
+    `interface ${componentName}Props {`,
+    ...ifaceProps,
+    `}`,
+    ``,
+    `export function ${componentName}({ ${destructure} }: ${componentName}Props) {`,
+    body,
+    `}`,
+  ].join('\n')
+
+  fs.mkdirSync(EXPRESSIONS_DIR, { recursive: true })
+  fs.writeFileSync(filePath, template, 'utf-8')
+  console.log(`[create-expression] Created ${filePath}`)
+  res.json({ ok: true, componentName, file: filePath })
+})
+
+app.delete('/__source/expression/:name', (req, res) => {
+  const { name } = req.params
+  if (!name || !/^[A-Z][a-zA-Z0-9]+$/.test(name)) {
+    return res.status(400).json({ error: 'Invalid expression name' })
+  }
+
+  const filePath = path.join(EXPRESSIONS_DIR, `${name}.tsx`)
+
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `File not found: ${name}.tsx` })
+  }
+
+  fs.unlinkSync(filePath)
+  console.log(`[delete-expression] Deleted ${filePath}`)
+  res.json({ ok: true })
+})
+
 const PORT = 3001
 app.listen(PORT, () => {
   console.log(`[builder-server] Source API ready → http://localhost:${PORT}/__source`)

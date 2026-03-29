@@ -95,3 +95,115 @@ export function findNearestSourceElement(
   }
   return null
 }
+
+// ── Expression instance collection ───────────────────────────────────────────
+
+export interface ExpressionInstance {
+  name: string
+  /** True when the expression's fiber has child output (renders something). */
+  active: boolean
+  props: Record<string, unknown>
+  source: FiberDebugSource | null
+  /** Nearest DOM ancestor of this expression fiber (used for tree positioning). */
+  parentDomEl: Element | null
+  /** First DOM child of parentDomEl that comes AFTER this expression in fiber order. Used to insert ghost nodes at the correct position. */
+  nextDomSiblingEl: Element | null
+}
+
+function findParentDomEl(fiber: any): Element | null {
+  let cur = fiber?.return
+  while (cur) {
+    if (typeof cur.type === 'string' && cur.stateNode instanceof Element) {
+      return cur.stateNode as Element
+    }
+    cur = cur.return
+  }
+  return null
+}
+
+/**
+ * DFS into a fiber subtree looking for the first DOM element whose
+ * parentElement === parentDomEl. Stops at DOM host fibers to avoid
+ * returning elements from deeper nesting levels.
+ */
+function findFirstDomChildInSubtree(fiber: any, parentDomEl: Element): Element | null {
+  if (!fiber) return null
+  if (typeof fiber.type === 'string' && fiber.stateNode instanceof Element) {
+    if ((fiber.stateNode as Element).parentElement === parentDomEl) {
+      return fiber.stateNode as Element
+    }
+    // Different DOM host — its children won’t be direct children of parentDomEl.
+    return null
+  }
+  let child = fiber.child
+  while (child) {
+    const el = findFirstDomChildInSubtree(child, parentDomEl)
+    if (el) return el
+    child = child.sibling
+  }
+  return null
+}
+
+/**
+ * Walk the fiber sibling chain starting AFTER `expressionFiber`, climbing up
+ * through non-DOM intermediate fibers as needed, until we find the first DOM
+ * child of `parentDomEl` that appears after the expression in render order.
+ * Stops as soon as we reach the host fiber for parentDomEl.
+ */
+function findNextDomSiblingEl(expressionFiber: any, parentDomEl: Element): Element | null {
+  let cur = expressionFiber
+  while (cur) {
+    let sib = cur.sibling
+    while (sib) {
+      const el = findFirstDomChildInSubtree(sib, parentDomEl)
+      if (el) return el
+      sib = sib.sibling
+    }
+    const parent = cur.return
+    if (!parent) return null
+    // Stop once we reach the host fiber that owns parentDomEl.
+    if (typeof parent.type === 'string' && parent.stateNode === parentDomEl) return null
+    cur = parent
+  }
+  return null
+}
+
+/**
+ * Walk the React fiber tree rooted at `canvasEl` and return all instances of
+ * expression components whose name is in `expressionNames`.
+ */
+export function collectExpressionInstances(
+  canvasEl: Element,
+  expressionNames: Set<string>,
+): ExpressionInstance[] {
+  const rootFiber = getReactFiber(canvasEl)
+  if (!rootFiber) return []
+  const results: ExpressionInstance[] = []
+
+  function walk(fiber: any): void {
+    if (!fiber) return
+    const name =
+      typeof fiber.type === 'function'
+        ? (fiber.type.displayName || fiber.type.name || null)
+        : null
+
+    if (name && expressionNames.has(name)) {
+      const parentDomEl = findParentDomEl(fiber)
+      results.push({
+        name,
+        active: fiber.child !== null,
+        props: fiber.memoizedProps ?? {},
+        source: fiber._debugSource ?? null,
+        parentDomEl,
+        nextDomSiblingEl: parentDomEl ? findNextDomSiblingEl(fiber, parentDomEl) : null,
+      })
+      walk(fiber.child)
+    } else {
+      walk(fiber.child)
+    }
+    walk(fiber.sibling)
+  }
+
+  walk(rootFiber.child ?? rootFiber)
+  return results
+}

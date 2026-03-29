@@ -111,9 +111,21 @@ interface InspectorPanelProps {
   onWidthChange?: (width: number) => void
   /** Called when the user clicks the navigate icon on a read-only child component tab. */
   onNavigateToComponent?: (componentName: string) => void
+  /** When true (expression selected), hides scope panel and non-source tabs. */
+  expressionMode?: boolean
+  /** Pages + components for the expression picker, shown above source in expression mode. */
+  expressionPages?: { id: string; label: string; root: string }[]
+  expressionComponents?: { id: string; label: string; name: string }[]
+  /** Called when user clicks a chip in the expression picker. */
+  onInsertComponent?: (tag: string) => void
+  /** When true, the panel is in wrap-node mode — hides close btn and tabs, shows expression chooser. */
+  wrapMode?: boolean
+  wrapExpressions?: { name: string; file: string; props: string[] }[]
+  wrapChosenExpr?: { name: string; file: string; props: string[] } | null
+  onWrapChooseExpr?: (expr: { name: string; file: string; props: string[] }) => void
 }
 
-type Tab = 'source' | 'defaults' | 'bindings'
+type Tab = 'source' | 'defaults' | 'bindings' | 'expression'
 
 // ── block extraction ──────────────────────────────────────────────────────────
 
@@ -2323,6 +2335,131 @@ function rewriteDefaultValue(source: string, ownerName: string, propName: string
   }
 }
 
+// ── WrapExpressionChooser: shown in right panel instead of tabs during wrap mode ──
+
+function WrapExpressionChooser({
+  expressions,
+  chosenExpr,
+  onChoose,
+}: {
+  expressions: { name: string; file: string; props: string[] }[]
+  chosenExpr: { name: string; file: string; props: string[] } | null
+  onChoose: (expr: { name: string; file: string; props: string[] }) => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+      <div style={{
+        padding: '8px 12px 4px',
+        fontSize: 10, fontWeight: 700, color: '#6c7086',
+        textTransform: 'uppercase', letterSpacing: '0.07em',
+        borderBottom: '1px solid #1e1e2e',
+        flexShrink: 0,
+      }}>
+        Choose expression
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {expressions.length === 0 && (
+          <div style={{ color: '#6c7086', fontSize: 11, fontStyle: 'italic', padding: '4px 2px' }}>
+            No expressions yet — create one in the Expressions tab.
+          </div>
+        )}
+        {expressions.map(expr => {
+          const chosen = chosenExpr?.name === expr.name
+          return (
+            <div
+              key={expr.name}
+              onClick={() => onChoose(expr)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '7px 10px', borderRadius: 6, cursor: 'pointer',
+                border: chosen ? '1px solid #94e2d5' : '1px solid #313244',
+                background: chosen ? 'rgba(148,226,213,0.10)' : '#181825',
+              }}
+            >
+              <span style={{ color: '#94e2d5', fontWeight: 700, fontFamily: 'monospace' }}>ƒ</span>
+              <span style={{ color: '#cdd6f4', fontWeight: 600, fontFamily: 'monospace', fontSize: 12 }}>{expr.name}</span>
+              {expr.props.length > 0 && (
+                <span style={{ color: '#6c7086', fontSize: 11, fontFamily: 'monospace' }}>({expr.props.join(', ')})</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── ExpressionPickerPanel: collapsible section listing pages/components for insertion ──
+
+function ExpressionPickerPanel({
+  pages,
+  components,
+  onInsert,
+}: {
+  pages: { id: string; label: string; root: string }[]
+  components: { id: string; label: string; name: string }[]
+  onInsert?: (tag: string) => void
+}) {
+  const [expanded, setExpanded] = useState(true)
+  return (
+    <div style={scopeStyles.panel}>
+      <button style={scopeStyles.header} onClick={() => setExpanded(v => !v)}>
+        <span style={scopeStyles.chevron}>{expanded ? '▾' : '▸'}</span>
+        <span>Component Picker</span>
+        <InfoIcon text="Click a chip to insert its JSX tag into the last-focused field in the expression tester." />
+      </button>
+      {expanded && (
+        <div style={{ ...scopeStyles.body, padding: '8px 12px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {pages.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 10, color: '#585b70', textTransform: 'uppercase' as const, letterSpacing: '0.06em', minWidth: 42, paddingTop: 4, fontWeight: 700 }}>pages</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+                {pages.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => onInsert?.(p.root)}
+                    title={`Insert <${p.root} />`}
+                    style={{
+                      padding: '2px 8px', borderRadius: 4,
+                      border: '1px solid rgba(203,166,247,0.4)',
+                      background: 'rgba(203,166,247,0.1)',
+                      color: '#cba6f7', fontSize: 11,
+                      fontFamily: '"Cascadia Code", monospace',
+                      cursor: 'pointer',
+                    }}
+                  >&lt;{p.root} /&gt;</button>
+                ))}
+              </div>
+            </div>
+          )}
+          {components.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 10, color: '#585b70', textTransform: 'uppercase' as const, letterSpacing: '0.06em', minWidth: 42, paddingTop: 4, fontWeight: 700 }}>comps</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+                {components.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => onInsert?.(c.name)}
+                    title={`Insert <${c.name} />`}
+                    style={{
+                      padding: '2px 8px', borderRadius: 4,
+                      border: '1px solid rgba(137,180,250,0.4)',
+                      background: 'rgba(137,180,250,0.1)',
+                      color: '#89b4fa', fontSize: 11,
+                      fontFamily: '"Cascadia Code", monospace',
+                      cursor: 'pointer',
+                    }}
+                  >&lt;{c.name} /&gt;</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── ScopePanel: hierarchy of props/state available to the selected node ───────
 
 interface ScopePanelProps {
@@ -2649,6 +2786,14 @@ export function InspectorPanel({
   onClose,
   onWidthChange,
   onNavigateToComponent,
+  expressionMode,
+  expressionPages = [],
+  expressionComponents = [],
+  onInsertComponent,
+  wrapMode,
+  wrapExpressions = [],
+  wrapChosenExpr,
+  onWrapChooseExpr,
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
 
@@ -2669,13 +2814,33 @@ export function InspectorPanel({
     window.addEventListener('pointerup', onUp)
   }
   const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (wrapMode) return 'expression'
+    if (expressionMode) return 'source'
     const saved = sessionStorage.getItem('cockpit:activeTab')
     return (saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings'
   })
   const isRestoringRef = useRef(true)
   useEffect(() => {
-    sessionStorage.setItem('cockpit:activeTab', activeTab)
+    if (!expressionMode && !wrapMode) sessionStorage.setItem('cockpit:activeTab', activeTab)
   }, [activeTab])
+  useEffect(() => {
+    if (expressionMode) setActiveTab('source')
+  }, [expressionMode])
+  useEffect(() => {
+    if (wrapMode) setActiveTab('expression')
+  }, [wrapMode])
+
+  // ── wrap mode: load chosen expression source for read-only view ─────────────
+  const [wrapExprSource, setWrapExprSource] = useState<string>('')
+  const [wrapExprLoading, setWrapExprLoading] = useState(false)
+  useEffect(() => {
+    if (!wrapMode || !wrapChosenExpr) { setWrapExprSource(''); return }
+    setWrapExprLoading(true)
+    fetch(`/__source?file=${encodeURIComponent(wrapChosenExpr.file)}`)
+      .then(r => r.ok ? r.text() : '')
+      .then(src => { setWrapExprSource(src); setWrapExprLoading(false) })
+      .catch(() => { setWrapExprLoading(false) })
+  }, [wrapMode, wrapChosenExpr?.file])
 
   // True when the inspected node belongs to a child component — all edits are disabled.
   // Read-only only for DOM nodes explicitly owned by a non-root child component.
@@ -3710,7 +3875,7 @@ export function InspectorPanel({
       )}
 
       {/* Scope hierarchy panel — replaces the old imports section */}
-      {(selectedNode && (scopeLayers.length > 0 || (inspectingComponent && (ownerProps.length > 0 || parentLocals.length > 0)))) && (
+      {(!expressionMode && selectedNode && (scopeLayers.length > 0 || (inspectingComponent && (ownerProps.length > 0 || parentLocals.length > 0)))) && (
         <>
         <ScopePanel
           layers={scopeLayers}
@@ -3803,46 +3968,109 @@ export function InspectorPanel({
         </>
       )}
 
-      {/* Tabs */}
-      <div style={styles.tabs}>
-        {(isRootComponent
-          ? (['defaults', 'source'] as Tab[])
-          : inspectingComponent
-            ? (['bindings', 'defaults', 'source'] as Tab[])
-            : (['bindings', 'source'] as Tab[])
-        ).map((tab) => {
-          const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && (tab === 'defaults' || tab === 'source')
-          const tabInfo: Record<Tab, string> = {
-            bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
-            defaults: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
-            source: 'Full source code of the selected component or element. Edits here are saved directly to disk.',
-          }
-          return (
-          <button
-            key={tab}
-            style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : {}) }}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {activeTab === tab && <InfoIcon text={tabInfo[tab]} />}
-            {tabReadOnly && (
-              <span
-                title={`Open ${selectedNode.tag} for editing`}
-                style={{ marginLeft: 4, fontSize: '0.65rem', opacity: 0.6, cursor: 'pointer' }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onNavigateToComponent?.(selectedNode.tag)
-                }}
-              >↗</span>
-            )}
-          </button>
-          )
-        })}
-      </div>
-
       {/* Multiple-components banner — after tabs (kept as after-tabs slot, now unused, removed) */}
 
-      {/* Content */}
+      {/* Expression component picker section — sits between scope and tabs */}
+      {expressionMode && (expressionPages.length > 0 || expressionComponents.length > 0) && (
+        <ExpressionPickerPanel
+          pages={expressionPages}
+          components={expressionComponents}
+          onInsert={onInsertComponent}
+        />
+      )}
+
+      {/* Tabs — wrap mode shows Expression + Source; normal mode shows existing tabs */}
+      <div style={styles.tabs}>
+        {wrapMode ? (
+          <>  
+            {(['expression', 'source'] as Tab[]).map(tab => (
+              <button
+                key={tab}
+                style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : {}) }}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'expression' ? 'Expression' : 'Source'}
+              </button>
+            ))}
+          </>
+        ) : (
+          (expressionMode
+            ? (['source'] as Tab[])
+            : isRootComponent
+              ? (['defaults', 'source'] as Tab[])
+              : inspectingComponent
+                ? (['bindings', 'defaults', 'source'] as Tab[])
+                : (['bindings', 'source'] as Tab[])
+          ).map((tab) => {
+            const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && (tab === 'defaults' || tab === 'source')
+            const tabInfo: Record<Tab, string> = {
+              expression: 'Choose an expression to wrap the selected nodes.',
+              bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
+              defaults: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
+              source: 'Full source code of the selected component or element. Edits here are saved directly to disk.',
+            }
+            return (
+            <button
+              key={tab}
+              style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : {}) }}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {activeTab === tab && <InfoIcon text={tabInfo[tab]} />}
+              {tabReadOnly && (
+                <span
+                  title={`Open ${selectedNode.tag} for editing`}
+                  style={{ marginLeft: 4, fontSize: '0.65rem', opacity: 0.6, cursor: 'pointer' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onNavigateToComponent?.(selectedNode.tag)
+                  }}
+                >↗</span>
+              )}
+            </button>
+            )
+          })
+        )}
+      </div>
+
+      {/* Wrap mode expression chooser tab */}
+      {wrapMode && activeTab === 'expression' && (
+        <WrapExpressionChooser
+          expressions={wrapExpressions}
+          chosenExpr={wrapChosenExpr ?? null}
+          onChoose={onWrapChooseExpr ?? (() => {})}
+        />
+      )}
+
+      {/* Wrap mode source tab — read-only view of chosen expression file */}
+      {wrapMode && activeTab === 'source' && (
+        <div style={styles.content}>
+          {wrapExprLoading ? (
+            <div style={styles.loading}>Loading…</div>
+          ) : !wrapChosenExpr ? (
+            <div style={{ padding: '1rem', color: '#6c7086', fontSize: 12, fontStyle: 'italic' }}>Select an expression first.</div>
+          ) : (
+            <Editor
+              height="100%"
+              language="typescript"
+              path={wrapChosenExpr ? `file:///wrap-expr/${wrapChosenExpr.file.replace(/\\/g, '/')}` : undefined}
+              theme="vs-dark"
+              value={wrapExprSource}
+              options={{
+                fontSize: 12,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                readOnly: true,
+                lineNumbers: 'on' as const,
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Tabs content + save bar — normal mode only */}
+      {!wrapMode && (
       <div style={styles.content}>
         {/* Editor is always mounted so Monaco undo stack is preserved across tab switches.
             Hidden via display:none when not on the source tab. */}
@@ -4393,9 +4621,10 @@ export function InspectorPanel({
           </div>
         )}
       </div>
+      )}
 
       {/* Save bar */}
-      {activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder) && (
+      {!wrapMode && activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder) && (
         <div style={styles.saveBar}>
           {saveStatus === 'saved' && <span style={styles.savedMsg}>✓ Saved — HMR will reload</span>}
           {saveStatus === 'error' && <span style={styles.errorMsg}>✗ Save failed</span>}
