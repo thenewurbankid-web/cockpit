@@ -9,15 +9,38 @@ Cockpit is a visual dev tool for inspecting and editing React component source c
 ```
 cockpit/
 ├── builder-app/          ← visual builder UI (Vite 5 + React 18, port 5174)
-│   ├── server/devServer.js   ← Express source API (port 3001)
+│   ├── server/
+│   │   ├── devServer.js      ← Express routes + server startup
+│   │   ├── utils.js          ← REPO_ROOT, isSafeFile, TS diagnostics
+│   │   ├── astInfo.js        ← AST extraction (babel parser)
+│   │   └── templates.js      ← Page/Component/Expression file templates
 │   ├── src/
 │   │   ├── App.tsx               ← root layout: tree | canvas | inspector
+│   │   ├── modals.tsx            ← AddPageModal, AddComponentModal, AddExpressionModal
+│   │   ├── appStyles.ts          ← CSS-in-JS styles for App + modals
 │   │   ├── fiberSource.ts        ← React fiber → source location resolver
 │   │   ├── highlight.ts          ← DOM element highlight overlay
-│   │   ├── inspector/InspectorPanel.tsx  ← bindings, scope, Monaco editor, AST parsing
-│   │   ├── tree/DOMTreePanel.tsx         ← live DOM/component tree panel
-│   │   ├── tree/expressionRewriter.ts    ← expression wrapping AST transforms
-│   │   ├── locator/useLocator.ts         ← Alt+Click → source location
+│   │   ├── inspector/
+│   │   │   ├── InspectorPanel.tsx    ← main component: bindings, Monaco editor
+│   │   │   ├── types.ts             ← all interfaces
+│   │   │   ├── astHelpers.ts        ← AST traversal utilities
+│   │   │   ├── importHelpers.ts     ← import analysis + module declarations
+│   │   │   ├── jsxExtraction.ts     ← JSX attr/text parsing
+│   │   │   ├── typeInference.ts     ← type inference + owner props
+│   │   │   ├── astRewriters.ts      ← source rewrite operations
+│   │   │   ├── ExpressionPicker.tsx  ← expression wrap UI
+│   │   │   ├── ScopePanel.tsx        ← scope hierarchy + color-coded links
+│   │   │   ├── InfoIcon.tsx          ← reusable SVG icon
+│   │   │   └── styles.ts            ← CSS-in-JS styles
+│   │   ├── tree/
+│   │   │   ├── DOMTreePanel.tsx      ← main component: selection, picker mode
+│   │   │   ├── types.ts             ← DisplayNode types, SelectedNodeSnapshot
+│   │   │   ├── treeBuilders.ts       ← tree construction from fiber data
+│   │   │   ├── helpers.ts            ← node search + path utilities
+│   │   │   ├── TreeRow.tsx           ← single tree row rendering
+│   │   │   ├── styles.ts            ← CSS-in-JS styles
+│   │   │   └── expressionRewriter.ts ← expression wrapping AST transforms
+│   │   ├── locator/useLocator.ts     ← Alt+Click → source location
 │   │   └── preview/
 │   │       ├── ComponentLoader.tsx       ← lazy-loads login-app via /@fs/ imports
 │   │       ├── ExpressionAssignPanel.tsx  ← expression assignment UI
@@ -95,19 +118,23 @@ Create `login-app/src/pages/MyPage.tsx` with named export `MyPage` and `MyPagePr
 ### Adding a new component
 Create `login-app/src/components/MyComponent.tsx` with named export and props interface. Auto-discovered via `list-components`.
 
-### Modifying InspectorPanel.tsx
-This is the largest file (~4000+ lines). Key sections:
-- **Interfaces** (top): `ScopeItem`, `ScopeLayer`, `SelectedNodeContext`, `JsxAttr`
-- **AST helpers** (~line 170-1200): `extractJsxAttrs`, `extractOwnerProps`, `extractComponentLocals`, `inferOwnerComponentName`, `extractBlock`
-- **Sub-components** (~line 2500-2900): `ScopePanel`, `ScopeItemChip`, `InfoIcon`
-- **Main component logic** (~line 2900+): `refreshBindings`, effects, Monaco setup
-- **Styles** (bottom): `scopeStyles`, other style objects
+### Modifying InspectorPanel
+The inspector is modular — find the right file in `src/inspector/`:
+- **Types**: `types.ts` — interfaces like `ScopeItem`, `ScopeLayer`, `SelectedNodeContext`, `JsxAttr`
+- **AST traversal**: `astHelpers.ts` — `findSmallestContainingNode`, `extractBlock`
+- **JSX parsing**: `jsxExtraction.ts` — `extractJsxAttrs`, `extractJsxTextChildren`
+- **Type inference**: `typeInference.ts` — `extractOwnerProps`, `extractComponentLocals`, `inferOwnerComponentName`
+- **Rewriters**: `astRewriters.ts` — `rewriteAttrValue`, `insertAttr`, `addPropToOwnerSignature`
+- **Sub-components**: `ScopePanel.tsx`, `ExpressionPicker.tsx`, `InfoIcon.tsx`
+- **Main component**: `InspectorPanel.tsx` (~2100 lines) — `refreshBindings`, effects, Monaco setup
 
-### Modifying DOMTreePanel.tsx
-Key sections:
-- **Tree building** (~line 157-340): `buildRawDomTree`, `toMixedTree`, `inferPageRoot`
-- **Node selection** (~line 1290+): `handleSelect` for component and DOM nodes
-- **Picker mode**: canvas mousedown handler with `pickerModeRef`
+### Modifying DOMTreePanel
+The tree panel is modular — find the right file in `src/tree/`:
+- **Types**: `types.ts` — `DisplayNode`, `SelectedNodeSnapshot`, `ExpressionMeta`
+- **Tree building**: `treeBuilders.ts` — `buildRawDomTree`, `toMixedTree`, `inferPageRoot`
+- **Helpers**: `helpers.ts` — `findPathToEl`, `findNodeByKey`, `getNodeFile`
+- **Row rendering**: `TreeRow.tsx` — single tree row component
+- **Main component**: `DOMTreePanel.tsx` (~1170 lines) — selection, picker mode, context menus
 
 ## Windows-Specific Notes
 

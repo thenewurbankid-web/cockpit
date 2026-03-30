@@ -55,6 +55,14 @@ export function LoginPage({navigate}: LoginPageProps) {
       <form onSubmit={handleSubmit} style={styles.form} noValidate>
       
         <h2 style={styles.title}>Login</h2>
+
+
+
+
+
+
+
+
         <Input
           id={email}
           label="Email"

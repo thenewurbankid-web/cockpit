@@ -5,18 +5,23 @@ description: "Use when editing InspectorPanel.tsx or inspector-related code. Cov
 
 # InspectorPanel Development Guide
 
-## File Structure (~4000+ lines)
+## Module Structure
 
-InspectorPanel.tsx is a large single-file module. Know the section layout before editing:
+The inspector is split into focused modules under `builder-app/src/inspector/`:
 
-| Section | Lines (approx) | Contents |
-|---------|----------------|----------|
-| Interfaces | 1–170 | `ScopeItem`, `ScopeLayer`, `SelectedNodeContext`, `JsxAttr`, `ComponentProp`, `BlockRange` |
-| AST helpers | 170–1200 | `extractJsxAttrs`, `extractOwnerProps`, `extractComponentLocals`, `inferOwnerComponentName`, `extractBlock`, `findSmallestContainingNode` |
-| Rewrite helpers | 1200–2500 | `rewriteAttrValue`, `addPropToInterface`, `inferTypeOfLocal`, `removePropFromInterface`, JSX text child extraction |
-| Sub-components | 2500–2900 | `LINK_COLORS`, `ScopePanel`, `ScopeItemChip`, `InfoIcon`, `scopeStyles` |
-| Main component | 2900+ | `InspectorPanel` function: `refreshBindings`, effects, Monaco setup, event handlers |
-| Styles | bottom | `scopeStyles` and other style objects |
+| Module | Purpose |
+|--------|---------|
+| `types.ts` | All interfaces: `ScopeItem`, `ScopeLayer`, `SelectedNodeContext`, `JsxAttr`, `ComponentProp`, `BlockRange`, etc. |
+| `astHelpers.ts` | AST traversal: `isAstNode`, `getChildNodes`, `nodeContainsLine`, `findSmallestContainingNode`, `extractBlock`, `findNamedComponentNode` |
+| `importHelpers.ts` | Import analysis: `extractImports`, `collectModuleUsages`, `buildBareModuleDeclarations`, `resolveRelativePath` |
+| `jsxExtraction.ts` | JSX parsing: `extractJsxAttrs`, `extractJsxTextChildren`, `rewriteJsxTextChild`, `findLocatorUsages` |
+| `typeInference.ts` | Type inference: `inferTypeFromExpression`, `inferTypeOfLocal`, `extractComponentLocals`, `extractOwnerProps`, `inferOwnerComponentName`, `enrichWithTypeDeclaration` |
+| `astRewriters.ts` | Source rewriters: `rewriteAttrValue`, `removeAttr`, `insertAttr`, `addPropToOwnerSignature`, `removePropFromOwnerSignature`, `addStateVariable`, `removeStateVariable` |
+| `ExpressionPicker.tsx` | `WrapExpressionChooser` and `ExpressionPickerPanel` components |
+| `ScopePanel.tsx` | `ScopePanel` and `ScopeItemChip` components, `scopeStyles`, `LINK_COLORS` |
+| `InfoIcon.tsx` | Reusable `InfoIcon` SVG component |
+| `styles.ts` | Main CSS-in-JS styles object |
+| `InspectorPanel.tsx` | Main component: `refreshBindings`, effects, Monaco setup, event handlers (~2100 lines) |
 
 ## Key Interfaces
 

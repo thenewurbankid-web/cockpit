@@ -28,22 +28,42 @@ The builder runs alongside a target React app (`login-app`) and provides:
 cockpit/                         ← monorepo root (npm workspaces)
 ├── builder-app/                 ← visual builder UI (Vite 5 + React 18, port 5174)
 │   ├── server/
-│   │   └── devServer.js         ← Express API: source read/write, TS diagnostics, CRUD
+│   │   ├── devServer.js         ← Express routes + server startup
+│   │   ├── utils.js             ← REPO_ROOT, isSafeFile, TS diagnostics
+│   │   ├── astInfo.js           ← AST extraction (babel parser)
+│   │   └── templates.js         ← Page/Component/Expression file templates
 │   ├── src/
 │   │   ├── App.tsx              ← root layout (tree | canvas | inspector)
+│   │   ├── modals.tsx           ← AddPageModal, AddComponentModal, AddExpressionModal
+│   │   ├── appStyles.ts         ← CSS-in-JS styles for App + modals
 │   │   ├── fiberSource.ts       ← React fiber → source location resolver
 │   │   ├── highlight.ts         ← DOM element highlight overlay
+│   │   ├── inspector/
+│   │   │   ├── InspectorPanel.tsx    ← main component: bindings, Monaco editor
+│   │   │   ├── types.ts             ← all interfaces
+│   │   │   ├── astHelpers.ts        ← AST traversal utilities
+│   │   │   ├── importHelpers.ts     ← import analysis + module declarations
+│   │   │   ├── jsxExtraction.ts     ← JSX attr/text parsing
+│   │   │   ├── typeInference.ts     ← type inference + owner props
+│   │   │   ├── astRewriters.ts      ← source rewrite operations
+│   │   │   ├── ExpressionPicker.tsx  ← expression wrap UI
+│   │   │   ├── ScopePanel.tsx        ← scope hierarchy + color-coded links
+│   │   │   ├── InfoIcon.tsx          ← reusable SVG icon
+│   │   │   └── styles.ts            ← CSS-in-JS styles
+│   │   ├── tree/
+│   │   │   ├── DOMTreePanel.tsx      ← main component: selection, picker mode
+│   │   │   ├── types.ts             ← DisplayNode types, SelectedNodeSnapshot
+│   │   │   ├── treeBuilders.ts       ← tree construction from fiber data
+│   │   │   ├── helpers.ts            ← node search + path utilities
+│   │   │   ├── TreeRow.tsx           ← single tree row rendering
+│   │   │   ├── styles.ts            ← CSS-in-JS styles
+│   │   │   └── expressionRewriter.ts ← expression wrapping AST transforms
 │   │   ├── preview/
 │   │   │   ├── ComponentLoader.tsx       ← lazy-loads login-app via /@fs/ imports
 │   │   │   ├── ExpressionAssignPanel.tsx ← expression assignment UI
 │   │   │   └── ExpressionTester.tsx      ← expression testing sandbox
-│   │   ├── tree/
-│   │   │   ├── DOMTreePanel.tsx          ← live DOM/component tree + picker mode
-│   │   │   └── expressionRewriter.ts     ← expression wrapping AST transforms
-│   │   ├── locator/
-│   │   │   └── useLocator.ts            ← Alt+Click → source location
-│   │   └── inspector/
-│   │       └── InspectorPanel.tsx       ← bindings, scope, Monaco editor, AST parsing
+│   │   └── locator/
+│   │       └── useLocator.ts            ← Alt+Click → source location
 │   └── vite.config.ts           ← Vite config (HMR plugins, /@fs/ setup, proxy)
 │
 ├── login-app/                   ← target app being edited (Vite 5 + React 18, port 5173)

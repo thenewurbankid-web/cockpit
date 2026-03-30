@@ -3,7 +3,18 @@ applyTo: "builder-app/server/**"
 description: "Use when editing devServer.js or adding new API endpoints. Covers the Express source API, path safety, and TypeScript diagnostics integration."
 ---
 
-# Source API Server (devServer.js)
+# Source API Server
+
+## Module Structure
+
+The server is split into focused modules under `builder-app/server/`:
+
+| Module | Purpose |
+|--------|---------|
+| `utils.js` | `REPO_ROOT`, `isSafeFile()` path-traversal guard, TypeScript diagnostics (`getDiagnosticsForFile`) |
+| `astInfo.js` | `extractAstInfo()` — parses files with `@babel/parser`, returns component & JSX expression metadata |
+| `templates.js` | File templates (`buildPageTemplate`, `buildComponentTemplate`, `buildExpressionTemplate`) and `extractExpressionProps()` |
+| `devServer.js` | Express routes and server startup (~320 lines) |
 
 ## Security
 

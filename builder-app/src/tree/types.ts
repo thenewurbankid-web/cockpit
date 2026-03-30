@@ -1,0 +1,141 @@
+import type { ElementSourceInfo, ExpressionInstance } from '../fiberSource'
+
+export interface ExpressionMeta {
+  name: string
+  file: string
+  props: string[]
+}
+
+/** A tree node selected for wrapping — passed to App via onWrapIntent. */
+export interface WrapIntentNode { key: string; file: string; line: number; tag: string }
+
+interface RawDomNode {
+  kind: 'dom'
+  el: Element
+  tag: string
+  sourceInfo: ElementSourceInfo | null
+  children: RawDomNode[]
+}
+
+interface DisplayDomNode {
+  kind: 'dom'
+  key: string
+  el: Element
+  tag: string
+  sourceInfo: ElementSourceInfo | null
+  depth: number
+  children: DisplayNode[]
+}
+
+interface DisplayComponentNode {
+  kind: 'component'
+  key: string
+  name: string
+  file: string
+  line: number
+  depth: number
+  children: DisplayNode[]
+  /** Set when this is an expression component — maps prop name → display value. */
+  exprProps?: Record<string, string>
+  /** JSX usage-site file (only set for expression nodes). */
+  usageFile?: string | null
+  /** JSX usage-site line (only set for expression nodes). */
+  usageLine?: number | null
+}
+
+/** Greyed-out ghost node for an expression that renders null (inactive). */
+interface DisplayGhostNode {
+  kind: 'ghost'
+  key: string
+  name: string
+  exprProps: Record<string, string>
+  /** Source file of the expression component (for navigation). */
+  file: string | null
+  /** Source line of the expression JSX usage. */
+  line: number | null
+  depth: number
+  children: DisplayNode[]
+}
+
+/** Synthetic node grouping repeated component/ghost/dom siblings from the same JS expression. */
+interface DisplayLoopNode {
+  kind: 'loop'
+  key: string
+  depth: number
+  /** Source line of the expression (for display) */
+  sourceLine: number
+  sourceFile: string | null
+  count: number
+  children: DisplayNode[]
+}
+
+export type DisplayNode = DisplayDomNode | DisplayComponentNode | DisplayGhostNode | DisplayLoopNode
+
+export type { RawDomNode, DisplayDomNode, DisplayComponentNode, DisplayGhostNode, DisplayLoopNode }
+
+// Serialisable snapshot of the selected node — passed up to Inspector after selection.
+export interface SelectedNodeSnapshot {
+  tag: string
+  locatorId: string | null
+  locatorFile: string | null
+  locatorLine: number | null
+  ownerComponentName: string | null
+  ownerFile?: string | null
+  ownerLine?: number | null
+  domAttributes: Array<{ name: string; value: string }>
+}
+
+export interface PageEntry {
+  id: string
+  label: string
+  root: string
+}
+
+export interface ComponentEntry {
+  id: string
+  label: string
+  name: string
+}
+
+export interface DOMTreePanelProps {
+  canvasRef: React.RefObject<HTMLDivElement | null>
+  onLocate: (
+    file: string,
+    line: number,
+    inspectMode?: 'node' | 'component' | 'file' | 'expression',
+    componentName?: string
+  ) => void
+  /** Called after a DOM node is selected in the tree. Does NOT change locate/navigation behaviour. */
+  onNodeSelect?: (snapshot: SelectedNodeSnapshot | null) => void
+  preferredRootComponentName?: string
+  /** Controls which section is shown in the panel. */
+  activeSection?: 'pages' | 'components' | 'expressions'
+  /** Optional list of pages to display at the top of the panel. */
+  pages?: PageEntry[]
+  activePage?: string
+  onPageChange?: (id: string) => void
+  onAddPage?: () => void
+  onDeletePage?: (id: string, root: string) => void
+  /** Optional list of components to display in the panel. */
+  components?: ComponentEntry[]
+  activeComponent?: string
+  onComponentClick?: (id: string, name: string) => void
+  onAddComponent?: () => void
+  onDeleteComponent?: (id: string, name: string) => void
+  /** Optional list of expression files */
+  expressions?: ExpressionMeta[]
+  activeExpression?: string
+  onExpressionSelect?: (expr: ExpressionMeta) => void
+  onAddExpression?: () => void
+  onDeleteExpression?: (name: string) => void
+  /** Called when the user selects nodes to wrap with an expression. Handed off to App to render the assignment panel. */
+  onWrapIntent?: (nodes: WrapIntentNode[]) => void
+  /** Called when the user clicks an existing expression node (active or inactive) in the tree. */
+  onExpressionNodeClick?: (nodes: WrapIntentNode[], exprName: string) => void
+  /** When set, highlights the tree row (and DOM element in preview) for that node key. */
+  hoveredWrapNodeKey?: string | null
+  /** Called when the user drags the panel resize handle. */
+  onWidthChange?: (width: number) => void
+  /** Called once after the first tree build for each page/component, with the root node pre-selected. */
+  onAutoSelect?: (snapshot: SelectedNodeSnapshot, file: string, line: number, componentName: string) => void
+}

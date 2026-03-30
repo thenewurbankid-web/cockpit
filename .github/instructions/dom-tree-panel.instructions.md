@@ -5,6 +5,19 @@ description: "Use when editing DOMTreePanel.tsx, expressionRewriter.ts, or tree-
 
 # DOMTreePanel Development Guide
 
+## Module Structure
+
+The tree panel is split into focused modules under `builder-app/src/tree/`:
+
+| Module | Purpose |
+|--------|---------|
+| `types.ts` | All interfaces: `DisplayNode` (union of Dom/Component/Ghost/Loop), `RawDomNode`, `SelectedNodeSnapshot`, `ExpressionMeta`, `WrapIntentNode`, etc. |
+| `treeBuilders.ts` | Tree construction: `buildRawDomTree`, `toMixedTree`, `buildMixedTree`, `inferPageRoot`, `mergeExpressionData`, `groupSiblingLoops` |
+| `helpers.ts` | Utility functions: `countNodes`, `findPathToEl`, `findNodeByKey`, `getNodeFile`, `getNodeLine`, `computeRelativeImportPath` |
+| `TreeRow.tsx` | `TreeRow` component — renders a single expandable tree row with icons, labels, and context menus |
+| `styles.ts` | CSS-in-JS styles for the tree panel |
+| `DOMTreePanel.tsx` | Main component: selection, picker mode, context menus, multi-select (~1170 lines) |
+
 ## Tree Architecture
 
 The tree panel builds a mixed component+DOM tree from live React fiber data:
@@ -17,7 +30,7 @@ The tree panel builds a mixed component+DOM tree from live React fiber data:
 ## Node Types
 
 ```typescript
-type DisplayNode = DisplayDomNode | DisplayComponentNode
+type DisplayNode = DisplayDomNode | DisplayComponentNode | DisplayGhostNode | DisplayLoopNode
 
 interface DisplayDomNode {
   kind: 'dom'
