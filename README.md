@@ -6,84 +6,124 @@ A visual dev tool for inspecting and editing React component source code in real
 
 ## What It Does
 
-The builder runs alongside a target React app (currently `login-app`) and provides:
+The builder runs alongside a target React app (`login-app`) and provides:
 
 - **Live preview** — renders the target app inside a sandboxed canvas via Vite HMR; changes to source files are reflected instantly
-- **DOM tree panel** — shows a live component/element tree; click any node to inspect it
+- **DOM + component tree** — shows a mixed React component / DOM element tree built from live React fiber data; click any node to inspect it
 - **Alt+Click locator** — Alt+Click any element in the preview to jump directly to its source location
+- **Picker mode** — toggle crosshair picker (⊕ button) to hover-highlight and click-select elements without holding Alt
 - **Bindings inspector** — view and edit JSX attributes, component prop declarations, types, and default values; changes write back to source files immediately
-- **Monaco source editor** — full TypeScript-aware editor for the file owning the selected element, with real-time diagnostics via the TypeScript compiler API
-- **Type inference** — click ⟳ next to any type field to infer the TypeScript type from the current prop value (literal or variable)
-- **Prop management** — add props (with type + default value + usage-site binding in one action), delete props, rename values, and toggle between literal and variable binding modes
+- **Scope panel** — visualizes the component hierarchy with color-coded binding links between parent variables and child props (e.g. `email` state → `value` prop)
+- **Monaco source editor** — full TypeScript-aware editor for the file owning the selected element, with real-time diagnostics
+- **Type inference** — click ⟳ next to any type field to infer the TypeScript type from the current prop value
+- **Prop management** — add props (with type + default value + usage-site binding in one action), delete props, rename values, and toggle between literal/variable binding modes
+- **Expression system** — wrap JSX elements in expression components (IfExpression, LoopExpression, SwitchExpression, etc.) with a visual assign panel
+- **Page/component/expression management** — create and delete pages, components, and expressions from the builder UI
 
 ---
 
 ## Repo Structure
 
 ```
-builder/                        ← monorepo root
-├── builder-app/                ← the visual builder UI
+cockpit/                         ← monorepo root (npm workspaces)
+├── builder-app/                 ← visual builder UI (Vite 5 + React 18, port 5174)
 │   ├── server/
-│   │   └── devServer.js        ← Express API: read/write source files + TS diagnostics
+│   │   └── devServer.js         ← Express API: source read/write, TS diagnostics, CRUD
 │   ├── src/
-│   │   ├── App.tsx             ← root layout (tree | canvas | inspector)
+│   │   ├── App.tsx              ← root layout (tree | canvas | inspector)
+│   │   ├── fiberSource.ts       ← React fiber → source location resolver
+│   │   ├── highlight.ts         ← DOM element highlight overlay
 │   │   ├── preview/
-│   │   │   └── ComponentLoader.tsx   ← lazy-loads login-app inside an error boundary
+│   │   │   ├── ComponentLoader.tsx       ← lazy-loads login-app via /@fs/ imports
+│   │   │   ├── ExpressionAssignPanel.tsx ← expression assignment UI
+│   │   │   └── ExpressionTester.tsx      ← expression testing sandbox
 │   │   ├── tree/
-│   │   │   └── DOMTreePanel.tsx      ← live DOM component tree
+│   │   │   ├── DOMTreePanel.tsx          ← live DOM/component tree + picker mode
+│   │   │   └── expressionRewriter.ts     ← expression wrapping AST transforms
 │   │   ├── locator/
-│   │   │   └── useLocator.ts         ← Alt+Click → source location resolver
+│   │   │   └── useLocator.ts            ← Alt+Click → source location
 │   │   └── inspector/
-│   │       └── InspectorPanel.tsx    ← bindings tab + Monaco source tab
-│   └── vite.config.ts          ← Vite config (port 5174, @login-app alias, locatorjs)
+│   │       └── InspectorPanel.tsx       ← bindings, scope, Monaco editor, AST parsing
+│   └── vite.config.ts           ← Vite config (HMR plugins, /@fs/ setup, proxy)
 │
-├── login-app/                  ← target app being edited
+├── login-app/                   ← target app being edited (Vite 5 + React 18, port 5173)
 │   └── src/
-│       ├── pages/
-│       │   └── LoginPage.tsx
-│       └── components/
-│           ├── Button.tsx
-│           └── Input.tsx
+│       ├── pages/               ← full-page components (*Page.tsx)
+│       ├── components/          ← shared UI components (Button, Input)
+│       └── expressions/         ← expression components (IfExpression, LoopExpression, etc.)
 │
-└── package.json                ← npm workspaces root
+├── .github/
+│   ├── copilot-instructions.md  ← workspace-level AI coding instructions
+│   ├── AGENTS.md                ← agent role definitions
+│   └── instructions/            ← file-scoped AI instructions
+│       ├── inspector-panel.instructions.md
+│       ├── dom-tree-panel.instructions.md
+│       ├── fiber-source.instructions.md
+│       ├── dev-server.instructions.md
+│       ├── login-app.instructions.md
+│       └── vite-config.instructions.md
+│
+└── package.json                 ← npm workspaces root
 ```
 
 ---
 
 ## How It Works
 
-### Source file API
+### React Fiber Source Resolution
 
-`builder-app/server/devServer.js` runs on **port 3001** and exposes three endpoints that the inspector UI calls to read and write source files:
+`fiberSource.ts` reads `_debugSource` from React fiber nodes attached to DOM elements. Every JSX element in development has `{ fileName, lineNumber }` injected by esbuild's JSX transform. We extract:
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/__source?file=<abs-path>` | Read a source file as plain text |
-| `POST` | `/__source` | Write `{ file, content }` back to disk; Vite HMR picks up the change automatically |
-| `POST` | `/__diagnostics` | Run the TypeScript compiler on a file (optionally with override content) and return Monaco-formatted diagnostic markers |
+- **`file` / `line`** — where the element is defined (e.g. `Input.tsx:18`)
+- **`ownerComponentName`** — the React component that rendered this element
+- **`ownerFile` / `ownerLine`** — where the owner component is used in its parent's JSX
 
-All file paths are validated to stay inside the monorepo root (path-traversal guard).
+A custom Vite plugin (`fixSourceLineNumbers`) corrects a line-number offset caused by `@vitejs/plugin-react`'s fast-refresh wrapper prepending 19 lines to functional components.
 
-### Locator injection
+### AST-Based Editing
 
-`@locator/babel-jsx` is applied by the Vite config to every `.jsx`/`.tsx` file at dev time. It injects:
+`InspectorPanel.tsx` uses `@babel/parser` (with TypeScript + JSX plugins) to:
+- Parse source files into ASTs
+- Extract JSX attributes, component props, local variables, and type declarations
+- Perform targeted source rewrites (value changes, prop additions, type inference)
+- Build scope hierarchy with parent→child binding link tracking
 
-- `data-locatorjs-id="<file>::<index>"` onto every JSX element
-- `window.__LOCATOR_DATA__[file]` with expression locations and component boundaries
+All transforms are AST-based — never regex on source structure.
 
-`useLocator.ts` reads these at click time to resolve the clicked element back to its source file + line number.
+### Scope Hierarchy & Color-Coded Links
 
-### Live preview
+When you select a component or element, the scope panel shows:
+1. **Parent layer** — the component that uses the selected component (e.g. LoginPage)
+2. **Current layer** — the selected component itself (e.g. Input)
+3. **Color-coded links** — matching colors between parent variables and child props they're bound to (e.g. green dot on `email` state ↔ green dot on `value` prop)
 
-`ComponentLoader.tsx` uses `React.lazy` to import `LoginPage` from `login-app` via the `@login-app` path alias (resolves to `../login-app/src`). Vite HMR propagates edits made by the inspector to the preview without a full page reload.
+This is built by fetching the parent's source file using fiber `ownerFile`/`ownerLine`, parsing JSX attrs at the usage site, and computing `{ parentVar, childProp }` link pairs.
 
-### Inspector data flow
+### Live Preview & HMR
 
-1. User selects a node (Alt+Click or tree click) → `selectedNode` + `location` state set in `App.tsx`
-2. `InspectorPanel` fetches the source file via `GET /__source`
-3. For **component nodes** (capitalised tag): `extractOwnerProps` parses the component's props interface/type + destructure pattern using `@babel/parser` to populate the Bindings tab
-4. For **DOM nodes**: `extractJsxAttrs` parses the JSX attributes at the located line
-5. Edits (value, type, default) are applied to the AST-derived source string using targeted rewrite functions and committed via `POST /__source`; Monaco's undo history covers all writes
+`ComponentLoader.tsx` uses `React.lazy` with `/@fs/` dynamic imports to load login-app components. A custom Vite plugin (`loginAppHmrNotify`) watches login-app source files and sends HMR events that clear the lazy-import cache, enabling instant live preview of changes.
+
+---
+
+## Source API (Express, port 3001)
+
+All endpoints are proxied through Vite at `/__source*`. File paths must be absolute and within the monorepo root.
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/__source?file=<abs-path>` | Read file as plain text |
+| `POST` | `/__source` | Write `{ file, content }` to disk |
+| `POST` | `/__diagnostics` | TypeScript diagnostics for `{ file, content? }` |
+| `GET` | `/__source/ast-info?file=<path>` | AST component/expression metadata |
+| `GET` | `/__source/list-pages` | List pages |
+| `POST` | `/__source/create-page` | Create page `{ name }` |
+| `DELETE` | `/__source/page/:name` | Delete page |
+| `GET` | `/__source/list-components` | List components |
+| `POST` | `/__source/create-component` | Create component `{ name }` |
+| `DELETE` | `/__source/component/:name` | Delete component |
+| `GET` | `/__source/list-expressions` | List expressions (with parsed props) |
+| `POST` | `/__source/create-expression` | Create expression `{ name, props? }` |
+| `DELETE` | `/__source/expression/:name` | Delete expression |
 
 ---
 
@@ -105,7 +145,7 @@ npm install
 Open **two terminals**:
 
 ```bash
-# Terminal 1 — target app (login-app) on port 5173
+# Terminal 1 — target app on port 5173
 npm run dev:login
 
 # Terminal 2 — builder UI + source API on ports 5174 / 3001
@@ -114,58 +154,70 @@ npm run dev:builder
 
 Then open **http://localhost:5174** in your browser.
 
-> The builder imports `login-app` source directly — both dev servers must be running for HMR to work correctly.
+> Both dev servers must be running — the builder imports login-app source directly.
 
 ### Build
 
 ```bash
-npm run build:login    # build login-app
-npm run build:builder  # build builder-app
+npm run build:login
+npm run build:builder
 ```
 
 ---
 
 ## Agentic Development Workflow
 
-The builder is designed as a **human-in-the-loop** tool for AI-assisted React development:
+Cockpit is designed as a **human-in-the-loop** tool for AI-assisted React development:
 
-1. **Agent writes source files** — AI agents (e.g. GitHub Copilot, Claude) edit `login-app/src/**` files directly, or via the `POST /__source` API
-2. **Builder shows live result** — the preview canvas reflects every file change via HMR with no manual refresh
-3. **Human inspects and corrects** — click any element to see its props, types, and default values; adjust bindings without touching source directly
-4. **Agent reads current state** — agents can `GET /__source?file=<path>` to read back the current source before making further edits, ensuring they work from the latest version
-5. **Diagnostics gate broken code** — `POST /__diagnostics` lets an agent check TypeScript errors on a proposed change before writing it to disk
+1. **Agent writes source files** — AI agents edit `login-app/src/**` files directly, or via `POST /__source`
+2. **Builder shows live result** — the preview canvas reflects every file change via HMR
+3. **Human inspects and corrects** — click any element to see its props, types, scope bindings; adjust values without touching source directly
+4. **Agent reads current state** — `GET /__source?file=<path>` reads back current source before further edits
+5. **Diagnostics gate broken code** — `POST /__diagnostics` checks TypeScript errors before writing
 
-### Source API for agents
+### Source API for Agents
 
-All file paths must be absolute and within the monorepo root.
-
-```
+```bash
 # Read a file
-GET http://localhost:3001/__source?file=D:/Repositories/builder/login-app/src/components/Button.tsx
+curl "http://localhost:3001/__source?file=/abs/path/to/Component.tsx"
 
 # Write a file
-POST http://localhost:3001/__source
-Content-Type: application/json
-{ "file": "D:/Repositories/builder/login-app/src/components/Button.tsx", "content": "..." }
+curl -X POST http://localhost:3001/__source \
+  -H "Content-Type: application/json" \
+  -d '{"file":"/abs/path/to/Component.tsx","content":"..."}'
 
-# Check TypeScript diagnostics (optionally with proposed content before writing)
-POST http://localhost:3001/__diagnostics
-Content-Type: application/json
-{ "file": "D:/Repositories/builder/login-app/src/components/Button.tsx", "content": "..." }
+# Check TypeScript diagnostics before writing
+curl -X POST http://localhost:3001/__diagnostics \
+  -H "Content-Type: application/json" \
+  -d '{"file":"/abs/path/to/Component.tsx","content":"..."}'
+
+# Create a new page
+curl -X POST http://localhost:3001/__source/create-page \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Settings"}'
+
+# Create a new component
+curl -X POST http://localhost:3001/__source/create-component \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Card"}'
 ```
 
 ---
 
-## Key Files for Contributors
+## AI Instruction Files
 
-| File | Purpose |
-|------|---------|
-| `builder-app/src/inspector/InspectorPanel.tsx` | Core inspector: AST parsing, prop rewriting, Monaco integration, all bindings UI |
-| `builder-app/src/tree/DOMTreePanel.tsx` | DOM tree construction from live React fiber data |
-| `builder-app/src/locator/useLocator.ts` | Alt+Click → file/line resolution |
-| `builder-app/server/devServer.js` | Source file API + TypeScript diagnostics API |
-| `login-app/src/pages/LoginPage.tsx` | Root component of the target app |
-| `login-app/src/components/` | Shared UI components (`Button`, `Input`) |
+The `.github/` directory contains instruction files that help AI coding agents understand the codebase:
+
+| File | Scope |
+|------|-------|
+| `copilot-instructions.md` | Workspace-wide: architecture, conventions, patterns |
+| `AGENTS.md` | Agent role definitions (builder-dev, login-app-dev, api-dev) |
+| `instructions/inspector-panel.instructions.md` | InspectorPanel AST parsing, scope hierarchy |
+| `instructions/dom-tree-panel.instructions.md` | DOMTreePanel fiber tree, picker mode |
+| `instructions/fiber-source.instructions.md` | Fiber source resolution, line offsets |
+| `instructions/dev-server.instructions.md` | Express API endpoints, path safety |
+| `instructions/login-app.instructions.md` | Target app conventions, templates |
+| `instructions/vite-config.instructions.md` | Vite plugins, HMR, build config |
 
 ---
 
@@ -177,7 +229,7 @@ Content-Type: application/json
 | UI framework | React 18 |
 | Language | TypeScript 5 |
 | AST parsing | `@babel/parser` |
-| Source-map locator injection | `@locator/babel-jsx` |
+| Source mapping | React fiber `_debugSource` |
 | Code editor | Monaco Editor (`@monaco-editor/react`) |
 | TypeScript diagnostics | `typescript` compiler API (server-side) |
 | Dev API server | Express 4 |

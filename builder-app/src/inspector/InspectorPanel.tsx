@@ -51,6 +51,10 @@ export interface SelectedNodeContext {
   locatorFile: string | null
   locatorLine: number | null
   ownerComponentName: string | null
+  /** File where the owner component is itself invoked (its parent's file). */
+  ownerFile?: string | null
+  /** Line in ownerFile where the owner component's JSX tag appears. */
+  ownerLine?: number | null
   domAttributes: Array<{ name: string; value: string }>
 }
 
@@ -94,6 +98,8 @@ interface ScopeLayer {
   isCurrent: boolean
   props: ScopeItem[]
   state: ScopeItem[]
+  /** Binding links: which parent variable is passed to which child prop. */
+  links?: Array<{ parentVar: string; childProp: string }>
 }
 
 interface InspectorPanelProps {
@@ -782,6 +788,92 @@ function extractJsxAttrs(source: string, targetLine: number): JsxAttr[] {
   } catch {
     return []
   }
+}
+
+// ── JSX text-child extraction + rewriting ───────────────────────────────────
+
+interface JsxTextChild {
+  /** 'text' = JSXText literal, 'expr' = expression child (identifier / literal) */
+  kind: 'text' | 'expr'
+  index: number
+  /** Editable display value: trimmed text or the expression source string */
+  value: string
+  /** 0-indexed line/col in the full source */
+  startLine: number
+  startCol: number
+  endLine: number
+  endCol: number
+}
+
+function extractJsxTextChildren(source: string, targetLine: number): JsxTextChild[] {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const root = ast.program as unknown as AstNode
+    const jsxNode = findSmallestContainingNode(root, targetLine, (n) => n.type === 'JSXElement')
+    if (!jsxNode) return []
+    const srcLines = source.split('\n')
+    const children = (jsxNode as AstNode & { children?: AstNode[] }).children ?? []
+    const result: JsxTextChild[] = []
+    let idx = 0
+    for (const child of children) {
+      if (child.type === 'JSXText') {
+        const raw = String((child as AstNode & { value?: string }).value ?? '')
+        if (!raw.trim()) continue
+        const loc = child.loc as AstLocFull | undefined
+        if (!loc) continue
+        result.push({
+          kind: 'text', index: idx++, value: raw,
+          startLine: loc.start.line - 1, startCol: loc.start.column,
+          endLine: loc.end.line - 1, endCol: loc.end.column,
+        })
+      } else if (child.type === 'JSXExpressionContainer') {
+        const expr = (child as AstNode & { expression?: AstNode }).expression
+        if (!expr || expr.type === 'JSXEmptyExpression') continue
+        if (
+          expr.type !== 'Identifier' &&
+          expr.type !== 'StringLiteral' &&
+          expr.type !== 'NumericLiteral' &&
+          expr.type !== 'TemplateLiteral'
+        ) continue
+        const loc = expr.loc as AstLocFull | undefined
+        if (!loc) continue
+        let value = ''
+        if (loc.start.line === loc.end.line) {
+          value = srcLines[loc.start.line - 1]?.slice(loc.start.column, loc.end.column) ?? ''
+        } else {
+          const parts: string[] = []
+          for (let l = loc.start.line; l <= loc.end.line; l++) {
+            const ln = srcLines[l - 1] ?? ''
+            if (l === loc.start.line) parts.push(ln.slice(loc.start.column))
+            else if (l === loc.end.line) parts.push(ln.slice(0, loc.end.column))
+            else parts.push(ln)
+          }
+          value = parts.join('\n')
+        }
+        result.push({
+          kind: 'expr', index: idx++, value,
+          startLine: loc.start.line - 1, startCol: loc.start.column,
+          endLine: loc.end.line - 1, endCol: loc.end.column,
+        })
+      }
+    }
+    return result
+  } catch {
+    return []
+  }
+}
+
+function rewriteJsxTextChild(source: string, child: JsxTextChild, newValue: string): string {
+  const lines = source.split('\n')
+  if (child.startLine === child.endLine) {
+    const ln = lines[child.startLine]
+    lines[child.startLine] = ln.slice(0, child.startCol) + newValue + ln.slice(child.endCol)
+  } else {
+    const before = lines[child.startLine].slice(0, child.startCol)
+    const after = lines[child.endLine].slice(child.endCol)
+    lines.splice(child.startLine, child.endLine - child.startLine + 1, before + newValue + after)
+  }
+  return lines.join('\n')
 }
 
 // Find all JSX usage sites of a component tag by scanning window.__LOCATOR_DATA__.
@@ -2499,12 +2591,25 @@ interface ScopePanelProps {
   readOnly?: boolean
 }
 
+const LINK_COLORS = ['#a6e3a1', '#89dceb', '#cba6f7', '#fab387', '#f9e2af', '#94e2d5', '#f38ba8', '#89b4fa']
+
 function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState, readOnly }: ScopePanelProps) {
   const [expanded, setExpanded] = useState(true)
   if (layers.length === 0) return null
 
   const totalUsed = layers.reduce((s, l) =>
     s + l.props.filter(i => i.usedInNode).length + l.state.filter(i => i.usedInNode).length, 0)
+
+  // Build color maps from the current layer's links
+  const childLayer = layers.find(l => l.isCurrent)
+  const links = childLayer?.links ?? []
+  const parentVarColor = new Map<string, string>()
+  const childPropColor = new Map<string, string>()
+  links.forEach((link, i) => {
+    const color = LINK_COLORS[i % LINK_COLORS.length]
+    if (link.parentVar) parentVarColor.set(link.parentVar, color)
+    if (link.childProp) childPropColor.set(link.childProp, color)
+  })
 
   return (
     <div style={scopeStyles.panel}>
@@ -2520,14 +2625,30 @@ function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState
         <div style={scopeStyles.body}>
           {[...layers].reverse().map((layer, ri) => {
             const depth = layers.length - 1 - ri
+            const isLast = ri === layers.length - 1
             const canEdit = !readOnly && layer.isCurrent
+            const colorMap = layer.isCurrent ? childPropColor : parentVarColor
             return (
-              <div key={layer.componentName} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12 }}>
+              <div key={layer.componentName} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12, position: 'relative' }}>
+                {/* connector line from parent to child */}
+                {!isLast && (
+                  <div style={{
+                    position: 'absolute',
+                    left: 8 + depth * 12 + 5,
+                    top: 18,
+                    bottom: -6,
+                    width: 1,
+                    background: 'rgba(137,180,250,0.18)',
+                  }} />
+                )}
                 <div style={scopeStyles.layerHeader}>
                   <span style={layer.isCurrent ? scopeStyles.layerNameCurrent : scopeStyles.layerNameParent}>
                     {layer.isCurrent ? '▶ ' : '◦ '}{layer.componentName}
                   </span>
-                  {layer.isCurrent && <span style={scopeStyles.currentBadge}>current</span>}
+                  {layer.isCurrent
+                    ? <span style={scopeStyles.currentBadge}>current</span>
+                    : <span style={scopeStyles.parentBadge}>parent</span>
+                  }
                 </div>
                 {(layer.props.length > 0 || canEdit) && (
                   <div style={scopeStyles.group}>
@@ -2537,6 +2658,7 @@ function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState
                         <ScopeItemChip
                           key={item.name}
                           item={item}
+                          linkColor={colorMap.get(item.name)}
                           onRemove={canEdit ? () => onRemoveProp?.(layer.componentName, item.name) : undefined}
                         />
                       ))}
@@ -2558,6 +2680,7 @@ function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState
                         <ScopeItemChip
                           key={item.name}
                           item={item}
+                          linkColor={colorMap.get(item.name)}
                           onRemove={canEdit ? () => onRemoveState?.(layer.componentName, item.name) : undefined}
                         />
                       ))}
@@ -2580,7 +2703,7 @@ function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState
   )
 }
 
-function ScopeItemChip({ item, onRemove }: { item: ScopeItem; onRemove?: () => void }) {
+function ScopeItemChip({ item, onRemove, linkColor }: { item: ScopeItem; onRemove?: () => void; linkColor?: string }) {
   const [copied, setCopied] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -2592,14 +2715,23 @@ function ScopeItemChip({ item, onRemove }: { item: ScopeItem; onRemove?: () => v
   }
   return (
     <div
-      style={{ ...scopeStyles.item, ...(item.usedInNode ? scopeStyles.itemUsed : {}), cursor: 'pointer', position: 'relative' }}
+      style={{
+        ...scopeStyles.item,
+        ...(item.usedInNode ? scopeStyles.itemUsed : {}),
+        ...(linkColor ? { borderColor: linkColor + '60', background: linkColor + '14' } : {}),
+        cursor: 'pointer',
+        position: 'relative',
+      }}
       onClick={confirmRemove ? undefined : handleClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false) }}
       title={confirmRemove ? '' : `Copy "${item.name}" to clipboard`}
     >
-      <span style={scopeStyles.itemDot}>{item.usedInNode ? '●' : '○'}</span>
-      <code style={scopeStyles.itemName}>{copied ? '✓' : item.name}</code>
+      {linkColor
+        ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: linkColor, flexShrink: 0, display: 'inline-block' }} />
+        : <span style={scopeStyles.itemDot}>{item.usedInNode ? '●' : '○'}</span>
+      }
+      <code style={{ ...scopeStyles.itemName, ...(linkColor ? { color: linkColor } : {}) }}>{copied ? '✓' : item.name}</code>
       {!copied && item.typeStr && <span style={scopeStyles.itemType}>{item.typeStr}</span>}
       {onRemove && hovered && !confirmRemove && (
         <span
@@ -2640,7 +2772,9 @@ const scopeStyles: Record<string, React.CSSProperties> = {
     gap: '0.35rem',
     width: '100%',
     background: 'none',
-    border: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
     borderBottom: '1px solid #1e1e2e',
     color: '#7f849c',
     cursor: 'pointer',
@@ -2691,6 +2825,18 @@ const scopeStyles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     padding: '1px 7px',
     fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase' as const,
+  },
+  parentBadge: {
+    marginLeft: 'auto',
+    fontSize: '0.6rem',
+    color: '#6c7086',
+    background: 'transparent',
+    border: '1px solid #45475a',
+    borderRadius: 10,
+    padding: '1px 7px',
+    fontWeight: 600,
     letterSpacing: '0.04em',
     textTransform: 'uppercase' as const,
   },
@@ -2908,6 +3054,10 @@ export function InspectorPanel({
   const [parentComponentName, setParentComponentName] = useState('')
   // Live input text while an attr field is focused (cleared on focus so datalist shows all options).
   const [focusedAttr, setFocusedAttr] = useState<string | null>(null)
+  const [textChildren, setTextChildren] = useState<JsxTextChild[]>([])
+  const [textChildEdits, setTextChildEdits] = useState<Record<number, string>>({})
+  /** Per-attr value/expression mode for DOM element attr rows. */
+  const [attrModes, setAttrModes] = useState<Record<string, 'value' | 'expression' | 'scope'>>({})
   const [bindingsSaving, setBindingsSaving] = useState(false)
   // New-prop creation state
   const [newPropName, setNewPropName] = useState('')
@@ -2917,8 +3067,8 @@ export function InspectorPanel({
   const [newPropAsExpr, setNewPropAsExpr] = useState(false)
   const [newPropTypeInferred, setNewPropTypeInferred] = useState(false)
   const [showAddProp, setShowAddProp] = useState(false)
-  /** Per-prop value mode for existing binding rows ('variable' = expression, 'entry' = literal). */
-  const [propValueMode, setPropValueMode] = useState<Record<string, 'variable' | 'entry'>>({})
+  /** Per-prop value mode for existing binding rows. */
+  const [propValueMode, setPropValueMode] = useState<Record<string, 'scope' | 'expression' | 'value'>>({})
   /** True when the selected tree node is a React component (not a raw DOM element). */
   const [inspectingComponent, setInspectingComponent] = useState(false)
   /** True when the inspected component has a named props interface/type registered. */
@@ -3201,6 +3351,7 @@ export function InspectorPanel({
       setJsxAttrs([])
       setOwnerProps([])
       setAttrEdits({})
+      setAttrModes({})
       setInspectingComponent(false)
       setHasPropTypeDef(true)
       setScopeLayers([])
@@ -3231,6 +3382,7 @@ export function InspectorPanel({
         .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: false })),
     }])
     setAttrEdits({})
+    setAttrModes({})
     setPropTypeEdits({})
     setPropValueEdits({})
     setPropDefaultEdits({})
@@ -3241,12 +3393,18 @@ export function InspectorPanel({
     setParentSource('')
     setParentComponentName('')
     setUsageInfo(null)
-      // Asynchronously find all usage sites of this component in the project and
-      // extract the attrs being passed there — populates the "currently passed" value column.
-      // Also extract the parent component's local variables for the value-field datalist.
+      // Asynchronously find the usage site of this component to:
+      // 1. populate the "currently passed" value column
+      // 2. build the parent scope layer
+      // Use fiber-supplied ownerFile/ownerLine first; fall back to locatorjs.
       const tag = node.tag
+      const directOwnerFile = node.ownerFile ?? null
+      const directOwnerLine = node.ownerLine ?? null
       void (async () => {
-        const usages = findLocatorUsages(tag)
+        const usages: Array<{ file: string; line: number }> =
+          directOwnerFile && directOwnerLine
+            ? [{ file: directOwnerFile, line: directOwnerLine }]
+            : findLocatorUsages(tag)
         if (usages.length === 0) return
         // Try each usage file until we get a non-empty attr set.
         for (const { file: usageFile, line: usageLine } of usages) {
@@ -3259,9 +3417,9 @@ export function InspectorPanel({
               setUsageAttrs(attrs)
               setUsageInfo({ file: usageFile, line: usageLine })
               // Initialize per-prop value mode from whether the attr is currently an expression.
-              const initModes: Record<string, 'variable' | 'entry'> = {}
+              const initModes: Record<string, 'scope' | 'expression' | 'value'> = {}
               for (const a of attrs) {
-                if (!a.isSpread) initModes[a.name] = a.isExpression ? 'variable' : 'entry'
+                if (!a.isSpread) initModes[a.name] = a.isExpression ? 'scope' : 'value'
               }
               setPropValueMode(initModes)
               // Extract local variables from the wrapping component in the parent file.
@@ -3273,7 +3431,13 @@ export function InspectorPanel({
                 setParentComponentName(parentName)
                 // Rebuild scope layers now that we have parent data.
                 const passedNames = new Set(attrs.filter(a => !a.isSpread).map(a => a.name))
-                const passedValues = new Set(attrs.filter(a => !a.isSpread).map(a => a.rawValue.replace(/^\{|\}$/g, '').trim()))
+                const passedValues = new Set(
+                  attrs.filter(a => !a.isSpread).flatMap(a => {
+                    const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+                    const base = stripped.split(/[.\[(]/)[0].trim()
+                    return base && base !== stripped ? [stripped, base] : [stripped]
+                  })
+                )
                 const childProps = ownerPCapture.filter(p => p.source === 'owner')
                   .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedNames.has(p.name) }))
                 const childState = extractComponentLocals(sourceCapture, tagCapture)
@@ -3285,9 +3449,13 @@ export function InspectorPanel({
                 const parentStateItems = pLocals
                   .filter(n => !parentPropsArr.find(p => p.name === n))
                   .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
+                // Build binding links: parentVar → childProp
+                const links = attrs.filter(a => !a.isSpread && a.isExpression)
+                  .map(a => ({ parentVar: a.rawValue.replace(/^\{|\}$/g, '').trim().split(/[.\[(]/)[0], childProp: a.name }))
+                  .filter(l => l.parentVar)
                 setScopeLayers([
                   { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
-                  { componentName: tagCapture, isCurrent: true, props: childProps, state: childState },
+                  { componentName: tagCapture, isCurrent: true, props: childProps, state: childState, links },
                 ])
               }
               break
@@ -3304,11 +3472,21 @@ export function InspectorPanel({
     setJsxAttrs(attrs)
 
     const initialEdits: Record<string, string> = {}
+    const initialModes: Record<string, 'value' | 'expression' | 'scope'> = {}
     for (const a of attrs) {
-      if (!a.isSpread) initialEdits[a.name] = a.rawValue
+      if (!a.isSpread) {
+        initialEdits[a.name] = a.rawValue
+        initialModes[a.name] = a.isExpression ? 'scope' : 'value'
+      }
     }
     setAttrEdits(initialEdits)
+    setAttrModes(initialModes)
+    setExpandedRows(new Set())
     setFocusedAttr(null)
+
+    const tChildren = extractJsxTextChildren(source, locLine)
+    setTextChildren(tChildren)
+    setTextChildEdits({})
 
     const ownerName = node.ownerComponentName ?? componentName
       ?? (node.locatorFile ? inferOwnerComponentName(source, locLine) : '')
@@ -3322,23 +3500,80 @@ export function InspectorPanel({
     setOwnerProps([...ownerP, ...elementOnly])
 
     // Build scope layers for the hierarchy panel.
-    // Layer 0 = owner component of this DOM node (innermost).
-    // Layer 1 = parent component (if we have parentSource from a previous component-node selection).
-    const usedNames = new Set(attrs.filter(a => !a.isSpread).map(a => a.rawValue.replace(/^\{|\}$/g, '').trim()))
-    const makeItems = (props: ComponentProp[], localNames: string[]): { props: ScopeItem[]; state: ScopeItem[] } => {
+    // usedNames: variable names referenced by this node's attrs (strip {}, also extract base
+    // identifier from member-access expressions like {formData.email} → 'formData').
+    const usedNames = new Set(
+      attrs.filter(a => !a.isSpread).flatMap(a => {
+        const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+        const base = stripped.split(/[.\[(]/)[0].trim()
+        return base && base !== stripped ? [stripped, base] : [stripped]
+      })
+    )
+    const makeItems = (props: ComponentProp[], localNames: string[], src: string, compName: string): { props: ScopeItem[]; state: ScopeItem[] } => {
       const propItems: ScopeItem[] = props
         .filter(p => p.source === 'owner')
         .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: usedNames.has(p.name) }))
       const stateItems: ScopeItem[] = localNames
         .filter(n => !props.find(p => p.name === n))
-        .map(n => ({ name: n, typeStr: inferTypeOfLocal(source, ownerName, n), usedInNode: usedNames.has(n) }))
+        .map(n => ({ name: n, typeStr: inferTypeOfLocal(src, compName, n), usedInNode: usedNames.has(n) }))
       return { props: propItems, state: stateItems }
     }
     const ownerLocals = ownerName ? extractComponentLocals(source, ownerName) : []
-    const { props: op, state: os } = makeItems(ownerP, ownerLocals)
-    const layers: ScopeLayer[] = [{ componentName: ownerName || node.tag, isCurrent: true, props: op, state: os }]
-    setScopeLayers(layers)
+    const { props: op, state: os } = makeItems(ownerP, ownerLocals, source, ownerName)
+    setScopeLayers([{ componentName: ownerName || node.tag, isCurrent: true, props: op, state: os }])
     setHasPropTypeDef(true) // DOM nodes don't need prop type defs
+
+    // Async: add a parent scope layer using React fiber ownerFile/ownerLine data
+    // (direct, no locatorjs dependency). Fall back to findLocatorUsages if missing.
+    // Skip if ownerName is the root component (no meaningful parent to show).
+    if (ownerName && ownerName !== rootComponentName) {
+      const ownerNameCapture = ownerName
+      const directOwnerFile = node.ownerFile ?? null
+      const directOwnerLine = node.ownerLine ?? null
+      const candidateUsages: Array<{ file: string; line: number }> =
+        directOwnerFile && directOwnerLine
+          ? [{ file: directOwnerFile, line: directOwnerLine }]
+          : findLocatorUsages(ownerNameCapture)
+      void (async () => {
+        for (const { file: usageFile, line: usageLine } of candidateUsages) {
+          try {
+            const res = await fetch(`/__source?file=${encodeURIComponent(usageFile)}`)
+            if (!res.ok) continue
+            const usageSource = await res.text()
+            const parentName = inferOwnerComponentName(usageSource, usageLine)
+            if (!parentName) continue
+            const parentPropsArr = extractOwnerProps(usageSource, parentName)
+            const parentLocalsArr = extractComponentLocals(usageSource, parentName)
+            // What values are passed to ownerName at this usage site?
+            const passedToOwner = extractJsxAttrs(usageSource, usageLine)
+            const passedValues = new Set(
+              passedToOwner.filter(a => !a.isSpread).flatMap(a => {
+                const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+                const base = stripped.split(/[.\[(]/)[0].trim()
+                return base && base !== stripped ? [stripped, base] : [stripped]
+              })
+            )
+            const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
+              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
+            const parentStateItems = parentLocalsArr
+              .filter(n => !parentPropsArr.find(p => p.name === n))
+              .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
+            // Build binding links: parentVar → childProp
+            const links = passedToOwner.filter(a => !a.isSpread && a.isExpression)
+              .map(a => ({ parentVar: a.rawValue.replace(/^\{|\}$/g, '').trim().split(/[.\[(]/)[0], childProp: a.name }))
+              .filter(l => l.parentVar)
+            setParentSource(usageSource)
+            setParentLocals(parentLocalsArr)
+            setParentComponentName(parentName)
+            setScopeLayers([
+              { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
+              { componentName: ownerNameCapture, isCurrent: true, props: op, state: os, links },
+            ])
+            break
+          } catch { /* skip */ }
+        }
+      })()
+    }
   }
 
   function applyBlock(source: string, targetLine: number) {
@@ -3533,7 +3768,8 @@ export function InspectorPanel({
           // Skip if unchanged from what the parent is already passing.
           if (original && newVal === original.rawValue) continue
           // Use propValueMode to determine whether to write as expression or string literal.
-          const modeIsVar = (propValueMode[propName] ?? (original?.isExpression ? 'variable' : 'entry')) === 'variable'
+          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'scope' : 'value')
+          const modeIsVar = propMode === 'scope' || propMode === 'expression'
           parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
         }
         // Persist parent file directly (it's a different file — don't push through Monaco).
@@ -3583,10 +3819,21 @@ export function InspectorPanel({
       if (!freshRes.ok) throw new Error('Fetch failed')
       let modified = await freshRes.text()
       const nodeLocLine = selectedNode?.locatorLine ?? line
+
+      // Apply text-child edits first (in reverse order to preserve offsets)
+      const textEditsToApply = textChildren
+        .filter(c => textChildEdits[c.index] !== undefined && textChildEdits[c.index] !== c.value)
+        .sort((a, b) => b.startLine - a.startLine || b.startCol - a.startCol)
+      for (const child of textEditsToApply) {
+        modified = rewriteJsxTextChild(modified, child, textChildEdits[child.index])
+      }
+
       for (const [attrName, val] of Object.entries(attrEdits)) {
         const original = jsxAttrs.find((a) => a.name === attrName)
-        if (!original || val === original.rawValue) continue
-        const asExpr = val.startsWith('{') ? false : original.isExpression
+        if (!original) continue
+        const mode = attrModes[attrName] ?? (original.isExpression ? 'expression' : 'value')
+        const asExpr = mode === 'expression' || mode === 'scope'
+        if (val === original.rawValue && asExpr === original.isExpression) continue
         modified = rewriteAttrValue(modified, nodeLocLine, attrName, val, asExpr)
       }
       await pushToMonacoAndSave(modified)
@@ -4341,167 +4588,276 @@ export function InspectorPanel({
                         </p>
                       </div>
                     ) : (
-                      ownerProps.map((prop) => (
-                        <div key={prop.name} style={styles.attrRowWrap}>
-                          <div style={{ ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px auto auto' }}>
-                            <span style={styles.attrName}>{prop.name}</span>
-                            {/* Binding value cell */}
-                            <div style={styles.attrValueCell}>
-                              <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                {!isReadOnly && (
-                                  <div style={{ ...styles.modeToggle, flexShrink: 0 }}>
-                                    <button
-                                      style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'variable' ? styles.modeBtnActive : {}) }}
-                                      onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'variable' }))}
-                                    >var</button>
-                                    <button
-                                      style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'variable') === 'entry' ? styles.modeBtnActive : {}) }}
-                                      onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'entry' }))}
-                                    >val</button>
+                      ownerProps.map((prop) => {
+                        const rowOpen = !expandedRows.has(prop.name)
+                        return (
+                          <div key={prop.name} style={styles.attrRowWrap}>
+                            {/* Header */}
+                            <div
+                              style={styles.attrRowHeader}
+                              onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(prop.name) ? n.delete(prop.name) : n.add(prop.name); return n })}
+                            >
+                              <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
+                              <span style={{ ...styles.attrName, flex: 1 }}>{prop.name}</span>
+                              <span style={styles.badgeOwner}>prop</span>
+                              {!isReadOnly && (
+                                <button
+                                  style={styles.deleteBtn}
+                                  title={`Remove prop ${prop.name}`}
+                                  disabled={deletingProp === prop.name}
+                                  onClick={(e) => { e.stopPropagation(); void handleDeleteProp(prop.name) }}
+                                >
+                                  {deletingProp === prop.name ? '…' : '✕'}
+                                </button>
+                              )}
+                            </div>
+                            {/* Expanded body */}
+                            {rowOpen && (
+                              <div style={styles.attrRowBody}>
+                                {/* Value */}
+                                <div style={styles.attrBodyRow}>
+                                  <span style={styles.attrBodyLabel}>value</span>
+                                  {!isReadOnly && (
+                                    <div style={styles.modeToggle}>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'expression' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'expression' }))}
+                                      >expression</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'scope' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'scope' }))}
+                                      >scope</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'value' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'value' }))}
+                                      >value</button>
+                                    </div>
+                                  )}
+                                  {(propValueMode[prop.name] ?? 'scope') === 'scope' ? (
+                                    <select
+                                      style={styles.attrInput}
+                                      disabled={isReadOnly}
+                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
+                                      onChange={(e) => {
+                                        if (isReadOnly) return
+                                        setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
+                                      }}
+                                    >
+                                      <option value="">— pick variable —</option>
+                                      {scopeLayers.length > 0
+                                        ? scopeLayers.map(layer => [
+                                            layer.props.length > 0 && (
+                                              <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                                {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                              </optgroup>
+                                            ),
+                                            layer.state.length > 0 && (
+                                              <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                                {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                              </optgroup>
+                                            ),
+                                          ])
+                                        : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                      }
+                                    </select>
+                                  ) : (
+                                    <input
+                                      style={styles.attrInput}
+                                      readOnly={isReadOnly}
+                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
+                                      onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
+                                      onBlur={(e) => {
+                                        if (isReadOnly) return
+                                        const typed = e.target.value
+                                        const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
+                                        setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
+                                      }}
+                                      placeholder={(propValueMode[prop.name] ?? 'scope') === 'expression' ? 'e.g. style.height' : (prop.defaultValue ?? 'value')}
+                                    />
+                                  )}
+                                </div>
+                                {/* Type */}
+                                <div style={styles.attrBodyRow}>
+                                  <span style={styles.attrBodyLabel}>type</span>
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <input
+                                      style={{ ...styles.attrInput, flex: 1 }}
+                                      readOnly={isReadOnly}
+                                      value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
+                                      onChange={(e) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
+                                      onBlur={(e) => {
+                                        if (isReadOnly) return
+                                        const typed = e.target.value
+                                        if (typed) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: typed }))
+                                      }}
+                                      placeholder="type"
+                                    />
+                                    {!isReadOnly && (
+                                      <button
+                                        style={styles.inferBtn}
+                                        title="Infer type from current value"
+                                        onClick={() => {
+                                          const curVal = (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
+                                          const pvm = propValueMode[prop.name] ?? 'scope'
+                                          const varMode = pvm === 'scope' || pvm === 'expression'
+                                          const inferred = varMode && parentSource && parentComponentName
+                                            ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
+                                            : inferTypeFromValueString(curVal)
+                                          if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
+                                        }}
+                                      >⟳</button>
+                                    )}
                                   </div>
-                                )}
-                                {(propValueMode[prop.name] ?? 'variable') === 'variable' ? (
-                                  <select
-                                    style={{ ...styles.attrInput, flex: 1 }}
-                                    disabled={isReadOnly}
-                                    value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
-                                    onChange={(e) => {
-                                      if (isReadOnly) return
-                                      setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
-                                    }}
-                                  >
-                                    <option value="">— pick variable —</option>
-                                    {scopeLayers.length > 0
-                                      ? scopeLayers.map(layer => [
-                                          layer.props.length > 0 && (
-                                            <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
-                                              {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
-                                            </optgroup>
-                                          ),
-                                          layer.state.length > 0 && (
-                                            <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
-                                              {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
-                                            </optgroup>
-                                          ),
-                                        ])
-                                      : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
-                                    }
-                                  </select>
-                                ) : (
-                                  <input
-                                    style={{ ...styles.attrInput, flex: 1 }}
-                                    readOnly={isReadOnly}
-                                    value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
-                                    onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                    onBlur={(e) => {
-                                      if (isReadOnly) return
-                                      const typed = e.target.value
-                                      const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
-                                      setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
-                                    }}
-                                    placeholder={prop.defaultValue ?? 'value'}
-                                  />
-                                )}
+                                </div>
                               </div>
-                            </div>
-                            {/* Type cell */}
-                            <div style={{ ...styles.attrValueCell, maxWidth: 90 }}>
-                              <div style={{ display: 'flex', gap: 2 }}>
-                                <input
-                                  style={{ ...styles.attrInput, flex: 1, minWidth: 0 }}
-                                  readOnly={isReadOnly}
-                                  value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
-                                  onChange={(e) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                  onBlur={(e) => {
-                                    if (isReadOnly) return
-                                    const typed = e.target.value
-                                    if (typed) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: typed }))
-                                  }}
-                                  placeholder="type"
-                                />
-                                {!isReadOnly && (
-                                  <button
-                                    style={styles.inferBtn}
-                                    title="Infer type from current value"
-                                    onClick={() => {
-                                      const curVal = (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
-                                      const varMode = (propValueMode[prop.name] ?? 'variable') === 'variable'
-                                      const inferred = varMode && parentSource && parentComponentName
-                                        ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
-                                        : inferTypeFromValueString(curVal)
-                                      if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
-                                    }}
-                                  >⟳</button>
-                                )}
-                              </div>
-                            </div>
-                            <span style={styles.badgeOwner}>prop</span>
-                            {!isReadOnly && (
-                              <button
-                                style={styles.deleteBtn}
-                                title={`Remove prop ${prop.name}`}
-                                disabled={deletingProp === prop.name}
-                                onClick={() => void handleDeleteProp(prop.name)}
-                              >
-                                {deletingProp === prop.name ? '…' : '✕'}
-                              </button>
                             )}
                           </div>
-                        </div>
-                      ))
+                        )
+                      })
                     )
                   )}
 
-                  {/* ── DOM mode: editable JSX attributes ─────────────── */}
-                  {!inspectingComponent && jsxAttrs.length === 0 && (
-                    <div style={styles.bindingsEmptyAttrs}>No JSX attributes found on this element.</div>
+                  {/* ── DOM mode: text content children ───────────────── */}
+                  {!inspectingComponent && textChildren.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#6c7086', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '8px 10px 4px', flexShrink: 0 }}>Text content</div>
+                      {textChildren.map((child) => {
+                        const tKey = `__text__${child.index}`
+                        const rowOpen = !expandedRows.has(tKey)
+                        return (
+                          <div key={child.index} style={styles.attrRowWrap}>
+                            <div
+                              style={styles.attrRowHeader}
+                              onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(tKey) ? n.delete(tKey) : n.add(tKey); return n })}
+                            >
+                              <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
+                              <span style={{ ...styles.attrName, flex: 1, color: child.kind === 'expr' ? '#cba6f7' : '#a6e3a1' }}>
+                                {child.kind === 'expr' ? '{…}' : 'text'}
+                              </span>
+                            </div>
+                            {rowOpen && (
+                              <div style={styles.attrRowBody}>
+                                <div style={styles.attrBodyRow}>
+                                  <input
+                                    style={styles.attrInput}
+                                    readOnly={isReadOnly}
+                                    value={textChildEdits[child.index] ?? child.value}
+                                    onChange={(e) => {
+                                      if (!isReadOnly) setTextChildEdits(prev => ({ ...prev, [child.index]: e.target.value }))
+                                    }}
+                                    placeholder="text content"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </>
                   )}
 
-                  {!inspectingComponent && jsxAttrs.map((attr) => (
-                    <div key={attr.name} style={styles.attrRowDom}>
-                      <span style={styles.attrName}>{attr.name}</span>
+                  {/* ── DOM mode: editable JSX attributes ─────────────── */}
+                  {!inspectingComponent && jsxAttrs.length === 0 && textChildren.length === 0 && (
+                    <div style={styles.bindingsEmptyAttrs}>No JSX attributes found on this element.</div>
+                  )}
+                  {!inspectingComponent && jsxAttrs.length === 0 && textChildren.length > 0 && (
+                    <div style={styles.bindingsEmptyAttrs}>No JSX attributes on this element.</div>
+                  )}
 
-                      {attr.isSpread ? (
-                        <span style={styles.attrReadonly}>{attr.rawValue}</span>
-                      ) : (
-                        <div style={styles.attrValueCell}>
-                          <input
-                            style={styles.attrInput}
-                            readOnly={isReadOnly}
-                            value={attrEdits[attr.name] ?? attr.rawValue}
-                            onChange={(e) => {
-                              if (!isReadOnly) setAttrEdits((prev) => ({ ...prev, [attr.name]: e.target.value }))
-                            }}
-                            placeholder={attr.isBoolean ? 'true / false' : 'value or {expr}'}
-                          />
+                  {!inspectingComponent && jsxAttrs.map((attr) => {
+                    const rowOpen = !expandedRows.has(attr.name)
+                    const match = ownerProps.find((p) => p.name === attr.name)
+                    const mode = attrModes[attr.name] ?? (attr.isExpression ? 'scope' : 'value') as 'expression' | 'scope' | 'value'
+                    return (
+                      <div key={attr.name} style={styles.attrRowWrap}>
+                        {/* Header */}
+                        <div
+                          style={styles.attrRowHeader}
+                          onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(attr.name) ? n.delete(attr.name) : n.add(attr.name); return n })}
+                        >
+                          <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
+                          <span style={{ ...styles.attrName, flex: 1 }}>{attr.name}</span>
+                          {attr.isSpread && <span style={styles.attrReadonly}>{attr.rawValue}</span>}
+                          {match && (
+                            <span style={match.source === 'owner' ? styles.badgeOwner : styles.badgeElement}>
+                              {match.source === 'owner' ? 'owner' : 'elem'}
+                            </span>
+                          )}
+                          {!attr.isSpread && !isReadOnly && (
+                            <button
+                              style={styles.deleteBtn}
+                              title={`Remove attribute ${attr.name}`}
+                              disabled={deletingProp === attr.name}
+                              onClick={(e) => { e.stopPropagation(); void handleDeleteProp(attr.name) }}
+                            >
+                              {deletingProp === attr.name ? '…' : '✕'}
+                            </button>
+                          )}
                         </div>
-                      )}
-
-                      {/* Origin badge + delete */}
-                      {(() => {
-                        const match = ownerProps.find((p) => p.name === attr.name)
-                        return (
-                          <>
-                            {match && (
-                              <span style={match.source === 'owner' ? styles.badgeOwner : styles.badgeElement}>
-                                {match.source === 'owner' ? 'owner' : 'elem'}
-                              </span>
-                            )}
-                            {!attr.isSpread && !isReadOnly && (
-                              <button
-                                style={styles.deleteBtn}
-                                title={`Remove attribute ${attr.name}`}
-                                disabled={deletingProp === attr.name}
-                                onClick={() => void handleDeleteProp(attr.name)}
-                              >
-                                {deletingProp === attr.name ? '…' : '✕'}
-                              </button>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  ))}
+                        {/* Expanded body */}
+                        {rowOpen && !attr.isSpread && (
+                          <div style={styles.attrRowBody}>
+                            <div style={styles.attrBodyRow}>
+                              <span style={styles.attrBodyLabel}>value</span>
+                              {!isReadOnly && (
+                                <div style={styles.modeToggle}>
+                                  <button
+                                    style={{ ...styles.modeBtn, ...(mode === 'expression' ? styles.modeBtnActive : {}) }}
+                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'expression' }))}
+                                  >expression</button>
+                                  <button
+                                    style={{ ...styles.modeBtn, ...(mode === 'scope' ? styles.modeBtnActive : {}) }}
+                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'scope' }))}
+                                  >scope</button>
+                                  <button
+                                    style={{ ...styles.modeBtn, ...(mode === 'value' ? styles.modeBtnActive : {}) }}
+                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'value' }))}
+                                  >value</button>
+                                </div>
+                              )}
+                              {mode === 'scope' ? (
+                                <select
+                                  style={styles.attrInput}
+                                  disabled={isReadOnly}
+                                  value={attrEdits[attr.name] ?? attr.rawValue}
+                                  onChange={(e) => {
+                                    if (!isReadOnly) setAttrEdits(prev => ({ ...prev, [attr.name]: e.target.value }))
+                                  }}
+                                >
+                                  <option value="">— pick variable —</option>
+                                  {scopeLayers.length > 0
+                                    ? scopeLayers.map(layer => [
+                                        layer.props.length > 0 && (
+                                          <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                            {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                          </optgroup>
+                                        ),
+                                        layer.state.length > 0 && (
+                                          <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                            {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                          </optgroup>
+                                        ),
+                                      ])
+                                    : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                  }
+                                </select>
+                              ) : (
+                                <input
+                                  style={styles.attrInput}
+                                  readOnly={isReadOnly}
+                                  value={attrEdits[attr.name] ?? attr.rawValue}
+                                  onChange={(e) => {
+                                    if (!isReadOnly) setAttrEdits((prev) => ({ ...prev, [attr.name]: e.target.value }))
+                                  }}
+                                  placeholder={mode === 'expression' ? 'e.g. style.height' : (attr.isBoolean ? 'true / false' : 'value')}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
 
                   {/* Add prop inline form */}
                   {!isReadOnly && (showAddProp ? (
@@ -4678,7 +5034,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     zIndex: 100,
-    boxShadow: '-4px 0 20px rgba(0,0,0,0.4)',
   },
   resizeHandle: {
     position: 'absolute',
@@ -4876,6 +5231,33 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     borderBottom: '1px solid #1e1e2e',
   },
+  attrRowHeader: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    padding: '5px 10px',
+    cursor: 'pointer',
+    userSelect: 'none' as const,
+  },
+  attrRowBody: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: 6,
+    padding: '2px 10px 10px 26px',
+    background: '#13131f',
+  },
+  attrBodyRow: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: 3,
+  },
+  attrBodyLabel: {
+    fontSize: '0.65rem' as const,
+    color: '#585b70',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+  },
   attrRow: {
     display: 'grid' as const,
     gridTemplateColumns: '16px 110px 1fr 80px auto auto',
@@ -5034,6 +5416,7 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     border: '1px solid #45475a',
     flexShrink: 0,
+    alignSelf: 'flex-start' as const,
   },
   modeBtn: {
     background: 'none' as const,

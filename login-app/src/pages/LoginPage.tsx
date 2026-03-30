@@ -18,7 +18,7 @@ async function fakeLogin(email: string, _password: string): Promise<void> {
 
 
 interface LoginPageProps {
-  navigate?: (page: Page) => void
+  navigate?: string
 }
 
 export function LoginPage({navigate}: LoginPageProps) {
@@ -54,9 +54,9 @@ export function LoginPage({navigate}: LoginPageProps) {
     <div style={styles.wrapper}>
       <form onSubmit={handleSubmit} style={styles.form} noValidate>
       
-        <h2 style={styles.title}>Sign in</h2>
+        <h2 style={styles.title}>Login</h2>
         <Input
-          id="email-id"
+          id={email}
           label="Email"
           type="email"
           value={email}

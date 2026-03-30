@@ -89,7 +89,7 @@ function readSessionJson<T>(key: string, fallback: T): T {
 export default function App() {
   const initial = readUrlState()
   const [location, setLocation] = useState<SourceLocation | null>(() => readSessionJson('cockpit:location', null))
-  const [panelOpen, setPanelOpen] = useState(() => readSessionJson('cockpit:panelOpen', false))
+  const [panelOpen, setPanelOpen] = useState(() => readSessionJson('cockpit:panelOpen', true))
   const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(() => readSessionJson('cockpit:selectedNode', null))
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions'>(initial.section)
@@ -200,7 +200,7 @@ export default function App() {
     <div style={styles.root}>
       {/* Top bar */}
       <header style={styles.header}>
-        <span style={styles.logo}>⚙ Cockpit</span>
+        <span style={styles.logo}>✦ Cockpit</span>
 
         <div style={styles.tabs}>
           <button
@@ -222,14 +222,12 @@ export default function App() {
             Components
           </button>
           <button
-            style={{ ...styles.tab, ...(activeSection === 'expressions' ? styles.tabActive : {}), ...(activeSection === 'expressions' ? { borderColor: '#94e2d5', color: '#94e2d5', background: 'rgba(148,226,213,0.12)' } : {}) }}
+            style={{ ...styles.tab, ...(activeSection === 'expressions' ? styles.tabActive : {}), ...(activeSection === 'expressions' ? { borderBottomColor: '#94e2d5', color: '#94e2d5' } : {}) }}
             onClick={() => setActiveSection('expressions')}
           >
             Expressions
           </button>
         </div>
-
-        <span style={styles.hint}>Alt+Click any element — or click a node in the tree</span>
       </header>
 
       {/* Main area */}
@@ -255,7 +253,6 @@ export default function App() {
             setPreviewPage(id)
             setActiveSection('pages')
             setSelectedNode(null)
-            setPanelOpen(false)
           }}
           onAddPage={() => setAddPageOpen(true)}
           onDeletePage={deletePage}
@@ -265,7 +262,6 @@ export default function App() {
             setPreviewComponent(name)
             setActiveSection('components')
             setSelectedNode(null)
-            setPanelOpen(false)
           }}
           onAddComponent={() => setAddComponentOpen(true)}
           onDeleteComponent={deleteComponent}
@@ -279,6 +275,11 @@ export default function App() {
             setWrapChosenExpr(null)
             // open the right panel pointing at the first node's file
             setLocation({ file: nodes[0].file, line: 1, inspectMode: 'file' })
+            setPanelOpen(true)
+          }}
+          onAutoSelect={(snapshot, file, line, componentName) => {
+            setSelectedNode(snapshot)
+            setLocation({ file, line, inspectMode: 'file', componentName })
             setPanelOpen(true)
           }}
           onExpressionNodeClick={(nodes, exprName) => {
@@ -826,21 +827,32 @@ const styles: Record<string, React.CSSProperties> = {
   header: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1.5rem',
-    padding: '0.6rem 1.2rem',
-    background: '#16213e',
-    borderBottom: '1px solid #0f3460',
+    gap: '0.5rem',
+    padding: '0 1.2rem',
+    height: 44,
+    background: '#11111b',
+    borderBottom: '1px solid #1e1e2e',
     flexShrink: 0,
   },
-  logo: { fontWeight: 700, fontSize: '1rem', color: '#e94560', letterSpacing: 0.5 },
-  hint: { fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' },
+  logo: {
+    fontWeight: 700,
+    fontSize: '0.9rem',
+    color: '#cdd6f4',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    opacity: 0.9,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hint: { fontSize: '0.72rem', color: '#45475a', marginLeft: 'auto', letterSpacing: 0.2 },
   breadcrumb: {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
     padding: '0.3rem 1.2rem',
-    background: '#0d1b2e',
-    borderBottom: '1px solid #0f3460',
+    background: '#181825',
+    borderBottom: '1px solid #313244',
     flexShrink: 0,
     fontFamily: 'system-ui, sans-serif',
     fontSize: '0.72rem',
@@ -854,19 +866,33 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.8rem',
   },
   breadcrumbCurrent: {
-    color: '#89b4fa',
+    color: '#cba6f7',
     fontWeight: 600,
     fontFamily: 'monospace',
   },
-  tabs: { display: 'flex', gap: 4 },
+  tabs: {
+    display: 'flex',
+    gap: 2,
+  },
   tab: {
-    background: 'transparent', border: '1px solid #1e3a5f', borderRadius: 6,
-    color: '#9ca3af', fontSize: '0.75rem', fontFamily: 'system-ui, sans-serif',
-    padding: '0.25rem 0.85rem', cursor: 'pointer', transition: 'all 0.15s',
+    background: 'transparent',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    borderRadius: 0,
+    color: '#585b70',
+    fontSize: '0.75rem',
+    fontFamily: 'system-ui, sans-serif',
+    fontWeight: 500,
+    padding: '0 0.9rem',
+    height: 44,
+    cursor: 'pointer',
+    transition: 'color 0.15s, border-color 0.15s',
+    letterSpacing: 0.2,
   },
   tabActive: {
-    background: '#1e3a5f', border: '1px solid #4a90d9',
-    color: '#cdd6f4', fontWeight: 600,
+    borderBottomColor: '#89b4fa',
+    color: '#cdd6f4',
+    fontWeight: 600,
   },
   emptyState: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',

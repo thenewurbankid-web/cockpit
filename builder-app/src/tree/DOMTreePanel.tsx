@@ -299,6 +299,9 @@ function toMixedTree(
       name: effectiveOwnerName,
       file: node.sourceInfo?.file ?? '',
       line: node.sourceInfo?.line ?? 1,
+      // Usage location: where <ComponentName> appears in the parent's source.
+      usageFile: node.sourceInfo?.ownerFile ?? null,
+      usageLine: node.sourceInfo?.ownerLine ?? null,
       depth,
       children: [domNode],
     }
@@ -362,12 +365,33 @@ interface RowProps {
   onRowContextMenu: (e: React.MouseEvent, node: DisplayNode) => void
   /** Key of the node hovered in the ExpressionAssignPanel chip list */
   hoveredWrapKey?: string | null
+  /** Incrementing counter — when it changes all rows expand */
+  expandGen?: number
+  /** Incrementing counter — when it changes all rows collapse */
+  collapseGen?: number
+  /** When true, this node and all descendants are forced open in one render pass */
+  forceExpandAll?: boolean
+  /** Called when the user manually toggles a row, to clear any force-expand override */
+  onClearForceExpand?: () => void
+  /** Keys of ancestor nodes that must be forced open to reveal a target node */
+  expandedAncestors?: Set<string> | null
+  /** Key of the node that should be scrolled into view */
+  scrollToKey?: string | null
 }
 
-function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey }: RowProps) {
-  // Root component (depth 0) and all DOM nodes start open;
-  // child component nodes (depth > 0) start collapsed.
-  const [open, setOpen] = useState(node.kind !== 'component' || node.depth === 0)
+function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey }: RowProps) {
+  const [open, setOpen] = useState(true)
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { if (expandGen > 0) setOpen(true) }, [expandGen])
+  useEffect(() => { if (collapseGen > 0) setOpen(node.depth === 0) }, [collapseGen])
+  useEffect(() => {
+    if (scrollToKey === node.key && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [scrollToKey, node.key])
+
+  const effectiveOpen = forceExpandAll || !!expandedAncestors?.has(node.key) || open
   const [ghostHovered, setGhostHovered] = useState(false)
   const nodeElement = firstDomElement(node)
   const isSelected = nodeElement !== null && nodeElement === selected
@@ -410,22 +434,26 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           onMouseEnter={() => setGhostHovered(true)}
           onMouseLeave={() => setGhostHovered(false)}
           onClick={() => onSelect(node)}
-          onDoubleClick={() => setOpen(o => !o)}
+          onDoubleClick={() => { onClearForceExpand?.(); setOpen(o => !o) }}
+          ref={rowRef}
         >
           <span
             style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0, visibility: hasChildren ? 'visible' : 'hidden' }}
-            onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
-          >{open ? '▾' : '▸'}</span>
+            onClick={e => { e.stopPropagation(); onClearForceExpand?.(); setOpen(o => !o) }}
+          >{effectiveOpen ? '▾' : '▸'}</span>
           <span style={{ color: '#a6e3a1' }}>{'{ }'}</span>
           <span style={{ color: '#a6e3a1', fontWeight: 600 }}> JSExpression</span>
           <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>:{node.sourceLine}</span>
           <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>×{node.count}</span>
         </div>
-        {open && node.children.map((child, i) => (
+        {effectiveOpen && node.children.map((child, i) => (
           <TreeRow key={i} node={child} selected={selected} onSelect={onSelect}
             hoveredElement={hoveredElement} multiCompFiles={multiCompFiles}
             multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle}
-            onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} />
+            onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey}
+            expandGen={expandGen} collapseGen={collapseGen}
+            forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
+            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
         ))}
       </div>
     )
@@ -449,12 +477,13 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           onMouseEnter={() => setGhostHovered(true)}
           onMouseLeave={() => setGhostHovered(false)}
           onClick={() => onSelect(node)}
-          onDoubleClick={() => setOpen(o => !o)}
+          onDoubleClick={() => { onClearForceExpand?.(); setOpen(o => !o) }}
+          ref={rowRef}
         >
           <span
             style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0, visibility: hasChildren ? 'visible' : 'hidden' }}
-            onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
-          >{open ? '▾' : '▸'}</span>
+            onClick={e => { e.stopPropagation(); onClearForceExpand?.(); setOpen(o => !o) }}
+          >{effectiveOpen ? '▾' : '▸'}</span>
           <span style={{ color: '#f9e2af' }}>{'<>'}</span>
           <span style={{ color: '#f9e2af', fontWeight: 600 }}>{node.name}</span>
           {Object.entries(node.exprProps).map(([k, v]) => (
@@ -467,11 +496,14 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
             <span style={{ marginLeft: 'auto', background: '#1e1e2e', border: '1px solid #45475a', color: '#89b4fa', fontSize: 9, padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>src</span>
           )}
         </div>
-        {open && hasChildren && node.children.map((child, i) => (
+        {effectiveOpen && hasChildren && node.children.map((child, i) => (
           <TreeRow key={i} node={child} selected={selected} onSelect={onSelect}
             hoveredElement={hoveredElement} multiCompFiles={multiCompFiles}
             multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle}
-            onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} />
+            onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey}
+            expandGen={expandGen} collapseGen={collapseGen}
+            forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
+            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
         ))}
       </div>
     )
@@ -480,6 +512,7 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
   return (
     <div>
       <div
+        ref={rowRef}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -509,7 +542,7 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           }
           onSelect(node)
         }}
-        onDoubleClick={() => setOpen(o => !o)}
+        onDoubleClick={() => { onClearForceExpand?.(); setOpen(o => !o) }}
         onContextMenu={(e) => {
           e.preventDefault()
           onRowContextMenu(e, node)
@@ -526,10 +559,11 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
           }}
           onClick={(e) => {
             e.stopPropagation()
+            onClearForceExpand?.()
             setOpen((o) => !o)
           }}
         >
-          {open ? '▾' : '▸'}
+          {effectiveOpen ? '▾' : '▸'}
         </span>
 
         {node.kind === 'component' ? (
@@ -611,10 +645,10 @@ function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, mul
         )}
       </div>
 
-      {open &&
+      {effectiveOpen &&
         hasChildren &&
         node.children.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} />
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} expandGen={expandGen} collapseGen={collapseGen} forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand} expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
         ))}
     </div>
   )
@@ -625,6 +659,16 @@ function countNodes(nodes: DisplayNode[]): number {
     return 1 + node.children.reduce((s, c) => s + countOne(c), 0)
   }
   return nodes.reduce((sum, n) => sum + countOne(n), 0)
+}
+
+/** Returns the key path from the root to the first node whose `el` matches `target`. */
+function findPathToEl(target: Element, nodes: DisplayNode[]): string[] | null {
+  for (const node of nodes) {
+    if (node.kind === 'dom' && node.el === target) return [node.key]
+    const childPath = findPathToEl(target, node.children)
+    if (childPath) return [node.key, ...childPath]
+  }
+  return null
 }
 
 // ---- component ----
@@ -688,8 +732,10 @@ interface DOMTreePanelProps {
   onExpressionNodeClick?: (nodes: WrapIntentNode[], exprName: string) => void
   /** When set, highlights the tree row (and DOM element in preview) for that node key. */
   hoveredWrapNodeKey?: string | null
-  /** Called whenever the user drags the panel resize handle. */
+  /** Called when the user drags the panel resize handle. */
   onWidthChange?: (width: number) => void
+  /** Called once after the first tree build for each page/component, with the root node pre-selected. */
+  onAutoSelect?: (snapshot: SelectedNodeSnapshot, file: string, line: number, componentName: string) => void
 }
 
 // ── Helpers for source-location extraction ──────────────────────────────────
@@ -933,15 +979,25 @@ export function DOMTreePanel({
   onWrapIntent,
   onExpressionNodeClick,
   hoveredWrapNodeKey,
+  onWidthChange,
+  onAutoSelect,
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
+  const prevRootNameRef = useRef<string | undefined>(undefined)
+  const needsInitialExpandRef = useRef(true)
+  const needsInitialSelectRef = useRef(true)
   const [selected, setSelected] = useState<Element | null>(null)
   const [hoveredCanvasElement, setHoveredCanvasElement] = useState<Element | null>(null)
   const rafRef = useRef<number>(0)
   const fileMultiCacheRef = useRef<Map<string, boolean>>(new Map())
   const fileSourcesRef = useRef<Map<string, string>>(new Map())
+  const treeWithGhostsRef = useRef<DisplayNode[]>([])
+  const handleSelectRef = useRef<(node: DisplayNode) => void>(() => {})
   const [fileSourcesVersion, setFileSourcesVersion] = useState(0)
   const [multiCompFiles, setMultiCompFiles] = useState<Set<string>>(new Set())
+  const [pickerMode, setPickerMode] = useState(false)
+  const pickerModeRef = useRef(false)
+  pickerModeRef.current = pickerMode
 
   // ── Multi-select state ───────────────────────────────────────────────────
   interface MultiItem { key: string; file: string; line: number; tag: string }
@@ -1028,6 +1084,7 @@ export function DOMTreePanel({
     return mergeExpressionData(tree, exprInstances, fileSourcesRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tree, exprInstances, fileSourcesVersion])
+  treeWithGhostsRef.current = treeWithGhosts
 
   async function applyWrapping() {
     if (!applyExprState?.expr || multiSelected.length === 0) return
@@ -1079,24 +1136,116 @@ export function DOMTreePanel({
       const el = e.target as Element | null
       if (el && canvas!.contains(el) && el !== canvas) {
         setHoveredCanvasElement(el)
+        if (e.altKey || pickerModeRef.current) {
+          highlightElement(el)
+        } else {
+          clearHighlight()
+        }
       } else {
         setHoveredCanvasElement(null)
+        clearHighlight()
       }
     }
 
-    function onMouseLeave() { setHoveredCanvasElement(null) }
+    function onMouseLeave() {
+      setHoveredCanvasElement(null)
+      clearHighlight()
+    }
 
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('mouseleave', onMouseLeave)
+
+    function onCanvasAltMousedown(e: MouseEvent) {
+      if (!e.altKey && !pickerModeRef.current) return
+      // Prevent the preview component from receiving this mousedown / the
+      // subsequent click (e.g. button navigation) when picker mode is active.
+      e.stopPropagation()
+      e.preventDefault()
+      let current: Element | null = e.target as Element
+      while (current && canvas!.contains(current)) {
+        const path = findPathToEl(current, treeWithGhostsRef.current)
+        if (path?.length) {
+          const targetKey = path[path.length - 1]
+          setExpandedAncestors(new Set(path.slice(0, -1)))
+          setScrollToKey(targetKey)
+          const found = findNodeByKey(treeWithGhostsRef.current, targetKey)
+          if (found) handleSelectRef.current(found)
+          break
+        }
+        current = current.parentElement
+      }
+    }
+    // Use capture phase so inner elements cannot stopPropagation before us.
+    canvas.addEventListener('mousedown', onCanvasAltMousedown, true)
+
+    // Block the click event in picker mode so preview component handlers
+    // (buttons, links, etc.) don't fire after we've already handled it.
+    function onCanvasPickerBlockClick(e: MouseEvent) {
+      if (pickerModeRef.current) {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+    canvas.addEventListener('click', onCanvasPickerBlockClick, true)
+
     return () => {
       canvas.removeEventListener('mousemove', onMouseMove)
       canvas.removeEventListener('mouseleave', onMouseLeave)
+      canvas.removeEventListener('mousedown', onCanvasAltMousedown, true)
+      canvas.removeEventListener('click', onCanvasPickerBlockClick, true)
     }
   }, [canvasRef])
+
+  // Apply crosshair cursor on canvas when picker mode is active.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.style.cursor = pickerMode ? 'crosshair' : ''
+    return () => { if (canvasRef.current) canvasRef.current.style.cursor = '' }
+  }, [pickerMode, canvasRef])
 
   // Poll via rAF — cheap, catches every HMR re-render without MutationObserver setup.
   useEffect(() => {
     let lastHTML = ''
+    let lastInstancesKey = ''
+    // True after the tree was rebuilt but we haven't yet collected a stable set
+    // of expression instances for it (ghost nodes are null-rendering so they
+    // don't affect innerHTML — we must keep collecting until the key stabilises).
+    let pendingFirstInstances = false
+
+    function collectAndDiffInstances(root: Element, newTree?: DisplayNode[]) {
+      const newInstances = collectExpressionInstances(root)
+      const newKey = newInstances
+        .map(i => `${i.name}:${i.active ? 1 : 0}:${i.source?.lineNumber ?? ''}`)
+        .join('|')
+      if (newKey === lastInstancesKey) return
+      lastInstancesKey = newKey
+      setExprInstances(newInstances)
+      // Fetch source files for any new instances (for multi-component badge).
+      if (newTree) {
+        const allFiles = new Set<string>()
+        collectComponentFiles(newTree, allFiles)
+        for (const inst of newInstances) {
+          if (inst.source?.fileName) allFiles.add(inst.source.fileName)
+        }
+        for (const f of allFiles) {
+          if (f.includes('node_modules') || f.includes('/@fs/') || f.includes('@vite') || f.includes('\0')) continue
+          if (fileMultiCacheRef.current.has(f)) continue
+          fileMultiCacheRef.current.set(f, false)
+          fetch(`/__source?file=${encodeURIComponent(f)}`)
+            .then(r => r.ok ? r.text() : '')
+            .then(text => {
+              const isMulti = hasMultipleComponents(text)
+              fileMultiCacheRef.current.set(f, isMulti)
+              if (isMulti) setMultiCompFiles(prev => new Set([...prev, f]))
+              fileSourcesRef.current.set(f, text)
+              setFileSourcesVersion(v => v + 1)
+            })
+            .catch(() => {})
+        }
+      }
+    }
+
     function tick() {
       const root = canvasRef.current
       if (root && root.children.length > 0) {
@@ -1105,28 +1254,24 @@ export function DOMTreePanel({
           lastHTML = html
           const newTree = buildMixedTree(root, preferredRootComponentName)
           setTree(newTree)
-          const newInstances = collectExpressionInstances(root)
-          setExprInstances(newInstances)
-          // Check component files for multiple-component declarations and collect sources.
-          const allFiles = new Set<string>()
-          collectComponentFiles(newTree, allFiles)
-          for (const inst of newInstances) {
-            if (inst.source?.fileName) allFiles.add(inst.source.fileName)
+          if (needsInitialExpandRef.current) {
+            needsInitialExpandRef.current = false
+            setExpandGen(g => g + 1)
           }
-          for (const f of allFiles) {
-            if (fileMultiCacheRef.current.has(f)) continue
-            fileMultiCacheRef.current.set(f, false) // mark as in-flight
-            fetch(`/__source?file=${encodeURIComponent(f)}`)
-              .then(r => r.ok ? r.text() : '')
-              .then(text => {
-                const isMulti = hasMultipleComponents(text)
-                fileMultiCacheRef.current.set(f, isMulti)
-                if (isMulti) setMultiCompFiles(prev => new Set([...prev, f]))
-                fileSourcesRef.current.set(f, text)
-                setFileSourcesVersion(v => v + 1)
-              })
-              .catch(() => {})
-          }
+          // Collect instances in same tick as tree rebuild.
+          collectAndDiffInstances(root, newTree)
+          // Keep spinner on for one more frame so ghost nodes can settle.
+          pendingFirstInstances = true
+        } else if (pendingFirstInstances) {
+          // One frame after the tree rebuild: collect again to pick up any
+          // null-rendering ghost nodes that didn't affect innerHTML.
+          pendingFirstInstances = false
+          collectAndDiffInstances(root)
+          setTreeLoading(false)
+        } else {
+          // Steady-state: keep diffing instances so HMR additions/removals
+          // of null-rendering expressions show up without requiring a full reload.
+          collectAndDiffInstances(root)
         }
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -1136,6 +1281,7 @@ export function DOMTreePanel({
   }, [canvasRef, preferredRootComponentName])
 
   function handleSelect(node: DisplayNode) {
+    handleSelectRef.current = handleSelect
     if (node.kind === 'loop') {
       if (node.sourceFile) onLocate(node.sourceFile, node.sourceLine, 'expression')
       return
@@ -1148,8 +1294,8 @@ export function DOMTreePanel({
       return
     }
     if (node.kind === 'component') {
-      // If this is an expression component node (has exprProps), open binding view.
-      if (node.exprProps !== undefined) {
+      // If this is an expression component node (has exprProps AND its name is a known expression), open binding view.
+      if (node.exprProps !== undefined && exprNamesRef.current.has(node.name)) {
         onExpressionNodeClick?.(
           [{ key: node.key, file: node.usageFile ?? node.file, line: node.usageLine ?? node.line, tag: node.name }],
           node.name,
@@ -1170,6 +1316,8 @@ export function DOMTreePanel({
         locatorFile: node.file,
         locatorLine: node.line,
         ownerComponentName: node.name,
+        ownerFile: node.usageFile ?? null,
+        ownerLine: node.usageLine ?? null,
         domAttributes: [],
       })
       return
@@ -1194,15 +1342,50 @@ export function DOMTreePanel({
         locatorFile: info?.file ?? null,
         locatorLine: info?.line ?? null,
         ownerComponentName: info?.ownerComponentName ?? null,
+        ownerFile: info?.ownerFile ?? null,
+        ownerLine: info?.ownerLine ?? null,
         domAttributes: domAttrs,
       })
     }
   }
 
+  // Auto-select the first (root component) node after each page/component switch.
+  useEffect(() => {
+    if (!needsInitialSelectRef.current || tree.length === 0 || !onAutoSelect) return
+    needsInitialSelectRef.current = false
+    const first = tree[0]
+    if (first.kind === 'component' && first.file) {
+      onAutoSelect(
+        { tag: first.name, locatorId: null, locatorFile: first.file, locatorLine: first.line, ownerComponentName: first.name, domAttributes: [] },
+        first.file, first.line, first.name
+      )
+    }
+  }, [tree]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const total = countNodes(tree)
   const [pagesOpen, setPagesOpen] = useState(true)
   const [pageSearch, setPageSearch] = useState('')
   const [treeOpen, setTreeOpen] = useState(true)
+  const [treeLoading, setTreeLoading] = useState(true)
+  const [expandGen, setExpandGen] = useState(0)
+  const [collapseGen, setCollapseGen] = useState(0)
+  const [forceExpandAll, setForceExpandAll] = useState(false)
+  const [expandedAncestors, setExpandedAncestors] = useState<Set<string> | null>(null)
+  const [scrollToKey, setScrollToKey] = useState<string | null>(null)
+
+  // Reset tree + show spinner whenever the active page/component changes
+  useEffect(() => {
+    if (prevRootNameRef.current !== preferredRootComponentName) {
+      prevRootNameRef.current = preferredRootComponentName
+      needsInitialExpandRef.current = true
+      needsInitialSelectRef.current = true
+      setTree([])
+      setTreeLoading(true)
+      setForceExpandAll(false)
+      setExpandedAncestors(null)
+      setScrollToKey(null)
+    }
+  }, [preferredRootComponentName])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [hoveredPageId, setHoveredPageId] = useState<string | null>(null)
   const [componentsOpen, setComponentsOpen] = useState(true)
@@ -1613,10 +1796,38 @@ export function DOMTreePanel({
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: treeOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          React + DOM Tree
+          Element Tree
           <InfoIcon text="Live component hierarchy of the current preview. Click any node to inspect its source, props, and bindings in the right panel. Ctrl+click to multi-select, then right-click → Wrap with expression." />
+          {treeLoading && treeOpen && <span className="cockpit-spinner" />}
         </span>
-        {treeOpen && <span style={styles.nodeCount}>{total} node{total !== 1 ? 's' : ''}</span>}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {treeOpen && <span style={styles.nodeCount}>{total} node{total !== 1 ? 's' : ''}</span>}
+          {treeOpen && (
+            <>
+              <span
+                title={pickerMode ? 'Picker mode on — click any preview element to reveal it in the tree' : 'Picker mode — click to toggle'}
+                style={{ fontSize: 10, cursor: 'pointer', padding: '1px 4px', borderRadius: 3, border: `1px solid ${pickerMode ? '#89b4fa' : '#45475a'}`, lineHeight: 1.6, userSelect: 'none', color: pickerMode ? '#89b4fa' : '#6c7086', background: pickerMode ? 'rgba(137,180,250,0.12)' : 'transparent', transition: 'color 0.12s, border-color 0.12s, background 0.12s' }}
+                onClick={(e) => { e.stopPropagation(); setPickerMode(m => !m) }}
+                onMouseEnter={(e) => { if (!pickerMode) (e.currentTarget as HTMLSpanElement).style.color = '#cdd6f4' }}
+                onMouseLeave={(e) => { if (!pickerMode) (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+              >⊕</span>
+              <span
+                title="Expand all"
+                style={{ fontSize: 10, color: '#6c7086', cursor: 'pointer', padding: '1px 4px', borderRadius: 3, border: '1px solid #45475a', lineHeight: 1.6, userSelect: 'none' }}
+                onClick={(e) => { e.stopPropagation(); setForceExpandAll(true) }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#cdd6f4' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+              >⊞</span>
+              <span
+                title="Collapse all"
+                style={{ fontSize: 10, color: '#6c7086', cursor: 'pointer', padding: '1px 4px', borderRadius: 3, border: '1px solid #45475a', lineHeight: 1.6, userSelect: 'none' }}
+                onClick={(e) => { e.stopPropagation(); setForceExpandAll(false); setExpandedAncestors(null); setCollapseGen(g => g + 1) }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#cdd6f4' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+              >⊟</span>
+            </>
+          )}
+        </span>
       </div>}
       {activeSection !== 'expressions' && treeOpen && (
         <div style={styles.scroll}>
@@ -1633,6 +1844,12 @@ export function DOMTreePanel({
                 onMultiToggle={handleMultiToggle}
                 onRowContextMenu={handleRowContextMenu}
                 hoveredWrapKey={hoveredWrapNodeKey}
+                expandGen={expandGen}
+                collapseGen={collapseGen}
+                forceExpandAll={forceExpandAll}
+                onClearForceExpand={() => { setForceExpandAll(false); setExpandedAncestors(null) }}
+                expandedAncestors={expandedAncestors}
+                scrollToKey={scrollToKey}
               />
             ))
           ) : (

@@ -4,6 +4,20 @@
   padding: 0;
 }
 
+@keyframes cockpit-spin {
+  to { transform: rotate(360deg); }
+}
+.cockpit-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #45475a;
+  border-top-color: #89b4fa;
+  border-radius: 50%;
+  animation: cockpit-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 body {
   font-family: system-ui, sans-serif;
   background: #1a1a2e;
@@ -14,4 +28,24 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ── Custom scrollbars ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #585b70;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #45475a transparent;
 }
