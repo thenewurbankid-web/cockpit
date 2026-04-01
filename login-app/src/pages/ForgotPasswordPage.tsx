@@ -57,10 +57,10 @@ export function ForgotPasswordPage({ navigate }: ForgotPasswordPageProps) {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={styles.form} noValidate>
+          <form onSubmit={navigate} style={styles.form} noValidate>
             <Input
               id="reset-email"
-              label="Email address"
+              label="Email "
               type="email"
               value={email}
               onChange={setEmail}

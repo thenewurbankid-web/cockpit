@@ -1,9 +1,6 @@
 import { Component, lazy, Suspense, useRef, useState } from 'react'
 import type { ExpressionMeta } from '../tree/DOMTreePanel'
 
-declare const __LOGIN_APP_PAGES_DIR__: string
-declare const __LOGIN_APP_COMPONENTS_DIR__: string
-
 export interface PageEntry { id: string; label: string; root: string }
 export interface CompEntry { id: string; label: string; name: string }
 
@@ -30,26 +27,28 @@ function getExprLazy(file: string, name: string) {
   return exprCache.get(key)!
 }
 
-function getPageLazy(root: string) {
-  if (!pageCache.has(root)) {
-    pageCache.set(root, lazy(() =>
-      import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_PAGES_DIR__}/${root}.tsx`).then((m) => ({
+function getPageLazy(root: string, pagesDir: string) {
+  const key = `${pagesDir}/${root}`
+  if (!pageCache.has(key)) {
+    pageCache.set(key, lazy(() =>
+      import(/* @vite-ignore */ `/@fs/${pagesDir}/${root}.tsx`).then((m) => ({
         default: m[root] as React.ComponentType<unknown>,
       }))
     ))
   }
-  return pageCache.get(root)!
+  return pageCache.get(key)!
 }
 
-function getCompLazy(name: string) {
-  if (!compCache.has(name)) {
-    compCache.set(name, lazy(() =>
-      import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_COMPONENTS_DIR__}/${name}.tsx`).then((m) => ({
+function getCompLazy(name: string, componentsDir: string) {
+  const key = `${componentsDir}/${name}`
+  if (!compCache.has(key)) {
+    compCache.set(key, lazy(() =>
+      import(/* @vite-ignore */ `/@fs/${componentsDir}/${name}.tsx`).then((m) => ({
         default: m[name] as React.ComponentType<unknown>,
       }))
     ))
   }
-  return compCache.get(name)!
+  return compCache.get(key)!
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -99,8 +98,9 @@ class ErrorBoundary extends Component<
 }
 
 // ── ChildPreview: render component tags from a string ─────────────────────────
-function ChildPreview({ code, pages, components }: {
+function ChildPreview({ code, pages, components, pagesDir, componentsDir }: {
   code: string; pages: PageEntry[]; components: CompEntry[]
+  pagesDir: string; componentsDir: string
 }) {
   const names = parseTagNames(code)
   if (names.length === 0) {
@@ -118,7 +118,7 @@ function ChildPreview({ code, pages, components }: {
             Unknown: &lt;{name} /&gt;
           </span>
         )
-        const Lazy = isPage ? getPageLazy(name) : getCompLazy(name)
+        const Lazy = isPage ? getPageLazy(name, pagesDir) : getCompLazy(name, componentsDir)
         return (
           <ErrorBoundary key={name} resetKey={name}>
             <Suspense fallback={<span style={{ color: '#6c7086', fontSize: 12 }}>Loading {name}…</span>}>
@@ -232,10 +232,12 @@ function Picker({ pages, components, onInsert, focusLabel }: {
 }
 
 // ── Main ExpressionTester ─────────────────────────────────────────────────────
-export function ExpressionTester({ expr, pages, components, registerInsert }: {
+export function ExpressionTester({ expr, pages, components, pagesDir, componentsDir, registerInsert }: {
   expr: ExpressionMeta | null
   pages: PageEntry[]
   components: CompEntry[]
+  pagesDir: string
+  componentsDir: string
   registerInsert?: (fn: (tag: string) => void) => void
 }) {
   const [propValues, setPropValues] = useState<Record<string, string>>({})
@@ -272,7 +274,7 @@ export function ExpressionTester({ expr, pages, components, registerInsert }: {
     const raw = propValues[p] ?? ''
     if (isReactNodeProp(p)) {
       parsedProps[p] = raw.trim()
-        ? <ChildPreview code={raw} pages={pages} components={components} />
+        ? <ChildPreview code={raw} pages={pages} components={components} pagesDir={pagesDir} componentsDir={componentsDir} />
         : undefined
     } else {
       parsedProps[p] = parseValue(raw)
@@ -281,7 +283,7 @@ export function ExpressionTester({ expr, pages, components, registerInsert }: {
 
   // Children slot
   const childrenNode = childrenCode.trim()
-    ? <ChildPreview code={childrenCode} pages={pages} components={components} />
+    ? <ChildPreview code={childrenCode} pages={pages} components={components} pagesDir={pagesDir} componentsDir={componentsDir} />
     : (
       <div style={{
         padding: '8px 12px', background: 'rgba(137,180,250,0.12)', borderRadius: 4,

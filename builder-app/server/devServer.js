@@ -11,7 +11,7 @@ import express from 'express'
 import fs from 'fs'
 import path from 'path'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsForFile } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsForFile, setActiveProjectRoot } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
 import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps } from './templates.js'
 
@@ -60,10 +60,105 @@ app.post('/__source', (req, res) => {
   res.json({ ok: true })
 })
 
+// ── Project selection ─────────────────────────────────────────────────────────
+
+/**
+ * Resolve the target project root from a request.
+ * Accepts ?projectRoot= (GET/DELETE) or body.projectRoot (POST).
+ * Falls back to login-app inside the monorepo to preserve backwards compatibility.
+ */
+function getProjectRoot(req) {
+  const raw = req.query.projectRoot || req.body?.projectRoot
+  if (raw) return path.resolve(raw)
+  return path.resolve(REPO_ROOT, 'login-app')
+}
+
+/** Browse directory contents (directories only). No isSafeFile restriction — this is for navigation. */
+app.get('/__source/browse', (req, res) => {
+  let targetPath = req.query.path
+  if (!targetPath) {
+    targetPath = path.resolve(REPO_ROOT, '..')
+  }
+  const resolved = path.resolve(targetPath)
+
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ error: 'Path not found' })
+  }
+  const stat = fs.statSync(resolved)
+  if (!stat.isDirectory()) {
+    return res.status(400).json({ error: 'Not a directory' })
+  }
+
+  let entries = []
+  try {
+    entries = fs.readdirSync(resolved)
+      .map((name) => {
+        const full = path.join(resolved, name)
+        try { return { name, isDir: fs.statSync(full).isDirectory() } } catch { return null }
+      })
+      .filter(Boolean)
+      .filter((e) => e.isDir && !e.name.startsWith('.'))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  } catch {
+    return res.status(403).json({ error: 'Cannot read directory' })
+  }
+
+  const parent = path.dirname(resolved)
+  res.json({
+    path: resolved,
+    parent: parent !== resolved ? parent : null,
+    entries,
+  })
+})
+
+/** Probe a directory to determine if it's a valid Cockpit project. Returns dirs for all found subdirs. */
+app.get('/__source/project-info', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+
+  const resolved = path.resolve(root)
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ error: 'Path not found' })
+  }
+
+  const pagesDir = path.join(resolved, 'src', 'pages')
+  const componentsDir = path.join(resolved, 'src', 'components')
+  const expressionsDir = path.join(resolved, 'src', 'expressions')
+
+  const hasPages = fs.existsSync(pagesDir)
+  const hasComponents = fs.existsSync(componentsDir)
+  const hasExpressions = fs.existsSync(expressionsDir)
+
+  res.json({
+    name: path.basename(resolved),
+    root: resolved,
+    pagesDir: hasPages ? pagesDir.replace(/\\/g, '/') : null,
+    componentsDir: hasComponents ? componentsDir.replace(/\\/g, '/') : null,
+    expressionsDir: hasExpressions ? expressionsDir.replace(/\\/g, '/') : null,
+    hasSrc: fs.existsSync(path.join(resolved, 'src')),
+    valid: hasPages || hasComponents,
+  })
+})
+
+/** Set the active project root so isSafeFile allows files within it. */
+app.post('/__source/set-active-project', (req, res) => {
+  const { root } = req.body ?? {}
+  if (!root || typeof root !== 'string') {
+    return res.status(400).json({ error: 'Body must contain { root: string }' })
+  }
+  const resolved = path.resolve(root)
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ error: 'Path not found' })
+  }
+  setActiveProjectRoot(resolved)
+  console.log(`[set-active-project] ${resolved}`)
+  res.json({ ok: true })
+})
+
 // ── Pages ─────────────────────────────────────────────────────────────────────
 
 app.get('/__source/list-pages', (req, res) => {
-  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
   if (!fs.existsSync(loginAppPages)) {
     return res.json({ pages: [] })
   }
@@ -98,7 +193,7 @@ app.post('/__source/create-page', (req, res) => {
     trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '') + 'Page'
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
 
-  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -122,7 +217,7 @@ app.delete('/__source/page/:componentName', (req, res) => {
     return res.status(400).json({ error: 'Invalid component name' })
   }
 
-  const loginAppPages = path.resolve(REPO_ROOT, 'login-app/src/pages')
+  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -140,7 +235,7 @@ app.delete('/__source/page/:componentName', (req, res) => {
 // ── Components ────────────────────────────────────────────────────────────────
 
 app.get('/__source/list-components', (req, res) => {
-  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  const dir = path.resolve(getProjectRoot(req), 'src/components')
   if (!fs.existsSync(dir)) return res.json({ components: [] })
 
   const files = fs.readdirSync(dir)
@@ -165,7 +260,7 @@ app.post('/__source/create-component', (req, res) => {
   const componentName =
     trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
-  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  const dir = path.resolve(getProjectRoot(req), 'src/components')
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -186,7 +281,7 @@ app.delete('/__source/component/:componentName', (req, res) => {
   if (!componentName || !/^[A-Z][a-zA-Z0-9]+$/.test(componentName)) {
     return res.status(400).json({ error: 'Invalid component name' })
   }
-  const dir = path.resolve(REPO_ROOT, 'login-app/src/components')
+  const dir = path.resolve(getProjectRoot(req), 'src/components')
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -241,9 +336,8 @@ app.get('/__source/ast-info', (req, res) => {
 
 // ── Expressions ───────────────────────────────────────────────────────────────
 
-const EXPRESSIONS_DIR = path.resolve(REPO_ROOT, 'login-app/src/expressions')
-
 app.get('/__source/list-expressions', (req, res) => {
+  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
   if (!fs.existsSync(EXPRESSIONS_DIR)) return res.json({ expressions: [] })
 
   const files = fs.readdirSync(EXPRESSIONS_DIR).filter((f) => f.endsWith('.tsx'))
@@ -273,6 +367,7 @@ app.post('/__source/create-expression', (req, res) => {
     return res.status(400).json({ error: 'Invalid expression name' })
   }
 
+  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
   const filePath = path.join(EXPRESSIONS_DIR, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -299,6 +394,7 @@ app.delete('/__source/expression/:name', (req, res) => {
     return res.status(400).json({ error: 'Invalid expression name' })
   }
 
+  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
   const filePath = path.join(EXPRESSIONS_DIR, `${name}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })

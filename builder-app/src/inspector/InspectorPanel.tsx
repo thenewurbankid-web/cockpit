@@ -1,5 +1,5 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import Editor, { type Monaco } from '@monaco-editor/react'
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
+import Editor, { DiffEditor, type Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { IDisposable } from 'monaco-editor'
 import { parse } from '@babel/parser'
@@ -19,6 +19,7 @@ import type {
   AstLocFull,
   BareModuleUsage,
   JsxTextChild,
+  PendingDiff,
 } from './types'
 import { extractBlock } from './astHelpers'
 import { extractImports, countReactComponentsInSource, collectModuleUsages, normalizePath, candidateImportFiles, filePathToModelUri, buildBareModuleDeclarations } from './importHelpers'
@@ -31,6 +32,97 @@ import { styles } from './styles'
 
 // Re-export types used by other parts of the app
 export type { SelectedNodeContext, ComponentProp }
+
+// ── inline single-line Monaco editor ──────────────────────────────────────────
+
+function InlineMonaco({
+  value,
+  onChange,
+  readOnly,
+}: {
+  value: string
+  onChange: (v: string) => void
+  readOnly?: boolean
+}) {
+  const [height, setHeight] = useState(22)
+  const dragging = useRef(false)
+  const startY = useRef(0)
+  const startH = useRef(0)
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragging.current = true
+    startY.current = e.clientY
+    startH.current = height
+    const onMove = (ev: PointerEvent) => {
+      if (!dragging.current) return
+      const newH = Math.max(22, Math.min(200, startH.current + (ev.clientY - startY.current)))
+      setHeight(newH)
+    }
+    const onUp = () => {
+      dragging.current = false
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }, [height])
+
+  return (
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      border: '1px solid #45475a',
+      borderRadius: 4,
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
+      <Editor
+        height={`${height}px`}
+        language="typescript"
+        value={value}
+        onChange={(v) => onChange(v ?? '')}
+        theme="vs-dark"
+        options={{
+          minimap: { enabled: false },
+          lineNumbers: 'off',
+          glyphMargin: false,
+          folding: false,
+          lineDecorationsWidth: 0,
+          lineNumbersMinChars: 0,
+          scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
+          overviewRulerBorder: false,
+          overviewRulerLanes: 0,
+          hideCursorInOverviewRuler: true,
+          wordWrap: height > 22 ? 'on' : 'off',
+          scrollBeyondLastLine: false,
+          renderLineHighlight: 'none',
+          readOnly,
+          fontSize: 12,
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          padding: { top: 2, bottom: 2 },
+          contextmenu: false,
+          tabSize: 2,
+          automaticLayout: true,
+          fixedOverflowWidgets: true,
+        }}
+      />
+      <div
+        onPointerDown={onPointerDown}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          cursor: 'ns-resize',
+          background: 'transparent',
+        }}
+      />
+    </div>
+  )
+}
 
 // ── component ─────────────────────────────────────────────────────────────────
 
@@ -77,9 +169,9 @@ export function InspectorPanel({
     const saved = sessionStorage.getItem('cockpit:activeTab')
     return (saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings'
   })
-  const isRestoringRef = useRef(true)
+
   useEffect(() => {
-    if (!expressionMode && !wrapMode && inspectMode !== 'expression') sessionStorage.setItem('cockpit:activeTab', activeTab)
+    if (!expressionMode && !wrapMode && inspectMode !== 'expression' && activeTab !== 'changes') sessionStorage.setItem('cockpit:activeTab', activeTab)
   }, [activeTab])
   useEffect(() => {
     if (expressionMode || inspectMode === 'expression') setActiveTab('source')
@@ -118,6 +210,7 @@ export function InspectorPanel({
   const isFromComponentsFolder = !!(selectedNode?.locatorFile && /[\/]components[\/]/.test(selectedNode.locatorFile) && !isRootComponent)
   const [displayCode, setDisplayCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [bindingsLoading, setBindingsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [blockName, setBlockName] = useState<string>('')
@@ -147,6 +240,8 @@ export function InspectorPanel({
   const [focusedAttr, setFocusedAttr] = useState<string | null>(null)
   const [textChildren, setTextChildren] = useState<JsxTextChild[]>([])
   const [textChildEdits, setTextChildEdits] = useState<Record<number, string>>({})
+  /** Per-text-child value/expression mode. */
+  const [textChildModes, setTextChildModes] = useState<Record<number, 'value' | 'expression' | 'scope'>>({})
   /** Per-attr value/expression mode for DOM element attr rows. */
   const [attrModes, setAttrModes] = useState<Record<string, 'value' | 'expression' | 'scope'>>({})
   const [bindingsSaving, setBindingsSaving] = useState(false)
@@ -160,6 +255,8 @@ export function InspectorPanel({
   const [showAddProp, setShowAddProp] = useState(false)
   /** Per-prop value mode for existing binding rows. */
   const [propValueMode, setPropValueMode] = useState<Record<string, 'scope' | 'expression' | 'value'>>({})
+  /** Per-prop default value mode (expression vs literal). */
+  const [propDefaultMode, setPropDefaultMode] = useState<Record<string, 'value' | 'expression' | 'scope'>>({})
   /** True when the selected tree node is a React component (not a raw DOM element). */
   const [inspectingComponent, setInspectingComponent] = useState(false)
   /** True when the inspected component has a named props interface/type registered. */
@@ -175,6 +272,10 @@ export function InspectorPanel({
   const [canRedo, setCanRedo] = useState(false)
   // True when the current file contains more than one React component definition.
   const [multipleComponentsInFile, setMultipleComponentsInFile] = useState(false)
+  // Pending diff awaiting user review — shown as git-style diff in changes tab.
+  const [pendingDiff, setPendingDiff] = useState<PendingDiff | null>(null)
+  // Which file accordions are expanded in the Changes tab.
+  const [expandedDiffFiles, setExpandedDiffFiles] = useState<Set<number>>(new Set([0]))
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
@@ -438,16 +539,41 @@ export function InspectorPanel({
   // ── bindings: extract attrs + owner props from source after node selection ──
   // Called after source is loaded OR after selectedNode changes.
   function refreshBindings(source: string, node: SelectedNodeContext | null | undefined) {
+    setPendingDiff(null)
     if (!node) {
       setJsxAttrs([])
       setOwnerProps([])
       setAttrEdits({})
       setAttrModes({})
+      setTextChildModes({})
+      setPropDefaultMode({})
       setInspectingComponent(false)
       setHasPropTypeDef(true)
       setScopeLayers([])
+      setBindingsLoading(false)
       return
     }
+
+    // Clear stale data immediately and show loader
+    setBindingsLoading(true)
+    setJsxAttrs([])
+    setOwnerProps([])
+    setAttrEdits({})
+    setAttrModes({})
+    setTextChildModes({})
+    setPropDefaultMode({})
+    setPropTypeEdits({})
+    setPropValueEdits({})
+    setPropDefaultEdits({})
+    setExpandedRows(new Set())
+    setPropValueMode({})
+    setUsageAttrs([])
+    setParentLocals([])
+    setParentSource('')
+    setParentComponentName('')
+    setUsageInfo(null)
+    setTextChildren([])
+    setTextChildEdits({})
 
     // A capitalised tag means the tree selected a React component node, not a raw DOM element.
     const isComponentNode = /^[A-Z]/.test(node.tag)
@@ -456,7 +582,6 @@ export function InspectorPanel({
     if (isComponentNode) {
       // Show the component's own declared props (signature + interface/type).
       // No JSX attr extraction needed — we don't have the usage-site source here.
-      setJsxAttrs([])
       const ownerP = extractOwnerProps(source, node.tag)
       setOwnerProps(ownerP)
       setHasPropTypeDef(componentHasPropTypeDef(source, node.tag))
@@ -472,18 +597,6 @@ export function InspectorPanel({
         .filter(n => !ownerPCapture.find(p => p.name === n))
         .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: false })),
     }])
-    setAttrEdits({})
-    setAttrModes({})
-    setPropTypeEdits({})
-    setPropValueEdits({})
-    setPropDefaultEdits({})
-    setExpandedRows(new Set())
-    setPropValueMode({})
-    setUsageAttrs([])
-    setParentLocals([])
-    setParentSource('')
-    setParentComponentName('')
-    setUsageInfo(null)
       // Asynchronously find the usage site of this component to:
       // 1. populate the "currently passed" value column
       // 2. build the parent scope layer
@@ -496,7 +609,7 @@ export function InspectorPanel({
           directOwnerFile && directOwnerLine
             ? [{ file: directOwnerFile, line: directOwnerLine }]
             : findLocatorUsages(tag)
-        if (usages.length === 0) return
+        if (usages.length === 0) { setBindingsLoading(false); return }
         // Try each usage file until we get a non-empty attr set.
         for (const { file: usageFile, line: usageLine } of usages) {
           try {
@@ -510,7 +623,7 @@ export function InspectorPanel({
               // Initialize per-prop value mode from whether the attr is currently an expression.
               const initModes: Record<string, 'scope' | 'expression' | 'value'> = {}
               for (const a of attrs) {
-                if (!a.isSpread) initModes[a.name] = a.isExpression ? 'scope' : 'value'
+                if (!a.isSpread) initModes[a.name] = a.isExpression ? 'expression' : 'value'
               }
               setPropValueMode(initModes)
               // Extract local variables from the wrapping component in the parent file.
@@ -553,6 +666,7 @@ export function InspectorPanel({
             }
           } catch { /* skip */ }
         }
+        setBindingsLoading(false)
       })()
       return
     }
@@ -613,6 +727,7 @@ export function InspectorPanel({
     const { props: op, state: os } = makeItems(ownerP, ownerLocals, source, ownerName)
     setScopeLayers([{ componentName: ownerName || node.tag, isCurrent: true, props: op, state: os }])
     setHasPropTypeDef(true) // DOM nodes don't need prop type defs
+    setBindingsLoading(false)
 
     // Async: add a parent scope layer using React fiber ownerFile/ownerLine data
     // (direct, no locatorjs dependency). Fall back to findLocatorUsages if missing.
@@ -699,6 +814,7 @@ export function InspectorPanel({
       // New file — fetch then extract.
       prevFileRef.current = file
       setLoading(true)
+      setBindingsLoading(true)
       fetch(`/__source?file=${encodeURIComponent(file)}`)
         .then((r) => {
           if (!r.ok) throw new Error(`Server error ${r.status}`)
@@ -732,11 +848,6 @@ export function InspectorPanel({
   useEffect(() => {
     if (fullSourceRef.current) refreshBindings(fullSourceRef.current, selectedNode)
     if (!selectedNode) return
-    // Skip resetting tab on initial mount when restoring from session
-    if (isRestoringRef.current) {
-      isRestoringRef.current = false
-      return
-    }
     setActiveTab('bindings')
   }, [selectedNode]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -859,7 +970,7 @@ export function InspectorPanel({
           // Skip if unchanged from what the parent is already passing.
           if (original && newVal === original.rawValue) continue
           // Use propValueMode to determine whether to write as expression or string literal.
-          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'scope' : 'value')
+          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
           const modeIsVar = propMode === 'scope' || propMode === 'expression'
           parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
         }
@@ -932,6 +1043,191 @@ export function InspectorPanel({
       setSaveStatus('error')
     } finally {
       setBindingsSaving(false)
+    }
+  }
+
+  // ── Diff preview: compute changes without persisting ───────────────────────
+  // These build a PendingDiff and show it in the Changes tab.
+
+  const hasEdits = Object.keys(attrEdits).length > 0 || Object.keys(propTypeEdits).length > 0 || Object.keys(propValueEdits).length > 0 || Object.keys(propDefaultEdits).length > 0 || Object.keys(textChildEdits).length > 0
+
+  async function computePendingDiff() {
+    const hasPropEdits = Object.keys(propTypeEdits).length > 0 || Object.keys(propValueEdits).length > 0 || Object.keys(propDefaultEdits).length > 0
+    const hasBindingEdits = Object.keys(attrEdits).length > 0 || Object.keys(textChildEdits).length > 0
+    if (hasPropEdits) {
+      await previewPropTypeSave()
+    } else if (hasBindingEdits) {
+      await previewBindingsSave()
+    }
+  }
+
+  function countDiffLines(original: string, modified: string): { added: number; removed: number } {
+    const origLines = original.split('\n')
+    const modLines = modified.split('\n')
+    let added = 0, removed = 0
+    const maxLen = Math.max(origLines.length, modLines.length)
+    for (let i = 0; i < maxLen; i++) {
+      if (origLines[i] !== modLines[i]) {
+        if (i < origLines.length) removed++
+        if (i < modLines.length) added++
+      }
+    }
+    return { added, removed }
+  }
+
+  async function previewPropTypeSave() {
+    if (!fullSourceRef.current || (Object.keys(propTypeEdits).length === 0 && Object.keys(propValueEdits).length === 0 && Object.keys(propDefaultEdits).length === 0)) return
+    setBindingsSaving(true)
+    try {
+      const ownerName = selectedNode?.ownerComponentName ?? componentName ?? ''
+      const entries: PendingDiff['entries'] = []
+      const summary: string[] = []
+
+      // ── Value edits: diff for the PARENT file ─────────────
+      if (Object.keys(propValueEdits).length > 0 && usageInfo) {
+        const parentRes = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
+        if (!parentRes.ok) throw new Error('Fetch parent failed')
+        const originalParent = await parentRes.text()
+        let parentSrc = originalParent
+        for (const [propName, newVal] of Object.entries(propValueEdits)) {
+          const original = usageAttrs.find((a) => a.name === propName)
+          if (original && newVal === original.rawValue) continue
+          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
+          const modeIsVar = propMode === 'scope' || propMode === 'expression'
+          parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
+          summary.push(`Set ${propName}=${modeIsVar ? `{${newVal}}` : `"${newVal}"`}`)
+        }
+        if (parentSrc !== originalParent) {
+          entries.push({ file: usageInfo.file, original: originalParent, modified: parentSrc })
+        }
+      }
+
+      // ── Type + default edits: diff for the CHILD file ────────────
+      if (Object.keys(propTypeEdits).length > 0 || Object.keys(propDefaultEdits).length > 0) {
+        const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+        if (!freshRes.ok) throw new Error('Fetch failed')
+        const originalChild = await freshRes.text()
+        let modified = originalChild
+        for (const [propName, newType] of Object.entries(propTypeEdits)) {
+          const original = ownerProps.find((p) => p.name === propName)
+          if (!original || newType === original.typeStr) continue
+          modified = rewritePropType(modified, ownerName, propName, newType)
+          summary.push(`Change ${propName} type → ${newType}`)
+        }
+        for (const [propName, newDefault] of Object.entries(propDefaultEdits)) {
+          const original = ownerProps.find((p) => p.name === propName)
+          if (newDefault === (original?.defaultValue ?? '')) continue
+          modified = rewriteDefaultValue(modified, ownerName, propName, newDefault)
+          summary.push(`Set ${propName} default → ${newDefault || '(none)'}`)
+        }
+        if (modified !== originalChild) {
+          entries.push({ file, original: originalChild, modified })
+        }
+      }
+
+      if (entries.length > 0) {
+        setPendingDiff({ entries, summary })
+        setExpandedDiffFiles(new Set([0]))
+        setActiveTab('changes')
+      }
+    } catch {
+      setSaveStatus('error')
+    } finally {
+      setBindingsSaving(false)
+    }
+  }
+
+  async function previewBindingsSave() {
+    if (!fullSourceRef.current) return
+    setBindingsSaving(true)
+    try {
+      const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+      if (!freshRes.ok) throw new Error('Fetch failed')
+      const originalSource = await freshRes.text()
+      let modified = originalSource
+      const nodeLocLine = selectedNode?.locatorLine ?? line
+      const summary: string[] = []
+
+      const textEditsToApply = textChildren
+        .filter(c => textChildEdits[c.index] !== undefined && textChildEdits[c.index] !== c.value)
+        .sort((a, b) => b.startLine - a.startLine || b.startCol - a.startCol)
+      for (const child of textEditsToApply) {
+        modified = rewriteJsxTextChild(modified, child, textChildEdits[child.index])
+        summary.push(`Update text content → "${textChildEdits[child.index]}"`)
+      }
+
+      for (const [attrName, val] of Object.entries(attrEdits)) {
+        const original = jsxAttrs.find((a) => a.name === attrName)
+        if (!original) continue
+        const mode = attrModes[attrName] ?? (original.isExpression ? 'expression' : 'value')
+        const asExpr = mode === 'expression' || mode === 'scope'
+        if (val === original.rawValue && asExpr === original.isExpression) continue
+        modified = rewriteAttrValue(modified, nodeLocLine, attrName, val, asExpr)
+        summary.push(`Set ${attrName}=${asExpr ? `{${val}}` : `"${val}"`}`)
+      }
+
+      if (modified !== originalSource) {
+        setPendingDiff({ entries: [{ file, original: originalSource, modified }], summary })
+        setExpandedDiffFiles(new Set([0]))
+        setActiveTab('changes')
+      }
+    } catch {
+      setSaveStatus('error')
+    } finally {
+      setBindingsSaving(false)
+    }
+  }
+
+  async function applyPendingDiff() {
+    if (!pendingDiff) return
+    setBindingsSaving(true)
+    try {
+      for (const entry of pendingDiff.entries) {
+        if (entry.file === file) {
+          const ok = await pushToMonacoAndSave(entry.modified)
+          if (!ok) return
+        } else {
+          const res = await fetch('/__source', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: entry.file, content: entry.modified }),
+          })
+          if (!res.ok) throw new Error('Save failed')
+          if (usageInfo && entry.file === usageInfo.file) {
+            setUsageAttrs(extractJsxAttrs(entry.modified, usageInfo.line))
+          }
+        }
+      }
+      setPropTypeEdits({})
+      setPropValueEdits({})
+      setPropDefaultEdits({})
+      setAttrEdits({})
+      setTextChildEdits({})
+      setPendingDiff(null)
+      setSaveStatus('saved')
+      if (activeTab === 'changes') setActiveTab('source')
+    } catch {
+      setSaveStatus('error')
+    } finally {
+      setBindingsSaving(false)
+    }
+  }
+
+  function discardPendingDiff() {
+    setPendingDiff(null)
+    // Reset all edit state — forms will revert to original values
+    setPropTypeEdits({})
+    setPropValueEdits({})
+    setPropDefaultEdits({})
+    setAttrEdits({})
+    setTextChildEdits({})
+    setTextChildModes({})
+    setAttrModes({})
+    setPropValueMode({})
+    setPropDefaultMode({})
+    if (activeTab === 'changes') {
+      const saved = sessionStorage.getItem('cockpit:activeTab')
+      setActiveTab((saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings')
     }
   }
 
@@ -1192,7 +1488,7 @@ export function InspectorPanel({
     }
   }
 
-  const displayFile = file.replace(/\\/g, '/').split('/login-app/src/').pop() ?? file
+  const displayFile = file.replace(/\\/g, '/').split('/src/').pop() ?? file
 
   return (
     <div style={{ ...styles.panel, width: panelWidth }}>
@@ -1353,28 +1649,36 @@ export function InspectorPanel({
             ))}
           </>
         ) : (
-          (expressionMode || inspectMode === 'expression'
-            ? (['source'] as Tab[])
-            : isRootComponent
-              ? (['defaults', 'source'] as Tab[])
-              : inspectingComponent
-                ? (['bindings', 'defaults', 'source'] as Tab[])
-                : (['bindings', 'source'] as Tab[])
-          ).map((tab) => {
+          ((): Tab[] => {
+            const base: Tab[] = expressionMode || inspectMode === 'expression'
+              ? ['source']
+              : isRootComponent
+                ? ['defaults', 'source']
+                : inspectingComponent
+                  ? ['bindings', 'defaults', 'source']
+                  : ['bindings', 'source']
+            if (hasEdits || pendingDiff) base.push('changes')
+            return base
+          })().map((tab) => {
             const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && (tab === 'defaults' || tab === 'source')
             const tabInfo: Record<Tab, string> = {
               expression: 'Choose an expression to wrap the selected nodes.',
               bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
               defaults: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
               source: 'Full source code of the selected component or element. Edits here are saved directly to disk.',
+              changes: 'Review pending code changes before applying. Shows a git-style diff for each affected file.',
             }
             return (
             <button
               key={tab}
               style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : {}) }}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab)
+                if (tab === 'changes') void computePendingDiff()
+              }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'changes' && hasEdits && <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#f9e2af', marginLeft: 5, verticalAlign: 'middle' }} />}
               {activeTab === tab && <InfoIcon text={tabInfo[tab]} />}
               {tabReadOnly && (
                 <span
@@ -1492,11 +1796,8 @@ export function InspectorPanel({
         {/* ── Defaults tab ─────────────────────────────────────────── */}
         {activeTab === 'defaults' && (
           <div style={styles.bindingsPanel}>
-            {!selectedNode ? (
-              <div style={styles.bindingsEmpty}>
-                <span style={{ fontSize: '1.5rem', opacity: 0.4 }}>&#9632;</span>
-                <span>Select a node in the tree to inspect its props &amp; attributes.</span>
-              </div>
+            {!selectedNode || bindingsLoading ? (
+              <div style={styles.loading}>Loading…</div>
             ) : (
               <>
                 {/* Node header */}
@@ -1526,7 +1827,7 @@ export function InspectorPanel({
                     </div>
                   )}
 
-                  {/* Component mode: prop name + default value + type label */}
+                  {/* Component mode: prop name + default value + type (expandable) */}
                   {inspectingComponent && (
                     ownerProps.length === 0 ? (
                       <div style={styles.componentEmptyState}>
@@ -1535,23 +1836,115 @@ export function InspectorPanel({
                         </p>
                       </div>
                     ) : (
-                      ownerProps.map((prop) => (
-                        <div key={prop.name} style={styles.attrRowWrap}>
-                          <div style={{ ...styles.attrRow, gridTemplateColumns: '110px 1fr 80px' }}>
-                            <span style={styles.attrName}>{prop.name}</span>
-                            <div style={styles.attrValueCell}>
-                              <input
-                                style={{ ...styles.attrInput, flex: 1 }}
-                                placeholder="default value"
-                                readOnly={!isRootComponent && isFromComponentsFolder}
-                                value={propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''}
-                                onChange={(e) => { if (isRootComponent || !isFromComponentsFolder) setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
-                              />
+                      ownerProps.map((prop) => {
+                        const rowOpen = !expandedRows.has(prop.name)
+                        const defaultsReadOnly = !isRootComponent && isFromComponentsFolder
+                        const defMode = propDefaultMode[prop.name] ?? (prop.defaultValue && /^[a-zA-Z_$]/.test(prop.defaultValue) && !/^(true|false|null|undefined|'|"|`|\d)/.test(prop.defaultValue) ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
+                        return (
+                          <div key={prop.name} style={styles.attrRowWrap}>
+                            {/* Header */}
+                            <div
+                              style={styles.attrRowHeader}
+                              onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(prop.name) ? n.delete(prop.name) : n.add(prop.name); return n })}
+                            >
+                              <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
+                              <span style={{ ...styles.attrName, flex: 1 }}>{prop.name}</span>
+                              <span style={styles.badgeOwner}>prop</span>
+                              {!defaultsReadOnly && (
+                                <button
+                                  style={styles.deleteBtn}
+                                  title={`Remove prop ${prop.name}`}
+                                  disabled={deletingProp === prop.name}
+                                  onClick={(e) => { e.stopPropagation(); void handleDeleteProp(prop.name) }}
+                                >
+                                  {deletingProp === prop.name ? '…' : '✕'}
+                                </button>
+                              )}
                             </div>
-                            <span style={{ color: '#6c7086', fontSize: 11, fontFamily: 'monospace' }}>{prop.typeStr || ''}</span>
+                            {/* Expanded body */}
+                            {rowOpen && (
+                              <div style={styles.attrRowBody}>
+                                {/* Default value */}
+                                <div style={styles.attrBodyRow}>
+                                  <span style={styles.attrBodyLabel}>default</span>
+                                  {!defaultsReadOnly && (
+                                    <div style={styles.modeToggle}>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(defMode === 'expression' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropDefaultMode(prev => ({ ...prev, [prop.name]: 'expression' })); setPropDefaultEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
+                                      >expression</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(defMode === 'scope' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropDefaultMode(prev => ({ ...prev, [prop.name]: 'scope' })); setPropDefaultEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
+                                      >scope</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(defMode === 'value' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropDefaultMode(prev => ({ ...prev, [prop.name]: 'value' })); setPropDefaultEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
+                                      >value</button>
+                                    </div>
+                                  )}
+                                  {defMode === 'scope' ? (
+                                    <select
+                                      style={styles.attrInput}
+                                      disabled={defaultsReadOnly}
+                                      value={propDefaultEdits[prop.name] ?? (prop.defaultValue && /^[a-zA-Z_$]/.test(prop.defaultValue) ? prop.defaultValue : '')}
+                                      onChange={(e) => { if (!defaultsReadOnly) setPropDefaultEdits(prev => ({ ...prev, [prop.name]: e.target.value })) }}
+                                    >
+                                      <option value="">— pick variable —</option>
+                                      {scopeLayers.map(layer => [
+                                        layer.props.length > 0 && (
+                                          <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                            {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                          </optgroup>
+                                        ),
+                                        layer.state.length > 0 && (
+                                          <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                            {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                          </optgroup>
+                                        ),
+                                      ])}
+                                    </select>
+                                  ) : (
+                                    <InlineMonaco
+                                      value={propDefaultEdits[prop.name] ?? (() => {
+                                        const dv = prop.defaultValue ?? ''
+                                        const isExprDefault = dv && /^[a-zA-Z_$]/.test(dv) && !/^(true|false|null|undefined|'|"|`|\d)/.test(dv)
+                                        if (defMode === 'expression' && isExprDefault) return dv
+                                        if (defMode === 'value' && !isExprDefault) return dv
+                                        return ''
+                                      })()}
+                                      onChange={(v) => { if (!defaultsReadOnly) setPropDefaultEdits(prev => ({ ...prev, [prop.name]: v })) }}
+                                      readOnly={defaultsReadOnly}
+                                    />
+                                  )}
+                                </div>
+                                {/* Type */}
+                                <div style={styles.attrBodyRow}>
+                                  <span style={styles.attrBodyLabel}>type</span>
+                                  <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+                                    <InlineMonaco
+                                      value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
+                                      onChange={(v) => { if (!defaultsReadOnly) setPropTypeEdits(prev => ({ ...prev, [prop.name]: v })) }}
+                                      readOnly={defaultsReadOnly}
+                                    />
+                                    {!defaultsReadOnly && (
+                                      <button
+                                        style={styles.inferBtn}
+                                        title="Infer type from default value"
+                                        onClick={() => {
+                                          const curVal = propDefaultEdits[prop.name] ?? prop.defaultValue ?? ''
+                                          const inferred = inferTypeFromValueString(curVal)
+                                          if (inferred) setPropTypeEdits(prev => ({ ...prev, [prop.name]: inferred }))
+                                        }}
+                                      >⟳</button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))
+                        )
+                      })
                     )
                   )}
 
@@ -1628,7 +2021,7 @@ export function InspectorPanel({
                 </div>
 
                 {/* Apply-changes bar — defaults (root only) */}
-                {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && Object.keys(propDefaultEdits).length > 0 && (
+                {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && (Object.keys(propDefaultEdits).length > 0 || Object.keys(propTypeEdits).length > 0) && (
                   <div style={styles.saveBar}>
                     {saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
                     {saveStatus === 'error' && <span style={styles.errorMsg}>&#x2717; Save failed</span>}
@@ -1636,9 +2029,9 @@ export function InspectorPanel({
                       onClick={() => void handlePropTypeSave()}
                       disabled={bindingsSaving}
                     >
-                      {bindingsSaving ? 'Saving…' : 'Apply changes'}
+                      {bindingsSaving ? 'Saving…' : 'Apply'}
                     </button>
-                    <button style={styles.cancelBtn} onClick={() => { setPropDefaultEdits({}) }}>Cancel</button>
+                    <button style={styles.cancelBtn} onClick={() => { setPropDefaultEdits({}); setPropTypeEdits({}) }}>Cancel</button>
                   </div>
                 )}
               </>
@@ -1649,11 +2042,8 @@ export function InspectorPanel({
         {/* ── Bindings tab ─────────────────────────────────────────── */}
         {activeTab === 'bindings' && (
           <div style={styles.bindingsPanel}>
-            {!selectedNode ? (
-              <div style={styles.bindingsEmpty}>
-                <span style={{ fontSize: '1.5rem', opacity: 0.4 }}>&#9632;</span>
-                <span>Select a node in the tree to inspect its props &amp; attributes.</span>
-              </div>
+            {!selectedNode || bindingsLoading ? (
+              <div style={styles.loading}>Loading…</div>
             ) : (
               <>
                 {/* Node header */}
@@ -1711,24 +2101,24 @@ export function InspectorPanel({
                                   {!isReadOnly && (
                                     <div style={styles.modeToggle}>
                                       <button
-                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'expression' ? styles.modeBtnActive : {}) }}
-                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'expression' }))}
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'expression') === 'expression' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropValueMode(prev => ({ ...prev, [prop.name]: 'expression' })); setPropValueEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
                                       >expression</button>
                                       <button
-                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'scope' ? styles.modeBtnActive : {}) }}
-                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'scope' }))}
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'expression') === 'scope' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropValueMode(prev => ({ ...prev, [prop.name]: 'scope' })); setPropValueEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
                                       >scope</button>
                                       <button
-                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'scope') === 'value' ? styles.modeBtnActive : {}) }}
-                                        onClick={() => setPropValueMode(prev => ({ ...prev, [prop.name]: 'value' }))}
+                                        style={{ ...styles.modeBtn, ...((propValueMode[prop.name] ?? 'expression') === 'value' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setPropValueMode(prev => ({ ...prev, [prop.name]: 'value' })); setPropValueEdits(prev => { const n = { ...prev }; delete n[prop.name]; return n }) }}
                                       >value</button>
                                     </div>
                                   )}
-                                  {(propValueMode[prop.name] ?? 'scope') === 'scope' ? (
+                                  {(propValueMode[prop.name] ?? 'expression') === 'scope' ? (
                                     <select
                                       style={styles.attrInput}
                                       disabled={isReadOnly}
-                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? ''}
+                                      value={propValueEdits[prop.name] ?? (usageAttrs.find(a => a.name === prop.name)?.isExpression ? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? '' : '')}
                                       onChange={(e) => {
                                         if (isReadOnly) return
                                         setPropValueEdits(prev => ({ ...prev, [prop.name]: e.target.value }))
@@ -1752,36 +2142,28 @@ export function InspectorPanel({
                                       }
                                     </select>
                                   ) : (
-                                    <input
-                                      style={styles.attrInput}
+                                    <InlineMonaco
+                                      value={propValueEdits[prop.name] ?? (() => {
+                                        const ua = usageAttrs.find(a => a.name === prop.name)
+                                        const curMode = propValueMode[prop.name] ?? 'expression'
+                                        if (!ua) return prop.defaultValue ?? ''
+                                        if (curMode === 'expression' && ua.isExpression) return ua.rawValue
+                                        if (curMode === 'value' && !ua.isExpression) return ua.rawValue
+                                        return ''
+                                      })()}
+                                      onChange={(v) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: v })) }}
                                       readOnly={isReadOnly}
-                                      value={propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''}
-                                      onChange={(e) => { if (!isReadOnly) setPropValueEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                      onBlur={(e) => {
-                                        if (isReadOnly) return
-                                        const typed = e.target.value
-                                        const prev2 = propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? ''
-                                        setPropValueEdits((prevEdits) => ({ ...prevEdits, [prop.name]: typed || prev2 }))
-                                      }}
-                                      placeholder={(propValueMode[prop.name] ?? 'scope') === 'expression' ? 'e.g. style.height' : (prop.defaultValue ?? 'value')}
                                     />
                                   )}
                                 </div>
                                 {/* Type */}
                                 <div style={styles.attrBodyRow}>
                                   <span style={styles.attrBodyLabel}>type</span>
-                                  <div style={{ display: 'flex', gap: 4 }}>
-                                    <input
-                                      style={{ ...styles.attrInput, flex: 1 }}
-                                      readOnly={isReadOnly}
+                                  <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+                                    <InlineMonaco
                                       value={propTypeEdits[prop.name] ?? prop.typeStr ?? ''}
-                                      onChange={(e) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: e.target.value })) }}
-                                      onBlur={(e) => {
-                                        if (isReadOnly) return
-                                        const typed = e.target.value
-                                        if (typed) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: typed }))
-                                      }}
-                                      placeholder="type"
+                                      onChange={(v) => { if (!isReadOnly) setPropTypeEdits((prev) => ({ ...prev, [prop.name]: v })) }}
+                                      readOnly={isReadOnly}
                                     />
                                     {!isReadOnly && (
                                       <button
@@ -1789,7 +2171,7 @@ export function InspectorPanel({
                                         title="Infer type from current value"
                                         onClick={() => {
                                           const curVal = (propValueEdits[prop.name] ?? usageAttrs.find(a => a.name === prop.name)?.rawValue ?? prop.defaultValue ?? '')
-                                          const pvm = propValueMode[prop.name] ?? 'scope'
+                                          const pvm = propValueMode[prop.name] ?? 'expression'
                                           const varMode = pvm === 'scope' || pvm === 'expression'
                                           const inferred = varMode && parentSource && parentComponentName
                                             ? inferTypeOfLocal(parentSource, parentComponentName, curVal)
@@ -1815,6 +2197,7 @@ export function InspectorPanel({
                       {textChildren.map((child) => {
                         const tKey = `__text__${child.index}`
                         const rowOpen = !expandedRows.has(tKey)
+                        const textMode = textChildModes[child.index] ?? (child.kind === 'expr' ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                         return (
                           <div key={child.index} style={styles.attrRowWrap}>
                             <div
@@ -1829,15 +2212,62 @@ export function InspectorPanel({
                             {rowOpen && (
                               <div style={styles.attrRowBody}>
                                 <div style={styles.attrBodyRow}>
-                                  <input
-                                    style={styles.attrInput}
-                                    readOnly={isReadOnly}
-                                    value={textChildEdits[child.index] ?? child.value}
-                                    onChange={(e) => {
-                                      if (!isReadOnly) setTextChildEdits(prev => ({ ...prev, [child.index]: e.target.value }))
-                                    }}
-                                    placeholder="text content"
-                                  />
+                                  <span style={styles.attrBodyLabel}>value</span>
+                                  {!isReadOnly && (
+                                    <div style={styles.modeToggle}>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(textMode === 'expression' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setTextChildModes(prev => ({ ...prev, [child.index]: 'expression' })); setTextChildEdits(prev => { const n = { ...prev }; delete n[child.index]; return n }) }}
+                                      >expression</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(textMode === 'scope' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setTextChildModes(prev => ({ ...prev, [child.index]: 'scope' })); setTextChildEdits(prev => { const n = { ...prev }; delete n[child.index]; return n }) }}
+                                      >scope</button>
+                                      <button
+                                        style={{ ...styles.modeBtn, ...(textMode === 'value' ? styles.modeBtnActive : {}) }}
+                                        onClick={() => { setTextChildModes(prev => ({ ...prev, [child.index]: 'value' })); setTextChildEdits(prev => { const n = { ...prev }; delete n[child.index]; return n }) }}
+                                      >value</button>
+                                    </div>
+                                  )}
+                                  {textMode === 'scope' ? (
+                                    <select
+                                      style={styles.attrInput}
+                                      disabled={isReadOnly}
+                                      value={textChildEdits[child.index] ?? (child.kind === 'expr' ? child.value : '')}
+                                      onChange={(e) => {
+                                        if (!isReadOnly) setTextChildEdits(prev => ({ ...prev, [child.index]: e.target.value }))
+                                      }}
+                                    >
+                                      <option value="">— pick variable —</option>
+                                      {scopeLayers.length > 0
+                                        ? scopeLayers.map(layer => [
+                                            layer.props.length > 0 && (
+                                              <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                                {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                              </optgroup>
+                                            ),
+                                            layer.state.length > 0 && (
+                                              <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                                {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                              </optgroup>
+                                            ),
+                                          ])
+                                        : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                      }
+                                    </select>
+                                  ) : (
+                                    <InlineMonaco
+                                      value={textChildEdits[child.index] ?? (() => {
+                                        if (textMode === 'expression' && child.kind === 'expr') return child.value
+                                        if (textMode === 'value' && child.kind !== 'expr') return child.value
+                                        return ''
+                                      })()}
+                                      onChange={(v) => {
+                                        if (!isReadOnly) setTextChildEdits(prev => ({ ...prev, [child.index]: v }))
+                                      }}
+                                      readOnly={isReadOnly}
+                                    />
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1858,7 +2288,7 @@ export function InspectorPanel({
                   {!inspectingComponent && jsxAttrs.map((attr) => {
                     const rowOpen = !expandedRows.has(attr.name)
                     const match = ownerProps.find((p) => p.name === attr.name)
-                    const mode = attrModes[attr.name] ?? (attr.isExpression ? 'scope' : 'value') as 'expression' | 'scope' | 'value'
+                    const mode = attrModes[attr.name] ?? (attr.isExpression ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                     return (
                       <div key={attr.name} style={styles.attrRowWrap}>
                         {/* Header */}
@@ -1894,15 +2324,15 @@ export function InspectorPanel({
                                 <div style={styles.modeToggle}>
                                   <button
                                     style={{ ...styles.modeBtn, ...(mode === 'expression' ? styles.modeBtnActive : {}) }}
-                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'expression' }))}
+                                    onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'expression' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}
                                   >expression</button>
                                   <button
                                     style={{ ...styles.modeBtn, ...(mode === 'scope' ? styles.modeBtnActive : {}) }}
-                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'scope' }))}
+                                    onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'scope' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}
                                   >scope</button>
                                   <button
                                     style={{ ...styles.modeBtn, ...(mode === 'value' ? styles.modeBtnActive : {}) }}
-                                    onClick={() => setAttrModes(prev => ({ ...prev, [attr.name]: 'value' }))}
+                                    onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'value' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}
                                   >value</button>
                                 </div>
                               )}
@@ -1910,7 +2340,7 @@ export function InspectorPanel({
                                 <select
                                   style={styles.attrInput}
                                   disabled={isReadOnly}
-                                  value={attrEdits[attr.name] ?? attr.rawValue}
+                                  value={attrEdits[attr.name] ?? (attr.isExpression ? attr.rawValue : '')}
                                   onChange={(e) => {
                                     if (!isReadOnly) setAttrEdits(prev => ({ ...prev, [attr.name]: e.target.value }))
                                   }}
@@ -1933,14 +2363,16 @@ export function InspectorPanel({
                                   }
                                 </select>
                               ) : (
-                                <input
-                                  style={styles.attrInput}
-                                  readOnly={isReadOnly}
-                                  value={attrEdits[attr.name] ?? attr.rawValue}
-                                  onChange={(e) => {
-                                    if (!isReadOnly) setAttrEdits((prev) => ({ ...prev, [attr.name]: e.target.value }))
+                                <InlineMonaco
+                                  value={attrEdits[attr.name] ?? (() => {
+                                    if (mode === 'expression' && attr.isExpression) return attr.rawValue
+                                    if (mode === 'value' && !attr.isExpression) return attr.rawValue
+                                    return ''
+                                  })()}
+                                  onChange={(v) => {
+                                    if (!isReadOnly) setAttrEdits((prev) => ({ ...prev, [attr.name]: v }))
                                   }}
-                                  placeholder={mode === 'expression' ? 'e.g. style.height' : (attr.isBoolean ? 'true / false' : 'value')}
+                                  readOnly={isReadOnly}
                                 />
                               )}
                             </div>
@@ -2064,7 +2496,7 @@ export function InspectorPanel({
                       onClick={() => void handlePropTypeSave()}
                       disabled={bindingsSaving}
                     >
-                      {bindingsSaving ? 'Saving…' : 'Apply changes'}
+                      {bindingsSaving ? 'Saving…' : 'Apply'}
                     </button>
                     <button style={styles.cancelBtn} onClick={() => { setPropTypeEdits({}); setPropValueEdits({}) }}>Cancel</button>
                   </div>
@@ -2080,7 +2512,7 @@ export function InspectorPanel({
                       onClick={() => void handleBindingsSave()}
                       disabled={bindingsSaving}
                     >
-                      {bindingsSaving ? 'Saving…' : 'Apply changes'}
+                      {bindingsSaving ? 'Saving…' : 'Apply'}
                     </button>
                   </div>
                 )}
@@ -2088,10 +2520,75 @@ export function InspectorPanel({
             )}
           </div>
         )}
+
+        {/* ── Changes tab — diff review with accordions ──────────── */}
+        {activeTab === 'changes' && (
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {!pendingDiff ? (
+              <div style={{ padding: '1rem', color: '#6c7086', fontSize: 12, fontStyle: 'italic' }}>
+                {bindingsSaving ? 'Computing changes…' : 'No pending changes to review.'}
+              </div>
+            ) : (
+              <>
+                {/* Summary */}
+                <div style={styles.changeSummary}>
+                  <div style={styles.changeSummaryTitle}>
+                    {pendingDiff.entries.length} file{pendingDiff.entries.length > 1 ? 's' : ''} · {pendingDiff.summary.length} change{pendingDiff.summary.length !== 1 ? 's' : ''}
+                  </div>
+                  {pendingDiff.summary.map((s, i) => (
+                    <div key={i} style={styles.changeSummaryItem}>• {s}</div>
+                  ))}
+                </div>
+
+                {/* File accordions */}
+                {pendingDiff.entries.map((entry, idx) => {
+                  const displayName = entry.file.replace(/\\/g, '/').split('/src/').pop() ?? entry.file
+                  const diff = countDiffLines(entry.original, entry.modified)
+                  const isExpanded = (expandedDiffFiles.has(idx))
+                  return (
+                    <div key={entry.file}>
+                      <div
+                        style={{ ...styles.accordionHeader, ...(isExpanded ? styles.accordionHeaderActive : {}) }}
+                        onClick={() => setExpandedDiffFiles(prev => {
+                          const next = new Set(prev)
+                          next.has(idx) ? next.delete(idx) : next.add(idx)
+                          return next
+                        })}
+                      >
+                        <span style={styles.accordionChevron}>{isExpanded ? '▼' : '▶'}</span>
+                        <span style={styles.accordionFileName}>{displayName}</span>
+                        {diff.added > 0 && <span style={{ ...styles.accordionBadge, color: '#a6e3a1' }}>+{diff.added}</span>}
+                        {diff.removed > 0 && <span style={{ ...styles.accordionBadge, color: '#f38ba8' }}>−{diff.removed}</span>}
+                      </div>
+                      {isExpanded && (
+                        <div style={{ height: 300, borderBottom: '1px solid #313244' }}>
+                          <DiffEditor
+                            height="100%"
+                            language="typescript"
+                            theme="vs-dark"
+                            original={entry.original}
+                            modified={entry.modified}
+                            options={{
+                              fontSize: 12,
+                              minimap: { enabled: false },
+                              scrollBeyondLastLine: false,
+                              readOnly: true,
+                              renderSideBySide: false,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        )}
       </div>
       )}
 
-      {/* Save bar */}
+      {/* Save bar — source tab */}
       {!wrapMode && activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder) && (
         <div style={styles.saveBar}>
           {saveStatus === 'saved' && <span style={styles.savedMsg}>✓ Saved — HMR will reload</span>}
@@ -2099,6 +2596,18 @@ export function InspectorPanel({
           <button style={styles.saveBtn} onClick={handleSave} disabled={saving || loading}>
             {saving ? 'Saving…' : 'Save'}
           </button>
+        </div>
+      )}
+
+      {/* Action bar — changes tab */}
+      {!wrapMode && activeTab === 'changes' && pendingDiff && (
+        <div style={styles.saveBar}>
+          {saveStatus === 'saved' && <span style={styles.savedMsg}>✓ Applied — HMR will reload</span>}
+          {saveStatus === 'error' && <span style={styles.errorMsg}>✗ Apply failed</span>}
+          <button style={styles.saveBtn} onClick={() => void applyPendingDiff()} disabled={bindingsSaving}>
+            {bindingsSaving ? 'Applying…' : 'Apply all'}
+          </button>
+          <button style={styles.cancelBtn} onClick={discardPendingDiff}>Discard</button>
         </div>
       )}
     </div>

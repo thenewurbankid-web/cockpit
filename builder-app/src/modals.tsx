@@ -7,9 +7,11 @@ import { modalStyles } from './appStyles'
 export function AddExpressionModal({
   onClose,
   onAdd,
+  projectRoot,
 }: {
   onClose: () => void
   onAdd: (expr: ExpressionMeta) => void
+  projectRoot: string
 }) {
   const [name, setName] = useState('')
   const [props, setProps] = useState<string[]>([])
@@ -37,7 +39,7 @@ export function AddExpressionModal({
       const res = await fetch('/__source/create-expression', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), props }),
+        body: JSON.stringify({ name: name.trim(), props, projectRoot }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create expression')
@@ -136,9 +138,11 @@ function toComponentNameNoSuffix(name: string): string {
 export function AddComponentModal({
   onClose,
   onAdd,
+  projectRoot,
 }: {
   onClose: () => void
   onAdd: (comp: { id: string; label: string; name: string }) => void
+  projectRoot: string
 }) {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -155,7 +159,7 @@ export function AddComponentModal({
       const res = await fetch('/__source/create-component', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), projectRoot }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create component')
@@ -226,9 +230,11 @@ function toPageId(name: string): string {
 export function AddPageModal({
   onClose,
   onAdd,
+  projectRoot,
 }: {
   onClose: () => void
   onAdd: (page: { id: string; label: string; root: string }) => void
+  projectRoot: string
 }) {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -246,7 +252,7 @@ export function AddPageModal({
       const res = await fetch('/__source/create-page', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), projectRoot }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create page')

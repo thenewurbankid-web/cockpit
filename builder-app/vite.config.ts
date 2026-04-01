@@ -44,20 +44,21 @@ function fixSourceLineNumbers(): Plugin {
 }
 
 /**
- * Vite plugin that watches login-app source files and sends a custom HMR event
+ * Vite plugin that watches project source files and sends a custom HMR event
  * so the builder-app preview can reload components loaded via /@fs/ imports.
+ * Watches the entire monorepo root to cover all sibling apps; external projects
+ * are auto-watched by Vite when their files are imported via /@fs/.
  */
-function loginAppHmrNotify(): Plugin {
+function projectHmrNotify(): Plugin {
   return {
-    name: 'login-app-hmr-notify',
+    name: 'project-hmr-notify',
     apply: 'serve',
     configureServer(server) {
-      const loginAppSrc = path.resolve(__dirname, '../login-app/src')
-      server.watcher.add(loginAppSrc)
+      const monorepoRoot = path.resolve(__dirname, '..')
+      server.watcher.add(monorepoRoot)
       server.watcher.on('change', (file) => {
-        const rel = path.relative(loginAppSrc, file)
-        if (!rel.startsWith('..') && /\.[jt]sx?$/.test(file)) {
-          server.ws.send({ type: 'custom', event: 'login-app:update', data: { file } })
+        if (/\.[jt]sx?$/.test(file)) {
+          server.ws.send({ type: 'custom', event: 'project:update', data: { file } })
         }
       })
     },
@@ -73,18 +74,9 @@ export default defineConfig({
     react(),
     // Must run after esbuild to correct the line-number offset.
     fixSourceLineNumbers(),
-    // Watch login-app files and notify the browser so the preview reloads.
-    loginAppHmrNotify(),
+    // Watch project files and notify the browser so the preview reloads.
+    projectHmrNotify(),
   ],
-  define: {
-    // Forward-slash paths exposed to the browser for /@fs/ dynamic imports.
-    __LOGIN_APP_PAGES_DIR__: JSON.stringify(
-      path.resolve(__dirname, '../login-app/src/pages').replace(/\\/g, '/')
-    ),
-    __LOGIN_APP_COMPONENTS_DIR__: JSON.stringify(
-      path.resolve(__dirname, '../login-app/src/components').replace(/\\/g, '/')
-    ),
-  },
   resolve: {
     alias: {
       // Lets builder-app import login-app source files directly.
@@ -93,8 +85,8 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    // Allow serving files from the whole monorepo (needed for /@fs/ imports).
-    fs: { allow: ['..'] },
+    // Allow serving files from anywhere on disk (needed for /@fs/ imports of external projects).
+    fs: { strict: false },
     proxy: {
       // Proxy source API requests to the Express dev server.
       '/__source': 'http://localhost:3001',

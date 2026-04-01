@@ -440,10 +440,25 @@ export function DOMTreePanel({
     needsInitialSelectRef.current = false
     const first = tree[0]
     if (first.kind === 'component' && first.file) {
+      const el = firstDomElement(first)
+      if (el) setSelected(el)
       onAutoSelect(
         { tag: first.name, locatorId: null, locatorFile: first.file, locatorLine: first.line, ownerComponentName: first.name, domAttributes: [] },
         first.file, first.line, first.name
       )
+    } else if (first.kind === 'dom') {
+      setSelected(first.el)
+      const info = first.sourceInfo
+      if (info) {
+        const domAttrs: Array<{ name: string; value: string }> = []
+        for (const attr of Array.from(first.el.attributes)) {
+          domAttrs.push({ name: attr.name, value: attr.value })
+        }
+        onAutoSelect(
+          { tag: first.tag, locatorId: null, locatorFile: info.file, locatorLine: info.line, ownerComponentName: info.ownerComponentName ?? null, domAttributes: domAttrs },
+          info.file, info.line, info.ownerComponentName ?? first.tag
+        )
+      }
     }
   }, [tree]) // eslint-disable-line react-hooks/exhaustive-deps
 

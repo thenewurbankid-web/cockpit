@@ -1,13 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useState } from 'react'
 
-// Exposed by vite.config.ts — forward-slash absolute paths to login-app source dirs.
-declare const __LOGIN_APP_PAGES_DIR__: string
-declare const __LOGIN_APP_COMPONENTS_DIR__: string
-
-// /@fs/ imports bypass Vite's static module graph entirely: any .tsx file that
-// exists on disk is compiled and served on demand, so newly-created files load
-// instantly without a page reload or a static glob re-evaluation.
-
 // Per-folder lazy caches so Suspense doesn't remount on every render.
 // Cleared on HMR so edits always produce a fresh import.
 const pageCache = new Map<string, ReturnType<typeof lazy>>()
@@ -20,32 +12,34 @@ if (import.meta.hot) {
   })
 }
 
-function getLazyPage(componentName: string) {
-  if (!pageCache.has(componentName)) {
+function getLazyPage(componentName: string, pagesDir: string) {
+  const key = `${pagesDir}/${componentName}`
+  if (!pageCache.has(key)) {
     pageCache.set(
-      componentName,
+      key,
       lazy(() =>
-        import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_PAGES_DIR__}/${componentName}.tsx`).then(
+        import(/* @vite-ignore */ `/@fs/${pagesDir}/${componentName}.tsx`).then(
           (m) => ({ default: m[componentName] as React.ComponentType<unknown> })
         )
       )
     )
   }
-  return pageCache.get(componentName)!
+  return pageCache.get(key)!
 }
 
-function getLazyComponent(componentName: string) {
-  if (!componentCache.has(componentName)) {
+function getLazyComponent(componentName: string, componentsDir: string) {
+  const key = `${componentsDir}/${componentName}`
+  if (!componentCache.has(key)) {
     componentCache.set(
-      componentName,
+      key,
       lazy(() =>
-        import(/* @vite-ignore */ `/@fs/${__LOGIN_APP_COMPONENTS_DIR__}/${componentName}.tsx`).then(
+        import(/* @vite-ignore */ `/@fs/${componentsDir}/${componentName}.tsx`).then(
           (m) => ({ default: m[componentName] as React.ComponentType<unknown> })
         )
       )
     )
   }
-  return componentCache.get(componentName)!
+  return componentCache.get(key)!
 }
 
 function ErrorFallback({ error }: { error: Error }) {
@@ -109,10 +103,14 @@ export function ComponentLoader({
   page,
   componentName,
   folder = 'pages',
+  pagesDir,
+  componentsDir,
 }: {
   page: string
   componentName: string
   folder?: 'pages' | 'components'
+  pagesDir: string
+  componentsDir: string
 }) {
   // Increment to reset the ErrorBoundary after HMR updates (remounts the subtree).
   const [resetKey, setResetKey] = useState(0)
@@ -136,8 +134,8 @@ export function ComponentLoader({
   if (loadError) return <ErrorFallback error={loadError} />
 
   const Loaded = folder === 'components'
-    ? getLazyComponent(componentName)
-    : getLazyPage(componentName)
+    ? getLazyComponent(componentName, componentsDir)
+    : getLazyPage(componentName, pagesDir)
 
   return (
     <PreviewCanvas>

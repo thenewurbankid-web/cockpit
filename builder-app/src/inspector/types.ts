@@ -96,7 +96,7 @@ export interface InspectorPanelProps {
   onWrapChooseExpr?: (expr: { name: string; file: string; props: string[] }) => void
 }
 
-export type Tab = 'source' | 'defaults' | 'bindings' | 'expression'
+export type Tab = 'source' | 'defaults' | 'bindings' | 'expression' | 'changes'
 
 // ── block extraction ──────────────────────────────────────────────────────────
 
@@ -161,4 +161,18 @@ export interface PropDraft {
   name: string
   type: string
   hasExplicit: boolean
+}
+
+/** One file's before/after content for the diff viewer. */
+export interface PendingDiffEntry {
+  file: string
+  original: string
+  modified: string
+}
+
+/** Pending code diff awaiting user review before applying. */
+export interface PendingDiff {
+  entries: PendingDiffEntry[]
+  /** Human-readable summary lines describing each change. */
+  summary: string[]
 }

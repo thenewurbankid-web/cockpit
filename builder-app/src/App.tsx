@@ -9,30 +9,34 @@ import type { ExpressionMeta } from './tree/DOMTreePanel'
 import { ExpressionAssignPanel } from './preview/ExpressionAssignPanel'
 import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
 import { AddPageModal, AddComponentModal, AddExpressionModal } from './modals'
+import { ProjectPickerModal } from './ProjectPickerModal'
 import { appStyles as styles } from './appStyles'
 
 export type PreviewPage = string
 
-const INITIAL_PAGES: { id: string; label: string; root: string }[] = [
-  { id: 'login',            label: '🔐 Login',          root: 'LoginPage' },
-  { id: 'forgot-password',  label: '🔑 Forgot Password', root: 'ForgotPasswordPage' },
-  { id: 'home',             label: '🏠 Home',            root: 'HomePage' },
-]
+interface ProjectInfo {
+  name: string
+  root: string
+  pagesDir: string | null
+  componentsDir: string | null
+  expressionsDir: string | null
+  valid: boolean
+}
 
-async function fetchPages(): Promise<{ id: string; label: string; root: string }[]> {
+async function fetchPages(projectRoot: string): Promise<{ id: string; label: string; root: string }[]> {
   try {
-    const res = await fetch('/__source/list-pages')
-    if (!res.ok) return INITIAL_PAGES
+    const res = await fetch(`/__source/list-pages?projectRoot=${encodeURIComponent(projectRoot)}`)
+    if (!res.ok) return []
     const data = await res.json()
-    return data.pages?.length ? data.pages : INITIAL_PAGES
+    return data.pages ?? []
   } catch {
-    return INITIAL_PAGES
+    return []
   }
 }
 
-async function fetchComponents(): Promise<{ id: string; label: string; name: string }[]> {
+async function fetchComponents(projectRoot: string): Promise<{ id: string; label: string; name: string }[]> {
   try {
-    const res = await fetch('/__source/list-components')
+    const res = await fetch(`/__source/list-components?projectRoot=${encodeURIComponent(projectRoot)}`)
     if (!res.ok) return []
     const data = await res.json()
     return data.components ?? []
@@ -41,9 +45,9 @@ async function fetchComponents(): Promise<{ id: string; label: string; name: str
   }
 }
 
-async function fetchExpressions(): Promise<ExpressionMeta[]> {
+async function fetchExpressions(projectRoot: string): Promise<ExpressionMeta[]> {
   try {
-    const res = await fetch('/__source/list-expressions')
+    const res = await fetch(`/__source/list-expressions?projectRoot=${encodeURIComponent(projectRoot)}`)
     if (!res.ok) return []
     const data = await res.json()
     return data.expressions ?? []
@@ -90,14 +94,14 @@ function readSessionJson<T>(key: string, fallback: T): T {
 
 export default function App() {
   const initial = readUrlState()
-  const [location, setLocation] = useState<SourceLocation | null>(() => readSessionJson('cockpit:location', null))
-  const [panelOpen, setPanelOpen] = useState(() => readSessionJson('cockpit:panelOpen', true))
-  const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(() => readSessionJson('cockpit:selectedNode', null))
+  const [location, setLocation] = useState<SourceLocation | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(null)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
   const [previewComponent, setPreviewComponent] = useState<string | null>(initial.component)
-  const [pages, setPages] = useState(INITIAL_PAGES)
+  const [pages, setPages] = useState<{ id: string; label: string; root: string }[]>([])
   const [addPageOpen, setAddPageOpen] = useState(false)
   const [components, setComponents] = useState<{ id: string; label: string; name: string }[]>([])
   const [addComponentOpen, setAddComponentOpen] = useState(false)
@@ -109,6 +113,39 @@ export default function App() {
   const [hoveredWrapKey, setHoveredWrapKey] = useState<string | null>(null)
   const [wrapCenterTab, setWrapCenterTab] = useState<'nodes' | 'preview'>('nodes')
 
+  // Project selection
+  const [projectRoot, setProjectRoot] = useState<string | null>(null)
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
+
+  async function loadProject(root: string) {
+    // Notify server so isSafeFile allows files within this project
+    await fetch('/__source/set-active-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ root }),
+    })
+    // Fetch project dirs
+    const infoRes = await fetch(`/__source/project-info?root=${encodeURIComponent(root)}`)
+    const info: ProjectInfo = await infoRes.json()
+    setProjectInfo(info)
+    // Load pages/components/expressions
+    const [loadedPages, loadedComponents, loadedExpressions] = await Promise.all([
+      fetchPages(root),
+      fetchComponents(root),
+      fetchExpressions(root),
+    ])
+    setPages(loadedPages)
+    setComponents(loadedComponents)
+    setExpressions(loadedExpressions)
+    setPreviewPage(loadedPages[0]?.id ?? '')
+    setPreviewComponent(null)
+    setSelectedNode(null)
+    setPanelOpen(false)
+    setProjectRoot(root)
+    localStorage.setItem('cockpit:projectRoot', root)
+    setShowPicker(false)
+  }
   // Persist inspector state to sessionStorage so it survives reload.
   useEffect(() => {
     sessionStorage.setItem('cockpit:location', JSON.stringify(location))
@@ -129,13 +166,16 @@ export default function App() {
     if (activeSection !== 'expressions') setActiveExpression(null)
   }, [activeSection])
 
+  // Auto-load project from localStorage, or show project picker
   useEffect(() => {
-    fetchPages().then((loaded) => {
-      setPages(loaded)
-      setPreviewPage((cur) => loaded.some((p) => p.id === cur) ? cur : (loaded[0]?.id ?? cur))
-    })
-    fetchComponents().then(setComponents)
-    fetchExpressions().then(setExpressions)
+    const saved = localStorage.getItem('cockpit:projectRoot')
+    if (saved) {
+      loadProject(saved).catch(() => {
+        // If the saved project no longer exists, show the picker
+        localStorage.removeItem('cockpit:projectRoot')
+        setProjectRoot(null)
+      })
+    }
   }, [])
   const canvasRef = useRef<HTMLDivElement>(null)
   // Callback bridge: InspectorPanel picker → ExpressionTester insert
@@ -167,7 +207,8 @@ export default function App() {
 
   async function deletePage(id: string, root: string) {
     try {
-      await fetch(`/__source/page/${encodeURIComponent(root)}`, { method: 'DELETE' })
+      const qs = projectRoot ? `?projectRoot=${encodeURIComponent(projectRoot)}` : ''
+      await fetch(`/__source/page/${encodeURIComponent(root)}${qs}`, { method: 'DELETE' })
     } catch {
       // best-effort
     }
@@ -182,7 +223,8 @@ export default function App() {
 
   async function deleteComponent(id: string, name: string) {
     try {
-      await fetch(`/__source/component/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      const qs = projectRoot ? `?projectRoot=${encodeURIComponent(projectRoot)}` : ''
+      await fetch(`/__source/component/${encodeURIComponent(name)}${qs}`, { method: 'DELETE' })
     } catch {
       // best-effort
     }
@@ -191,11 +233,25 @@ export default function App() {
 
   async function deleteExpression(name: string) {
     try {
-      await fetch(`/__source/expression/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      const qs = projectRoot ? `?projectRoot=${encodeURIComponent(projectRoot)}` : ''
+      await fetch(`/__source/expression/${encodeURIComponent(name)}${qs}`, { method: 'DELETE' })
     } catch {
       // best-effort
     }
     setExpressions((prev) => prev.filter((e) => e.name !== name))
+  }
+
+  const pagesDir = projectInfo?.pagesDir ?? ''
+  const componentsDir = projectInfo?.componentsDir ?? ''
+
+  // Show project picker if no project is loaded yet, or the user clicked "Change"
+  if (!projectRoot || showPicker) {
+    return (
+      <ProjectPickerModal
+        onProjectSelected={loadProject}
+        onCancel={projectRoot ? () => setShowPicker(false) : undefined}
+      />
+    )
   }
 
   return (
@@ -228,6 +284,23 @@ export default function App() {
             onClick={() => setActiveSection('expressions')}
           >
             Expressions
+          </button>
+        </div>
+
+        {/* Project indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <span style={{ fontSize: 12, color: '#6c7086', fontFamily: 'monospace' }}>
+            📁 {projectInfo?.name ?? '…'}
+          </span>
+          <button
+            style={{
+              padding: '3px 10px', fontSize: 11, borderRadius: 5,
+              background: 'rgba(203,214,244,0.08)', border: '1px solid rgba(203,214,244,0.14)',
+              color: '#a6adc8', cursor: 'pointer', fontFamily: 'system-ui, sans-serif',
+            }}
+            onClick={() => setShowPicker(true)}
+          >
+            Change
           </button>
         </div>
       </header>
@@ -365,10 +438,10 @@ export default function App() {
                   style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}
                 >
                   {activeSection === 'pages' && activePage && (
-                    <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" />
+                    <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} />
                   )}
                   {activeSection === 'components' && previewComponent && (
-                    <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" />
+                    <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} />
                   )}
                 </div>
               )}
@@ -379,10 +452,10 @@ export default function App() {
             style={{ ...styles.canvas, background: activeSection === 'expressions' ? '#24273a' : '#f5f5f5' }}
           >
           {activeSection === 'pages' && activePage && (
-            <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" />
+            <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} />
           )}
           {activeSection === 'components' && previewComponent && (
-            <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" />
+            <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} />
           )}
           {activeSection === 'components' && !previewComponent && (
             <div style={styles.emptyState}>Select a component to preview it here.</div>
@@ -392,6 +465,8 @@ export default function App() {
               expr={expressions.find((e) => e.name === activeExpression) ?? null}
               pages={pages}
               components={components}
+              pagesDir={pagesDir}
+              componentsDir={componentsDir}
               registerInsert={(fn) => { insertTagRef.current = fn }}
             />
           )}
@@ -430,6 +505,7 @@ export default function App() {
 
       {addPageOpen && (
         <AddPageModal
+          projectRoot={projectRoot ?? ''}
           onClose={() => setAddPageOpen(false)}
           onAdd={(page) => {
             setPages((prev) => [...prev, page])
@@ -441,6 +517,7 @@ export default function App() {
 
       {addComponentOpen && (
         <AddComponentModal
+          projectRoot={projectRoot ?? ''}
           onClose={() => setAddComponentOpen(false)}
           onAdd={(comp) => {
             setComponents((prev) => [...prev, comp])
@@ -451,6 +528,7 @@ export default function App() {
 
       {addExpressionOpen && (
         <AddExpressionModal
+          projectRoot={projectRoot ?? ''}
           onClose={() => setAddExpressionOpen(false)}
           onAdd={(expr) => {
             setExpressions((prev) => [...prev, expr])

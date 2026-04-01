@@ -9,15 +9,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** Monorepo root is one level up from builder-app/server/ */
 export const REPO_ROOT = path.resolve(__dirname, '../../')
 
-/** Ensure the resolved path is inside the monorepo root (path-traversal guard). */
+/** The active project root (set when user opens a project — may be outside REPO_ROOT). */
+export let activeProjectRoot = null
+
+export function setActiveProjectRoot(rootPath) {
+  activeProjectRoot = path.resolve(rootPath)
+}
+
+function isWithinDir(child, parent) {
+  const isWin = process.platform === 'win32'
+  const c = isWin ? child.toLowerCase() : child
+  const p = isWin ? parent.toLowerCase() : parent
+  return c.startsWith(p + path.sep) || c.startsWith(p + '/')
+}
+
+/** Ensure the resolved path is inside the monorepo root OR the active project root (path-traversal guard). */
 export function isSafeFile(filePath) {
   const resolved = path.resolve(filePath)
-  // On Windows, drive letter casing can differ (d: vs D:), so compare
-  // case-insensitively when on a case-insensitive file system.
-  const isWin = process.platform === 'win32'
-  const r = isWin ? resolved.toLowerCase() : resolved
-  const root = isWin ? REPO_ROOT.toLowerCase() : REPO_ROOT
-  return r.startsWith(root + path.sep) || r.startsWith(root + '/')
+  if (isWithinDir(resolved, REPO_ROOT)) return true
+  if (activeProjectRoot && isWithinDir(resolved, activeProjectRoot)) return true
+  return false
 }
 
 // ── TypeScript diagnostics ────────────────────────────────────────────────────
