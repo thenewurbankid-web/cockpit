@@ -44,19 +44,98 @@ function getReactFiber(el: Element): any {
 function findNearestComponentFiber(fiber: any): any {
   let current = fiber?.return
   while (current) {
-    if (typeof current.type === 'function') return current
+    if (isComponentType(current.type)) return current
     current = current.return
   }
   return null
 }
 
+/**
+ * True for any fiber type that represents a user-defined component:
+ * regular functions, React.forwardRef wrappers, and React.memo wrappers.
+ * Previously this only checked `typeof type === 'function'`, which silently
+ * skipped all forwardRef / memo components (their type is an object, not a
+ * function). That caused every DOM element inside a forwardRef component
+ * (e.g. ButtonRoot, ProfileSetupCardRoot) to be attributed to the nearest
+ * plain-function ancestor instead.
+ */
+function isComponentType(type: any): boolean {
+  if (!type) return false
+  if (typeof type === 'function') return true
+  if (typeof type === 'object') {
+    const t = type.$$typeof
+    // react.forward_ref — created by React.forwardRef()
+    // react.memo        — created by React.memo()
+    return (
+      t === Symbol.for('react.forward_ref') ||
+      t === Symbol.for('react.memo')
+    )
+  }
+  return false
+}
+
+/**
+ * Strip a trailing digit suffix that esbuild appends to deduplicate local
+ * variable names when multiple modules in the same pre-bundle share the same
+ * identifier (e.g. `ButtonRoot2` → `ButtonRoot`).  We only strip when the
+ * result is still a valid PascalCase name so we do not accidentally truncate
+ * intentionally-numbered component names like `Step1`.
+ */
+function stripEsbuildSuffix(name: string): string {
+  const stripped = name.replace(/\d+$/, '')
+  // Keep the stripped form only when the base itself starts with an uppercase letter
+  // (i.e. it looks like a React component name), otherwise return the original.
+  return stripped.length > 0 && /^[A-Z]/.test(stripped) ? stripped : name
+}
+
+/**
+ * Extract the display name from a component fiber type, handling plain
+ * functions, React.forwardRef wrappers, and React.memo wrappers.
+ */
 function getComponentName(fiber: any): string | null {
   if (!fiber?.type) return null
-  if (typeof fiber.type === 'string') return null // host / DOM element
-  return fiber.type.displayName || fiber.type.name || null
+  const type = fiber.type
+  if (typeof type === 'string') return null // host / DOM element
+  if (typeof type === 'function') {
+    const name = type.displayName || type.name || null
+    return name ? stripEsbuildSuffix(name) : null
+  }
+  if (typeof type === 'object' && type !== null) {
+    // forwardRef: { $$typeof, render: fn, displayName? }
+    if (type.render) {
+      const name = type.displayName || type.render.displayName || type.render.name || null
+      return name ? stripEsbuildSuffix(name) : null
+    }
+    // memo: { $$typeof, type: wrappedType, displayName? }
+    if (type.type) {
+      const inner = type.type
+      const name = type.displayName || inner.displayName || inner.name || null
+      return name ? stripEsbuildSuffix(name) : null
+    }
+  }
+  return null
 }
 
 // ── public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if any fiber in the ancestor chain of `el` (walking up via
+ * fiber.return) is a component whose name matches `componentName`.  This is
+ * more reliable than checking `ownerComponentName` on leaf elements because
+ * pages that render only sub-components (e.g. pure Subframe pages) have no
+ * direct DOM output — their leaf elements' ownerComponentName is a Subframe
+ * component, never the page root itself.
+ */
+export function fiberTreeContainsComponent(el: Element, componentName: string): boolean {
+  const fiber = getReactFiber(el)
+  if (!fiber) return false
+  let f = fiber
+  while (f) {
+    if (getComponentName(f) === componentName) return true
+    f = f.return
+  }
+  return false
+}
 
 /** Extract source location info from a DOM element via its React fiber. */
 export function getElementSourceInfo(el: Element): ElementSourceInfo | null {
@@ -181,10 +260,7 @@ export function collectExpressionInstances(
 
   function walk(fiber: any): void {
     if (!fiber) return
-    const name =
-      typeof fiber.type === 'function'
-        ? (fiber.type.displayName || fiber.type.name || null)
-        : null
+    const name = isComponentType(fiber.type) ? getComponentName(fiber) : null
 
     // Only track user-land components (PascalCase). Skip anonymous, lowercase,
     // and React internals (e.g. Context.Provider / Context.Consumer whose name

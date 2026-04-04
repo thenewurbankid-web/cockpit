@@ -515,10 +515,25 @@ export function extractOwnerProps(source: string, ownerName: string): ComponentP
 
     if (!componentNode) return result
 
-    const fnNode =
+    let fnNode: AstNode | null | undefined =
       componentNode.type === 'VariableDeclarator'
         ? (componentNode as AstNode & { init?: AstNode }).init
         : componentNode
+
+    // Unwrap React.forwardRef(renderFn) / React.memo(renderFn) —
+    // esbuild compiles forwardRef components as a CallExpression whose first
+    // argument is the actual render function. Without this the params lookup
+    // below finds no params on the CallExpression and returns an empty array.
+    if (fnNode?.type === 'CallExpression') {
+      const args = (fnNode as AstNode & { arguments?: AstNode[] }).arguments ?? []
+      const firstArg = args[0]
+      if (
+        firstArg &&
+        (firstArg.type === 'FunctionExpression' || firstArg.type === 'ArrowFunctionExpression')
+      ) {
+        fnNode = firstArg
+      }
+    }
 
     const params = (fnNode as AstNode & { params?: AstNode[] })?.params ?? []
     const firstParam = params[0]

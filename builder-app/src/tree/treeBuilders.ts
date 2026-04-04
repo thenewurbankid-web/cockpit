@@ -1,5 +1,5 @@
 import { parse } from '@babel/parser'
-import { getElementSourceInfo, collectExpressionInstances, type ElementSourceInfo, type ExpressionInstance } from '../fiberSource'
+import { getElementSourceInfo, collectExpressionInstances, fiberTreeContainsComponent, type ElementSourceInfo, type ExpressionInstance } from '../fiberSource'
 import type { RawDomNode, DisplayNode, DisplayDomNode, DisplayGhostNode } from './types'
 
 function isLikelyReactComponentName(name: string | null | undefined): boolean {
@@ -75,17 +75,28 @@ function collectSourceInfos(node: RawDomNode, out: ElementSourceInfo[]): void {
 
 export function inferPageRoot(
   rawRoots: RawDomNode[],
-  preferredRootComponentName?: string
+  preferredRootComponentName?: string,
+  projectDirs?: string[]
 ): { name: string; file: string; line: number } | null {
   const all: ElementSourceInfo[] = []
   for (const root of rawRoots) collectSourceInfos(root, all)
 
+  // Build a predicate that matches files inside any of the configured project
+  // source dirs (e.g. 'src/subframe-pages') or falls back to the generic
+  // '/pages/' / '/components/' heuristic for login-app style projects.
+  function isProjectFile(filePath: string): boolean {
+    const f = normalizeSlashes(filePath)
+    if (projectDirs && projectDirs.length > 0) {
+      return projectDirs.some(dir => f.startsWith(normalizeSlashes(dir)))
+    }
+    return f.includes('/pages/') || f.includes('/components/')
+  }
+
   if (preferredRootComponentName && isLikelyReactComponentName(preferredRootComponentName)) {
     for (const info of all) {
-      const f = normalizeSlashes(info.file)
       if (
         info.ownerComponentName === preferredRootComponentName &&
-        (f.includes('/pages/') || f.includes('/components/'))
+        isProjectFile(info.file)
       ) {
         return {
           name: preferredRootComponentName,
@@ -95,10 +106,7 @@ export function inferPageRoot(
       }
     }
 
-    const srcInfo = all.find((info) => {
-      const f = normalizeSlashes(info.file)
-      return f.includes('/pages/') || f.includes('/components/')
-    })
+    const srcInfo = all.find((info) => isProjectFile(info.file))
     if (srcInfo) {
       return {
         name: preferredRootComponentName,
@@ -124,10 +132,9 @@ export function inferPageRoot(
   }
 
   for (const info of all) {
-    const f = normalizeSlashes(info.file)
     if (
       isLikelyReactComponentName(info.ownerComponentName) &&
-      (f.includes('/pages/') || f.includes('/components/'))
+      isProjectFile(info.file)
     ) {
       return {
         name: info.ownerComponentName as string,
@@ -175,7 +182,14 @@ function toMixedTree(
     ),
   }
 
-  if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName) {
+  // Don't wrap in a component node if this DOM element's source file is from
+  // the builder itself (e.g. the Suspense loading div or EmptyDetector wrapRef
+  // div in ComponentLoader.tsx). Their nearest React component ancestor ends up
+  // being PreviewCanvas/EmptyDetector — builder internals that must stay invisible.
+  const elementFile = normalizeSlashes(node.sourceInfo?.file ?? '')
+  const isBuilderElement = elementFile.includes('builder-app/src/')
+
+  if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName && !isBuilderElement) {
     return {
       kind: 'component',
       key: `${keyPrefix}-comp-${effectiveOwnerName}`,
@@ -192,14 +206,29 @@ function toMixedTree(
   return domNode
 }
 
-export function buildMixedTree(root: Element, preferredRootComponentName?: string): DisplayNode[] {
+export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[]): DisplayNode[] | null {
   const rawRoots: RawDomNode[] = []
   for (let i = 0; i < root.children.length; i++) {
     const child = root.children[i]
     rawRoots.push(buildRawDomTree(child))
   }
 
-  const pageRoot = inferPageRoot(rawRoots, preferredRootComponentName)
+  // If a specific page/component is expected, verify the canvas actually contains
+  // that component anywhere in its React fiber tree before building the tree.
+  // Using ownerComponentName on leaf elements is not reliable: pages that only
+  // render Subframe sub-components (no direct DOM output) will never show the
+  // page root as ownerComponentName since it is never the nearest parent of
+  // any DOM element.  Instead we walk the fiber.return chain from the canvas's
+  // first child upward — if the page component is mounted it will appear there.
+  if (preferredRootComponentName) {
+    const firstChild = root.firstElementChild
+    const found = firstChild
+      ? fiberTreeContainsComponent(firstChild, preferredRootComponentName)
+      : false
+    if (!found) return null
+  }
+
+  const pageRoot = inferPageRoot(rawRoots, preferredRootComponentName, projectDirs)
 
   const out: DisplayNode[] = rawRoots.map((raw, i) =>
     toMixedTree(raw, pageRoot ? 1 : 0, pageRoot?.name ?? null, `root-${i}`)

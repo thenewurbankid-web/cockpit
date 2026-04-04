@@ -4,6 +4,7 @@ import type { editor } from 'monaco-editor'
 import type { IDisposable } from 'monaco-editor'
 import { parse } from '@babel/parser'
 
+import { notifyPreviewRefresh } from '../preview/ComponentLoader'
 import { InfoIcon } from './InfoIcon'
 import type {
   ServerDiagnostic,
@@ -144,6 +145,7 @@ export function InspectorPanel({
   wrapExpressions = [],
   wrapChosenExpr,
   onWrapChooseExpr,
+  hasRuntimeError,
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
 
@@ -179,6 +181,9 @@ export function InspectorPanel({
   useEffect(() => {
     if (wrapMode) setActiveTab('expression')
   }, [wrapMode])
+  useEffect(() => {
+    if (hasRuntimeError) setActiveTab('source')
+  }, [hasRuntimeError])
 
   // ── wrap mode: load chosen expression source for read-only view ─────────────
   const [wrapExprSource, setWrapExprSource] = useState<string>('')
@@ -211,6 +216,9 @@ export function InspectorPanel({
   const [displayCode, setDisplayCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [bindingsLoading, setBindingsLoading] = useState(true)
+  useEffect(() => {
+    if (loading) setActiveTab('source')
+  }, [loading])
   const [saving, setSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [blockName, setBlockName] = useState<string>('')
@@ -282,6 +290,7 @@ export function InspectorPanel({
   const fullSourceRef = useRef<string>('')
   const blockRangeRef = useRef<BlockRange | null>(null)
   const prevFileRef = useRef<string>('')
+  const fetchAbortRef = useRef<AbortController | null>(null)
   const lastValidSourceRef = useRef<string>('')
   const modelChangeDisposableRef = useRef<IDisposable | null>(null)
   const extraLibDisposableRef = useRef<IDisposable | null>(null)
@@ -446,6 +455,26 @@ export function InspectorPanel({
   // edit, updates fullSourceRef, re-syncs bindings, then immediately persists to
   // disk.  All bindings mutations funnel through here so Monaco's history covers
   // prop/attr adds, deletes and value changes without any custom stack.
+
+  /**
+   * Ask Vite to flush its transform cache for one or more files, then trigger
+   * a preview remount. Must be called AFTER the files are written to disk.
+   *
+   * The `/__cockpit/invalidate` endpoint (served directly by the Vite plugin,
+   * not proxied to Express) calls `server.moduleGraph.invalidateModule()` so
+   * the very next dynamic import gets fresh content from disk rather than a
+   * stale cached transform. The `?t=` timestamp in the import URL then busts
+   * the browser's own module registry for good measure.
+   */
+  async function invalidateAndRefresh(files: string[]): Promise<void> {
+    await Promise.all(
+      files.map((f) =>
+        fetch(`/__cockpit/invalidate?file=${encodeURIComponent(f)}`).catch(() => {/* best-effort */})
+      )
+    )
+    notifyPreviewRefresh()
+  }
+
   async function pushToMonacoAndSave(newFullSource: string): Promise<boolean> {
     fullSourceRef.current = newFullSource
 
@@ -477,6 +506,7 @@ export function InspectorPanel({
       if (!res.ok) { setSaveStatus('error'); return false }
       setSaveStatus('saved')
       refreshBindings(newFullSource, selectedNode)
+      void invalidateAndRefresh([file])
       return true
     } catch {
       setSaveStatus('error')
@@ -613,7 +643,9 @@ export function InspectorPanel({
         // Try each usage file until we get a non-empty attr set.
         for (const { file: usageFile, line: usageLine } of usages) {
           try {
+            const usageFetchT0 = performance.now()
             const res = await fetch(`/__source?file=${encodeURIComponent(usageFile)}`)
+            console.log(`[inspector] fetch usage-file ${(performance.now() - usageFetchT0).toFixed(1)}ms  ${usageFile.replace(/.*[/\\]/, '')}`)
             if (!res.ok) continue
             const usageSource = await res.text()
             const attrs = extractJsxAttrs(usageSource, usageLine)
@@ -815,12 +847,24 @@ export function InspectorPanel({
       prevFileRef.current = file
       setLoading(true)
       setBindingsLoading(true)
-      fetch(`/__source?file=${encodeURIComponent(file)}`)
+      setBlockName(componentName ?? '')
+      // Clear stale source/bindings immediately so Monaco doesn't show the
+      // previous file's content while the new one is in flight.
+      fullSourceRef.current = ''
+      setDisplayCode('')
+      // Cancel any in-flight fetch from a previous file switch.
+      fetchAbortRef.current?.abort()
+      const abortCtrl = new AbortController()
+      fetchAbortRef.current = abortCtrl
+      const fetchT0 = performance.now()
+      fetch(`/__source?file=${encodeURIComponent(file)}`, { signal: abortCtrl.signal })
         .then((r) => {
+          console.log(`[inspector] fetch /__source ${(performance.now() - fetchT0).toFixed(1)}ms  status=${r.status}`)
           if (!r.ok) throw new Error(`Server error ${r.status}`)
           return r.text()
         })
         .then((text) => {
+          const parseT0 = performance.now()
           fullSourceRef.current = text
           setFileImports(extractImports(text))
           setMultipleComponentsInFile(countReactComponentsInSource(text) > 1)
@@ -828,8 +872,23 @@ export function InspectorPanel({
           scheduleDiagnostics(file, text)
           applyBlock(text, line)
           refreshBindings(text, selectedNode)
+          console.log(`[inspector] parse+refreshBindings ${(performance.now() - parseT0).toFixed(1)}ms`)
+          // Load stored diff from the last agent write (if any).
+          fetch(`/__source/diff?file=${encodeURIComponent(file)}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((diff: { original: string; modified: string } | null) => {
+              if (diff && diff.original !== diff.modified) {
+                setPendingDiff({ entries: [{ file, original: diff.original, modified: diff.modified }], summary: ['Last agent write'] })
+                setExpandedDiffFiles(new Set([0]))
+                if (inspectMode === 'file') setActiveTab('changes')
+              }
+            })
+            .catch(() => {})
         })
-        .catch((err) => setDisplayCode(`// Error loading file\n// ${err.message}`))
+        .catch((err) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          setDisplayCode(`// Error loading file\n// ${err.message}`)
+        })
         .finally(() => setLoading(false))
     } else if (fullSourceRef.current) {
       // Same file, different element — re-extract without a network round-trip.
@@ -1205,6 +1264,11 @@ export function InspectorPanel({
       setTextChildEdits({})
       setPendingDiff(null)
       setSaveStatus('saved')
+      // Invalidate Vite's transform cache for every file we just wrote, then
+      // trigger a preview remount. `pushToMonacoAndSave` already handled the
+      // main file; collect any secondary files from the diff.
+      const allFiles = Array.from(new Set(pendingDiff.entries.map((e) => e.file)))
+      void invalidateAndRefresh(allFiles)
       if (activeTab === 'changes') setActiveTab('source')
     } catch {
       setSaveStatus('error')
@@ -1650,6 +1714,7 @@ export function InspectorPanel({
           </>
         ) : (
           ((): Tab[] => {
+            if (hasRuntimeError || loading) return ['source']
             const base: Tab[] = expressionMode || inspectMode === 'expression'
               ? ['source']
               : isRootComponent

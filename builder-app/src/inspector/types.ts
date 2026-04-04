@@ -94,6 +94,8 @@ export interface InspectorPanelProps {
   wrapExpressions?: { name: string; file: string; props: string[] }[]
   wrapChosenExpr?: { name: string; file: string; props: string[] } | null
   onWrapChooseExpr?: (expr: { name: string; file: string; props: string[] }) => void
+  /** When true, the preview has a runtime error — only the source tab is shown. */
+  hasRuntimeError?: boolean
 }
 
 export type Tab = 'source' | 'defaults' | 'bindings' | 'expression' | 'changes'

@@ -2,8 +2,9 @@
  * Shared utilities for the builder dev server.
  */
 import path from 'path'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
-import ts from 'typescript'
+import { Worker } from 'worker_threads'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** Monorepo root is one level up from builder-app/server/ */
@@ -31,103 +32,53 @@ export function isSafeFile(filePath) {
   return false
 }
 
-// ── TypeScript diagnostics ────────────────────────────────────────────────────
+// ── TypeScript diagnostics (worker-thread based) ─────────────────────────────
+//
+// All ts.createProgram calls are synchronous and block the Node.js event loop
+// for 2-6s on large projects.  Running them in a dedicated worker thread keeps
+// the Express event loop free to serve source-file reads, tree builds, and
+// other requests concurrently.
 
-export function findTsConfigForFile(filePath) {
-  const fromDir = path.dirname(path.resolve(filePath))
-  return ts.findConfigFile(fromDir, ts.sys.fileExists, 'tsconfig.json')
-}
+let _worker = null
+const _pending = new Map()
+let _nextId = 0
 
-export function formatDiagnosticMessage(diagnostic) {
-  return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-}
-
-function categoryToSeverity(category) {
-  if (category === ts.DiagnosticCategory.Error) return 8
-  if (category === ts.DiagnosticCategory.Warning) return 4
-  if (category === ts.DiagnosticCategory.Suggestion) return 2
-  return 1
-}
-
-export function getDiagnosticsForFile(filePath, overrideContent) {
-  const absFile = path.resolve(filePath)
-  const configPath = findTsConfigForFile(absFile)
-  if (!configPath) {
-    return { diagnostics: [], error: `No tsconfig.json found for ${absFile}` }
-  }
-
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
-  if (configFile.error) {
-    return { diagnostics: [], error: formatDiagnosticMessage(configFile.error) }
-  }
-
-  const parsed = ts.parseJsonConfigFileContent(
-    configFile.config,
-    ts.sys,
-    path.dirname(configPath),
-    undefined,
-    configPath
-  )
-
-  if (parsed.errors.length > 0) {
-    return { diagnostics: [], error: formatDiagnosticMessage(parsed.errors[0]) }
-  }
-
-  const overrideAbs = overrideContent != null ? absFile : null
-  const defaultHost = ts.createCompilerHost(parsed.options)
-  const host = {
-    ...defaultHost,
-    readFile(fileName) {
-      const resolved = path.resolve(fileName)
-      if (overrideAbs && resolved === overrideAbs) return overrideContent
-      return defaultHost.readFile(fileName)
-    },
-    fileExists(fileName) {
-      const resolved = path.resolve(fileName)
-      if (overrideAbs && resolved === overrideAbs) return true
-      return defaultHost.fileExists(fileName)
-    },
-    getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile) {
-      const resolved = path.resolve(fileName)
-      if (overrideAbs && resolved === overrideAbs) {
-        return ts.createSourceFile(fileName, overrideContent, languageVersion, true)
-      }
-      return defaultHost.getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile)
-    },
-  }
-
-  const program = ts.createProgram({
-    rootNames: parsed.fileNames,
-    options: parsed.options,
-    host,
+function getWorker() {
+  if (_worker) return _worker
+  _worker = new Worker(new URL('./diagnosticsWorker.js', import.meta.url))
+  _worker.on('message', ({ id, result }) => {
+    const resolve = _pending.get(id)
+    if (resolve) { _pending.delete(id); resolve(result) }
   })
+  _worker.on('error', (err) => {
+    console.error('[diagnosticsWorker] error:', err.message)
+    for (const [id, resolve] of _pending) {
+      _pending.delete(id)
+      resolve({ diagnostics: [], error: err.message })
+    }
+    _worker = null
+  })
+  _worker.on('exit', (code) => {
+    if (code !== 0) {
+      console.warn(`[diagnosticsWorker] exited with code ${code}`)
+      _worker = null
+    }
+  })
+  return _worker
+}
 
-  const source = program.getSourceFile(absFile)
-  if (!source) {
-    return { diagnostics: [], error: `File is not included in project: ${absFile}` }
-  }
+/** Async: run TypeScript diagnostics in the worker thread (non-blocking). */
+export function getDiagnosticsAsync(filePath, overrideContent) {
+  return new Promise((resolve) => {
+    const id = _nextId++
+    _pending.set(id, resolve)
+    getWorker().postMessage({ id, type: 'diagnose', filePath, content: overrideContent })
+  })
+}
 
-  const diagnostics = [
-    ...program.getSyntacticDiagnostics(source),
-    ...program.getSemanticDiagnostics(source),
-  ]
-
-  return {
-    diagnostics: diagnostics.map((d) => {
-      const start = d.start ?? 0
-      const length = d.length ?? 1
-      const s = source.getLineAndCharacterOfPosition(start)
-      const e = source.getLineAndCharacterOfPosition(start + Math.max(length, 1))
-      return {
-        code: d.code,
-        message: formatDiagnosticMessage(d),
-        severity: categoryToSeverity(d.category),
-        startLineNumber: s.line + 1,
-        startColumn: s.character + 1,
-        endLineNumber: e.line + 1,
-        endColumn: e.character + 1,
-      }
-    }),
-    error: null,
-  }
+/** Pre-warm the worker's TypeScript program cache for the project (fire-and-forget). */
+export function warmDiagnosticsCache(projectRoot) {
+  const id = _nextId++
+  _pending.set(id, () => {}) // fire-and-forget — result is ignored
+  getWorker().postMessage({ id, type: 'warm', projectRoot })
 }

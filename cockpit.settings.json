@@ -1,0 +1,31 @@
+{
+  "aliases": {
+    "@": "D:/Repositories/max-ai-ui/src",
+    "@/public": "D:/Repositories/max-ai-ui/public",
+    "@/ui": "D:/Repositories/max-ai-ui/src/ui"
+  },
+  "packages": [
+    "next"
+  ],
+  "nodeModulesDirs": [
+    "D:/Repositories/max-ai-ui/node_modules"
+  ],
+  "projectDirs": {
+    "D:\\Repositories\\max-ai-ui": {
+      "pagesDir": "D:/Repositories/max-ai-ui/src/subframe-pages"
+    }
+  },
+  "cssFiles": [
+    "D:/Repositories/max-ai-ui/src/styles/global.css",
+    "D:/Repositories/max-ai-ui/src/styles/subframe-tailwind.css"
+  ],
+  "publicDirs": [
+    "D:/Repositories/max-ai-ui/public"
+  ],
+  "fontLinks": [
+    "https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&display=swap",
+    "https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap",
+    "https://fonts.googleapis.com/css2?family=Bitter:wght@100;200;300;400;500;600;700;800;900&display=swap",
+    "https://fonts.googleapis.com/css2?family=Onest:wght@100;200;300;400;500;600;700;800;900&display=swap"
+  ]
+}

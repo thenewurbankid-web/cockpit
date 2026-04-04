@@ -10,15 +10,40 @@
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
+import { execSync, spawn } from 'child_process'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsForFile, setActiveProjectRoot } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, setActiveProjectRoot, warmDiagnosticsCache } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
 import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps } from './templates.js'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
 
+// In-memory store of last write diff per file path.
+// Maps absolute file path → { original: string, modified: string }
+const fileDiffStore = new Map()
+
 // ── Core file endpoints ───────────────────────────────────────────────────────
+
+// Simple request timing middleware — logs path + duration for every /__source request.
+app.use('/__source', (req, _res, next) => {
+  req._t0 = performance.now()
+  next()
+})
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/__source') && !req.path.startsWith('/__diagnostics')) return next()
+  const orig = res.json.bind(res)
+  const origSend = res.send.bind(res)
+  const finish = (label) => {
+    const ms = req._t0 != null ? (performance.now() - req._t0).toFixed(1) : '?'
+    const file = (req.query?.file ?? req.body?.file ?? '').toString().replace(/.*[/\\]/, '')
+    console.log(`[${ms}ms] ${req.method} ${req.path}${file ? ` file=${file}` : ''}`)
+  }
+  res.json = (body) => { finish('json'); return orig(body) }
+  res.send = (body) => { finish('send'); return origSend(body) }
+  next()
+})
 
 app.get('/__source', (req, res) => {
   const rawFile = req.query.file
@@ -27,18 +52,22 @@ app.get('/__source', (req, res) => {
   }
 
   const filePath = path.resolve(rawFile)
-  console.log(`[GET /__source] raw="${rawFile}" resolved="${filePath}"`)
+  const t0 = performance.now()
 
   if (!isSafeFile(filePath)) {
+    console.warn(`[GET /__source] DENIED ${filePath}`)
     return res.status(403).json({ error: 'Access denied' })
   }
 
   if (!fs.existsSync(filePath)) {
-    console.error(`[GET /__source] File not found: ${filePath}`)
+    console.error(`[GET /__source] NOT FOUND ${filePath}`)
     return res.status(404).json({ error: `File not found: ${filePath}` })
   }
 
   const content = fs.readFileSync(filePath, 'utf-8')
+  const readMs = (performance.now() - t0).toFixed(1)
+  const sizeKb = (Buffer.byteLength(content, 'utf-8') / 1024).toFixed(1)
+  console.log(`[GET /__source] ${readMs}ms  ${sizeKb}KB  ${filePath}`)
   res.type('text/plain').send(content)
 })
 
@@ -55,9 +84,35 @@ app.post('/__source', (req, res) => {
     return res.status(403).json({ error: 'Access denied' })
   }
 
+  // Capture original content for diff tracking before overwriting.
+  let original = ''
+  try { original = fs.readFileSync(filePath, 'utf-8') } catch { /* new file */ }
+
   fs.writeFileSync(filePath, content, 'utf-8')
+
+  // Store diff so the inspector can display it.
+  if (original !== content) {
+    fileDiffStore.set(filePath, { original, modified: content })
+  }
+
   // Vite HMR will detect the file change automatically.
   res.json({ ok: true })
+})
+
+app.get('/__source/diff', (req, res) => {
+  const rawFile = req.query.file
+  if (typeof rawFile !== 'string' || !rawFile) {
+    return res.status(400).json({ error: 'Missing ?file= query parameter' })
+  }
+  const filePath = path.resolve(rawFile)
+  if (!isSafeFile(filePath)) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+  const diff = fileDiffStore.get(filePath)
+  if (!diff) {
+    return res.status(404).json({ error: 'No diff stored for this file' })
+  }
+  res.json(diff)
 })
 
 // ── Project selection ─────────────────────────────────────────────────────────
@@ -121,9 +176,7 @@ app.get('/__source/project-info', (req, res) => {
     return res.status(404).json({ error: 'Path not found' })
   }
 
-  const pagesDir = path.join(resolved, 'src', 'pages')
-  const componentsDir = path.join(resolved, 'src', 'components')
-  const expressionsDir = path.join(resolved, 'src', 'expressions')
+  const { pagesDir, componentsDir, expressionsDir } = getProjectDirs(resolved)
 
   const hasPages = fs.existsSync(pagesDir)
   const hasComponents = fs.existsSync(componentsDir)
@@ -152,32 +205,65 @@ app.post('/__source/set-active-project', (req, res) => {
   }
   setActiveProjectRoot(resolved)
   console.log(`[set-active-project] ${resolved}`)
+  // Pre-warm the TypeScript program cache in the background so the first
+  // diagnostics request hits the warm cache instead of cold-starting (~2-6s).
+  warmDiagnosticsCache(resolved)
   res.json({ ok: true })
 })
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Recursively walk a directory and return all .tsx files.
+ * Returns { name, relPath, filePath } where:
+ *   name    = filename without .tsx  (used as export name)
+ *   relPath = relative path from baseDir without .tsx (used for URL construction)
+ *   filePath = absolute path
+ */
+function walkTsx(baseDir) {
+  const results = []
+  function walk(dir, relDir) {
+    let entries
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name), relDir ? `${relDir}/${entry.name}` : entry.name)
+      } else if (entry.name.endsWith('.tsx')) {
+        const name = entry.name.replace(/\.tsx$/, '')
+        const relPath = relDir ? `${relDir}/${name}` : name
+        results.push({ name, relPath, filePath: path.join(dir, entry.name) })
+      }
+    }
+  }
+  walk(baseDir, '')
+  return results
+}
+
 app.get('/__source/list-pages', (req, res) => {
-  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
+  const projectRoot = getProjectRoot(req)
+  const loginAppPages = getProjectDirs(projectRoot).pagesDir
+  console.log(`[list-pages] projectRoot=${projectRoot} pagesDir=${loginAppPages} exists=${fs.existsSync(loginAppPages)}`)
   if (!fs.existsSync(loginAppPages)) {
+    console.log(`[list-pages] pagesDir not found, returning empty`)
     return res.json({ pages: [] })
   }
 
-  const files = fs.readdirSync(loginAppPages)
+  const files = walkTsx(loginAppPages)
+  console.log(`[list-pages] walkTsx found ${files.length} file(s):`, files.map(f => f.relPath))
   const pages = files
-    .filter((f) => f.endsWith('Page.tsx'))
-    .map((f) => {
-      const componentName = f.replace(/\.tsx$/, '')
-      // "ForgotPasswordPage" → "Forgot Password", "TestPage" → "Test"
-      const label = componentName
-        .replace(/Page$/, '')
-        .replace(/([A-Z])/g, ' $1')
-        .trim()
-      const id = label.toLowerCase().replace(/\s+/g, '-')
-      return { id, label, root: componentName }
+    .map(({ name, relPath }) => {
+      // Derive label from the filename: strip trailing "Page", prettify camelCase
+      const baseName = name.endsWith('Page') ? name.slice(0, -4) : name
+      const label = (relPath.includes('/')
+        ? relPath.split('/').slice(0, -1).join(' / ') + ' / ' + baseName
+        : baseName
+      ).replace(/([A-Z])/g, ' $1').trim()
+      const id = relPath.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-')
+      return { id, label, root: name, file: relPath }
     })
     .sort((a, b) => a.label.localeCompare(b.label))
 
+  console.log(`[list-pages] returning ${pages.length} page(s):`, pages.map(p => p.id))
   res.json({ pages })
 })
 
@@ -193,7 +279,7 @@ app.post('/__source/create-page', (req, res) => {
     trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '') + 'Page'
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
 
-  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
+  const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -217,7 +303,7 @@ app.delete('/__source/page/:componentName', (req, res) => {
     return res.status(400).json({ error: 'Invalid component name' })
   }
 
-  const loginAppPages = path.resolve(getProjectRoot(req), 'src/pages')
+  const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -235,17 +321,18 @@ app.delete('/__source/page/:componentName', (req, res) => {
 // ── Components ────────────────────────────────────────────────────────────────
 
 app.get('/__source/list-components', (req, res) => {
-  const dir = path.resolve(getProjectRoot(req), 'src/components')
+  const dir = getProjectDirs(getProjectRoot(req)).componentsDir
   if (!fs.existsSync(dir)) return res.json({ components: [] })
 
-  const files = fs.readdirSync(dir)
+  const files = walkTsx(dir)
   const components = files
-    .filter((f) => f.endsWith('.tsx'))
-    .map((f) => {
-      const name = f.replace(/\.tsx$/, '')
-      const label = name.replace(/([A-Z])/g, ' $1').trim()
-      const id = label.toLowerCase().replace(/\s+/g, '-')
-      return { id, label, name }
+    .map(({ name, relPath }) => {
+      const label = (relPath.includes('/')
+        ? relPath.split('/').slice(0, -1).join(' / ') + ' / ' + name
+        : name
+      ).replace(/([A-Z])/g, ' $1').trim()
+      const id = relPath.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-')
+      return { id, label, name, file: relPath }
     })
     .sort((a, b) => a.label.localeCompare(b.label))
   res.json({ components })
@@ -260,7 +347,7 @@ app.post('/__source/create-component', (req, res) => {
   const componentName =
     trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
-  const dir = path.resolve(getProjectRoot(req), 'src/components')
+  const dir = getProjectDirs(getProjectRoot(req)).componentsDir
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -281,7 +368,7 @@ app.delete('/__source/component/:componentName', (req, res) => {
   if (!componentName || !/^[A-Z][a-zA-Z0-9]+$/.test(componentName)) {
     return res.status(400).json({ error: 'Invalid component name' })
   }
-  const dir = path.resolve(getProjectRoot(req), 'src/components')
+  const dir = getProjectDirs(getProjectRoot(req)).componentsDir
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -295,7 +382,7 @@ app.delete('/__source/component/:componentName', (req, res) => {
 
 // ── Diagnostics ───────────────────────────────────────────────────────────────
 
-app.post('/__diagnostics', (req, res) => {
+app.post('/__diagnostics', async (req, res) => {
   const { file: rawFile, content } = req.body ?? {}
   if (typeof rawFile !== 'string' || !rawFile) {
     return res.status(400).json({ error: 'Body must contain { file: string, content?: string }' })
@@ -306,7 +393,9 @@ app.post('/__diagnostics', (req, res) => {
     return res.status(403).json({ error: 'Access denied' })
   }
 
-  const { diagnostics, error } = getDiagnosticsForFile(filePath, typeof content === 'string' ? content : undefined)
+  const t0 = performance.now()
+  const { diagnostics, error } = await getDiagnosticsAsync(filePath, typeof content === 'string' ? content : undefined)
+  console.log(`[POST /__diagnostics] ${(performance.now() - t0).toFixed(1)}ms  ${diagnostics.length} diagnostics  ${filePath}`)
   if (error) {
     return res.status(400).json({ error, diagnostics: [] })
   }
@@ -329,22 +418,22 @@ app.get('/__source/ast-info', (req, res) => {
     return res.status(404).json({ error: `File not found: ${filePath}` })
   }
 
+  const t0 = performance.now()
   const source = fs.readFileSync(filePath, 'utf-8')
   const info = extractAstInfo(source, filePath)
+  console.log(`[GET /__source/ast-info] ${(performance.now() - t0).toFixed(1)}ms  ${filePath}`)
   res.json(info)
 })
 
 // ── Expressions ───────────────────────────────────────────────────────────────
 
 app.get('/__source/list-expressions', (req, res) => {
-  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
+  const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
   if (!fs.existsSync(EXPRESSIONS_DIR)) return res.json({ expressions: [] })
 
-  const files = fs.readdirSync(EXPRESSIONS_DIR).filter((f) => f.endsWith('.tsx'))
-  const expressions = files.map((f) => {
-    const filePath = path.join(EXPRESSIONS_DIR, f)
+  const files = walkTsx(EXPRESSIONS_DIR)
+  const expressions = files.map(({ name, filePath }) => {
     const source = fs.readFileSync(filePath, 'utf-8')
-    const name = f.replace(/\.tsx$/, '')
     const props = extractExpressionProps(source)
     return { name, file: filePath, props }
   }).sort((a, b) => a.name.localeCompare(b.name))
@@ -367,7 +456,7 @@ app.post('/__source/create-expression', (req, res) => {
     return res.status(400).json({ error: 'Invalid expression name' })
   }
 
-  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
+  const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
   const filePath = path.join(EXPRESSIONS_DIR, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -394,7 +483,7 @@ app.delete('/__source/expression/:name', (req, res) => {
     return res.status(400).json({ error: 'Invalid expression name' })
   }
 
-  const EXPRESSIONS_DIR = path.resolve(getProjectRoot(req), 'src/expressions')
+  const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
   const filePath = path.join(EXPRESSIONS_DIR, `${name}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -405,6 +494,248 @@ app.delete('/__source/expression/:name', (req, res) => {
   fs.unlinkSync(filePath)
   console.log(`[delete-expression] Deleted ${filePath}`)
   res.json({ ok: true })
+})
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+const SETTINGS_FILE = path.resolve(REPO_ROOT, 'cockpit.settings.json')
+
+function readSettings() {
+  try {
+    if (!fs.existsSync(SETTINGS_FILE)) return { aliases: {}, packages: [], nodeModulesDirs: [], projectDirs: {} }
+    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
+    return { projectDirs: {}, ...data }
+  } catch { return { aliases: {}, packages: [], nodeModulesDirs: [], projectDirs: {} } }
+}
+
+/**
+ * Resolve pages/components/expressions directories for a project root,
+ * applying any per-project overrides stored in cockpit.settings.json.
+ */
+function getProjectDirs(projectRootArg) {
+  const resolved = path.resolve(projectRootArg)
+  const overrides = (readSettings().projectDirs ?? {})[resolved] ?? {}
+  return {
+    pagesDir: overrides.pagesDir ? path.resolve(overrides.pagesDir) : path.join(resolved, 'src', 'pages'),
+    componentsDir: overrides.componentsDir ? path.resolve(overrides.componentsDir) : path.join(resolved, 'src', 'components'),
+    expressionsDir: overrides.expressionsDir ? path.resolve(overrides.expressionsDir) : path.join(resolved, 'src', 'expressions'),
+  }
+}
+
+function writeSettings(data) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf-8')
+}
+
+app.get('/__source/settings', (_req, res) => {
+  res.json(readSettings())
+})
+
+app.get('/__source/project-deps', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+  const pkgPath = path.join(path.resolve(root), 'package.json')
+  if (!fs.existsSync(pkgPath)) return res.json({ deps: [] })
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+    const allDeps = {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+      ...pkg.peerDependencies,
+    }
+    res.json({ deps: Object.keys(allDeps) })
+  } catch (e) {
+    res.status(400).json({ error: `Failed to read package.json: ${e.message}` })
+  }
+})
+
+app.post('/__source/settings', (req, res) => {
+  const { aliases, packages, nodeModulesDirs, projectDirs, cssFiles, publicDirs, fontLinks } = req.body ?? {}
+  if (typeof aliases !== 'object' || aliases === null || Array.isArray(aliases)) {
+    return res.status(400).json({ error: 'Body must contain { aliases: object }' })
+  }
+  for (const [k, v] of Object.entries(aliases)) {
+    if (typeof k !== 'string' || typeof v !== 'string') {
+      return res.status(400).json({ error: 'Alias keys and values must be strings' })
+    }
+  }
+  writeSettings({
+    aliases,
+    packages: Array.isArray(packages) ? packages : [],
+    nodeModulesDirs: Array.isArray(nodeModulesDirs) ? nodeModulesDirs : [],
+    projectDirs: (typeof projectDirs === 'object' && projectDirs !== null && !Array.isArray(projectDirs)) ? projectDirs : {},
+    cssFiles: Array.isArray(cssFiles) ? cssFiles.filter(f => typeof f === 'string' && f.trim()) : [],
+    publicDirs: Array.isArray(publicDirs) ? publicDirs.filter(f => typeof f === 'string' && f.trim()) : [],
+    fontLinks: Array.isArray(fontLinks) ? fontLinks.filter(f => typeof f === 'string' && f.trim()) : [],
+  })
+  res.json({ ok: true })
+})
+
+function stripJsoncComments(str) {
+  let result = ''
+  let i = 0
+  while (i < str.length) {
+    // String literal — copy verbatim including escaped quotes
+    if (str[i] === '"') {
+      result += str[i++]
+      while (i < str.length) {
+        if (str[i] === '\\') { result += str[i] + str[i + 1]; i += 2 }
+        else if (str[i] === '"') { result += str[i++]; break }
+        else { result += str[i++] }
+      }
+    // Block comment — skip
+    } else if (str[i] === '/' && str[i + 1] === '*') {
+      i += 2
+      while (i < str.length && !(str[i] === '*' && str[i + 1] === '/')) i++
+      i += 2
+    // Line comment — skip to end of line
+    } else if (str[i] === '/' && str[i + 1] === '/') {
+      while (i < str.length && str[i] !== '\n') i++
+    } else {
+      result += str[i++]
+    }
+  }
+  // Remove trailing commas before } or ]
+  return result.replace(/,(\s*[}\]])/g, '$1')
+}
+
+app.get('/__source/tsconfig-paths', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+
+  const tsconfigPath = path.join(path.resolve(root), 'tsconfig.json')
+  const projectRoot = path.resolve(root)
+
+  // Always include the project's node_modules as a resolution source
+  const projectNodeModules = path.join(projectRoot, 'node_modules').replace(/\\/g, '/')
+  const hasNodeModules = fs.existsSync(path.join(projectRoot, 'node_modules'))
+
+  if (!fs.existsSync(tsconfigPath)) {
+    return res.json({ aliases: {}, nodeModulesDir: hasNodeModules ? projectNodeModules : null })
+  }
+
+  try {
+    const raw = fs.readFileSync(tsconfigPath, 'utf-8')
+    const tsconfig = JSON.parse(stripJsoncComments(raw))
+    const pathsMap = tsconfig.compilerOptions?.paths ?? {}
+    const baseUrl = tsconfig.compilerOptions?.baseUrl ?? '.'
+
+    const aliases = {}
+    for (const [pattern, targets] of Object.entries(pathsMap)) {
+      if (!Array.isArray(targets) || !targets[0]) continue
+      const aliasKey = pattern.replace(/\/\*$/, '')
+      const targetPath = targets[0].replace(/\/\*$/, '')
+      aliases[aliasKey] = path.resolve(projectRoot, baseUrl, targetPath).replace(/\\/g, '/')
+    }
+    res.json({ aliases, nodeModulesDir: hasNodeModules ? projectNodeModules : null })
+  } catch (e) {
+    res.status(400).json({ error: `Failed to parse tsconfig.json: ${e.message}` })
+  }
+})
+
+// Scan a source file's direct imports and return which package names can't be
+// found in any configured nodeModulesDirs (or the project's own node_modules).
+app.get('/__source/check-imports', (req, res) => {
+  const filePath = req.query.file
+  if (!filePath || !isSafeFile(filePath)) return res.status(400).json({ error: 'Invalid file' })
+  if (!fs.existsSync(filePath)) return res.json({ missing: [] })
+
+  // Read configured nodeModulesDirs and aliases from settings.
+  let nodeModulesDirs = []
+  let aliases = {}
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
+      nodeModulesDirs = Array.isArray(s.nodeModulesDirs) ? s.nodeModulesDirs : []
+      aliases = (s.aliases && typeof s.aliases === 'object') ? s.aliases : {}
+    }
+  } catch {}
+
+  // Also walk up the directory tree from the file to find any node_modules folders.
+  let dir = path.dirname(path.resolve(filePath))
+  for (let i = 0; i < 10; i++) {
+    const nm = path.join(dir, 'node_modules')
+    if (fs.existsSync(nm) && !nodeModulesDirs.includes(nm)) nodeModulesDirs.push(nm)
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+
+  const source = fs.readFileSync(filePath, 'utf-8')
+
+  // Extract all import specifiers from the file.
+  const specifiers = new Set()
+  const importRe = /\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+  let m
+  while ((m = importRe.exec(source)) !== null) specifiers.add(m[1] ?? m[2])
+
+  const NODE_BUILTINS = new Set(['fs', 'path', 'http', 'https', 'crypto', 'util', 'events',
+    'stream', 'os', 'net', 'url', 'assert', 'zlib', 'buffer', 'child_process', 'cluster',
+    'dns', 'domain', 'module', 'punycode', 'querystring', 'readline', 'repl',
+    'string_decoder', 'tls', 'tty', 'v8', 'vm', 'worker_threads'])
+
+  const missing = []
+  for (const spec of specifiers) {
+    if (!spec) continue
+    if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:') || spec.startsWith('virtual:')) continue
+    // Skip if the specifier matches a configured alias prefix
+    const isAlias = Object.keys(aliases).some(alias => spec === alias || spec.startsWith(alias + '/'))
+    if (isAlias) continue
+    const pkgName = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]
+    if (!pkgName || NODE_BUILTINS.has(pkgName)) continue
+    const found = nodeModulesDirs.length > 0 && nodeModulesDirs.some(nm => fs.existsSync(path.join(nm, pkgName)))
+    if (!found) missing.push(pkgName)
+  }
+
+  res.json({ missing: [...new Set(missing)] })
+})
+
+app.post('/__source/install-package', (req, res) => {
+  const { packageName } = req.body ?? {}
+  if (typeof packageName !== 'string' || !/^[@a-zA-Z0-9_\-./]+$/.test(packageName)) {
+    return res.status(400).json({ error: 'Invalid package name' })
+  }
+
+  const builderDir = path.resolve(REPO_ROOT, 'builder-app')
+
+  // Server-Sent Events stream so the client sees live output
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  function send(type, data) {
+    res.write(`data: ${JSON.stringify({ type, data })}\n\n`)
+  }
+
+  send('start', `Installing ${packageName}…\n`)
+
+  const child = spawn('npm', ['install', '--save-dev', packageName], {
+    cwd: builderDir,
+    shell: true,
+    env: { ...process.env, FORCE_COLOR: '0' },
+  })
+
+  child.stdout.on('data', (chunk) => send('stdout', chunk.toString()))
+  child.stderr.on('data', (chunk) => send('stderr', chunk.toString()))
+
+  child.on('close', (code) => {
+    if (code === 0) {
+      const settings = readSettings()
+      if (!settings.packages.includes(packageName)) {
+        settings.packages = [...(settings.packages ?? []), packageName]
+        writeSettings(settings)
+      }
+      send('done', `\n✓ ${packageName} installed successfully.`)
+    } else {
+      send('error', `\n✗ Install failed (exit code ${code}).`)
+    }
+    res.end()
+  })
+
+  child.on('error', (err) => {
+    send('error', `\n✗ ${err.message}`)
+    res.end()
+  })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────

@@ -138,4 +138,12 @@ export interface DOMTreePanelProps {
   onWidthChange?: (width: number) => void
   /** Called once after the first tree build for each page/component, with the root node pre-selected. */
   onAutoSelect?: (snapshot: SelectedNodeSnapshot, file: string, line: number, componentName: string) => void
+  /** When true, the canvas failed to render — show a stub node instead of the frozen last tree. */
+  hasLoadError?: boolean
+  /** Component name to display in the stub node when hasLoadError is true. */
+  loadErrorComponentName?: string
+  /** Configured pages directory for this project (used to correctly identify page files in inferPageRoot). */
+  pagesDir?: string
+  /** Configured components directory for this project. */
+  componentsDir?: string
 }

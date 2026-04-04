@@ -65,6 +65,10 @@ export function DOMTreePanel({
   hoveredWrapNodeKey,
   onWidthChange,
   onAutoSelect,
+  hasLoadError,
+  loadErrorComponentName,
+  pagesDir,
+  componentsDir,
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
   const prevRootNameRef = useRef<string | undefined>(undefined)
@@ -334,10 +338,24 @@ export function DOMTreePanel({
     function tick() {
       const root = canvasRef.current
       if (root && root.children.length > 0) {
+        // If the canvas is showing a load error, stop tree rebuilding —
+        // the tree content is driven by hasLoadError prop instead.
+        if (root.querySelector('[data-load-error]')) {
+          rafRef.current = requestAnimationFrame(tick)
+          return
+        }
         const html = root.innerHTML
         if (html !== lastHTML) {
+          const projectDirs = [pagesDir, componentsDir].filter(Boolean) as string[]
+          const newTree = buildMixedTree(root, preferredRootComponentName, projectDirs.length > 0 ? projectDirs : undefined)
+          if (newTree === null) {
+            // Canvas doesn't have the expected page yet (still loading / showing
+            // previous page). Don't update lastHTML so we retry every frame until
+            // the right component appears, keeping the tree cleared in the meantime.
+            rafRef.current = requestAnimationFrame(tick)
+            return
+          }
           lastHTML = html
-          const newTree = buildMixedTree(root, preferredRootComponentName)
           setTree(newTree)
           if (needsInitialExpandRef.current) {
             needsInitialExpandRef.current = false
@@ -473,10 +491,13 @@ export function DOMTreePanel({
   const [expandedAncestors, setExpandedAncestors] = useState<Set<string> | null>(null)
   const [scrollToKey, setScrollToKey] = useState<string | null>(null)
 
-  // Reset tree + show spinner whenever the active page/component changes
+  // Reset tree + show spinner whenever the active page/component changes.
+  // We key on the full selection identity (page id + component + root name)
+  // so switching between two pages with the same root component name still resets.
+  const selectionKey = `${activePage ?? ''}|${activeComponent ?? ''}|${preferredRootComponentName ?? ''}`
   useEffect(() => {
-    if (prevRootNameRef.current !== preferredRootComponentName) {
-      prevRootNameRef.current = preferredRootComponentName
+    if (prevRootNameRef.current !== selectionKey) {
+      prevRootNameRef.current = selectionKey
       needsInitialExpandRef.current = true
       needsInitialSelectRef.current = true
       setTree([])
@@ -485,7 +506,7 @@ export function DOMTreePanel({
       setExpandedAncestors(null)
       setScrollToKey(null)
     }
-  }, [preferredRootComponentName])
+  }, [selectionKey])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [hoveredPageId, setHoveredPageId] = useState<string | null>(null)
   const [componentsOpen, setComponentsOpen] = useState(true)
@@ -931,7 +952,15 @@ export function DOMTreePanel({
       </div>}
       {activeSection !== 'expressions' && treeOpen && (
         <div style={styles.scroll}>
-          {treeWithGhosts.length > 0 ? (
+          {hasLoadError ? (
+            <div style={{ padding: '6px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', color: '#f38ba8', fontSize: '0.8rem' }}>
+                <span style={{ fontSize: 10 }}>⚠</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{loadErrorComponentName ?? 'Component'}</span>
+                <span style={{ color: '#6c7086', fontWeight: 400 }}>— failed to render</span>
+              </div>
+            </div>
+          ) : treeWithGhosts.length > 0 ? (
             treeWithGhosts.map((child) => (
               <TreeRow
                 key={child.key}

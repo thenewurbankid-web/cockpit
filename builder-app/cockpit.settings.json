@@ -1,0 +1,14 @@
+{
+  "aliases": {
+    "@": "D:/Repositories/max-ai-ui/src",
+    "@/public": "D:/Repositories/max-ai-ui/public",
+    "@/ui": "D:/Repositories/max-ai-ui/src/ui",
+    "@/libs": "D:/Repositories/max-ai-ui/src/ui/libs"
+  },
+  "packages": [
+    "next"
+  ],
+  "nodeModulesDirs": [
+    "D:/Repositories/max-ai-ui/node_modules"
+  ]
+}

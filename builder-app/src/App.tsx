@@ -10,7 +10,10 @@ import { ExpressionAssignPanel } from './preview/ExpressionAssignPanel'
 import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
 import { AddPageModal, AddComponentModal, AddExpressionModal } from './modals'
 import { ProjectPickerModal } from './ProjectPickerModal'
+import { SettingsPanel } from './SettingsPanel'
 import { appStyles as styles } from './appStyles'
+// Side-effect: imports CSS/Tailwind files listed in cockpit.settings.json cssFiles.
+import 'virtual:cockpit-css'
 
 export type PreviewPage = string
 
@@ -23,18 +26,21 @@ interface ProjectInfo {
   valid: boolean
 }
 
-async function fetchPages(projectRoot: string): Promise<{ id: string; label: string; root: string }[]> {
+async function fetchPages(projectRoot: string): Promise<{ id: string; label: string; root: string; file?: string }[]> {
   try {
     const res = await fetch(`/__source/list-pages?projectRoot=${encodeURIComponent(projectRoot)}`)
-    if (!res.ok) return []
+    console.log('[fetchPages] status', res.status, 'for', projectRoot)
+    if (!res.ok) { console.warn('[fetchPages] non-ok response'); return [] }
     const data = await res.json()
+    console.log('[fetchPages] pages:', data.pages)
     return data.pages ?? []
-  } catch {
+  } catch (e) {
+    console.error('[fetchPages] error:', e)
     return []
   }
 }
 
-async function fetchComponents(projectRoot: string): Promise<{ id: string; label: string; name: string }[]> {
+async function fetchComponents(projectRoot: string): Promise<{ id: string; label: string; name: string; file?: string }[]> {
   try {
     const res = await fetch(`/__source/list-components?projectRoot=${encodeURIComponent(projectRoot)}`)
     if (!res.ok) return []
@@ -101,9 +107,9 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
   const [previewComponent, setPreviewComponent] = useState<string | null>(initial.component)
-  const [pages, setPages] = useState<{ id: string; label: string; root: string }[]>([])
+  const [pages, setPages] = useState<{ id: string; label: string; root: string; file?: string }[]>([])
   const [addPageOpen, setAddPageOpen] = useState(false)
-  const [components, setComponents] = useState<{ id: string; label: string; name: string }[]>([])
+  const [components, setComponents] = useState<{ id: string; label: string; name: string; file?: string }[]>([])
   const [addComponentOpen, setAddComponentOpen] = useState(false)
   const [expressions, setExpressions] = useState<ExpressionMeta[]>([])
   const [addExpressionOpen, setAddExpressionOpen] = useState(false)
@@ -117,6 +123,66 @@ export default function App() {
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
   const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [pendingInstallPackages, setPendingInstallPackages] = useState<string[]>([])
+  const [aliasesNeedReload, setAliasesNeedReload] = useState(false)
+  const [aliasesWereNew, setAliasesWereNew] = useState(false)
+  const [detectedPackages, setDetectedPackages] = useState<string[]>([])
+  const [previewHasError, setPreviewHasError] = useState(false)
+
+  // Packages that are commonly needed by non-Vite projects but are not
+  // bundled with Node.js / browser environments.
+  const FRAMEWORK_PACKAGES = ['next', 'react-router-dom', '@remix-run/react', 'gatsby', 'nuxt']
+
+  async function autoPopulateSettings(root: string) {
+    try {
+      const [pathsRes, depsRes, settingsRes] = await Promise.all([
+        fetch(`/__source/tsconfig-paths?root=${encodeURIComponent(root)}`),
+        fetch(`/__source/project-deps?root=${encodeURIComponent(root)}`),
+        fetch('/__source/settings'),
+      ])
+      const [pathsData, depsData, currentSettings] = await Promise.all([
+        pathsRes.json(),
+        depsRes.json(),
+        settingsRes.json(),
+      ])
+
+      const detectedAliases: Record<string, string> = pathsData.aliases ?? {}
+      const nodeModulesDir: string | null = pathsData.nodeModulesDir ?? null
+      const currentAliases: Record<string, string> = currentSettings.aliases ?? {}
+      const currentPackages: string[] = currentSettings.packages ?? []
+      const currentNodeModulesDirs: string[] = currentSettings.nodeModulesDirs ?? []
+
+      // Merge: add/update aliases from project tsconfig, keep any user-added extras
+      const merged: Record<string, string> = { ...currentAliases, ...detectedAliases }
+      const hasNewAliases = Object.entries(detectedAliases).some(
+        ([k, v]) => currentAliases[k] !== v,
+      )
+
+      // Merge nodeModulesDirs
+      const mergedNodeModulesDirs = nodeModulesDir && !currentNodeModulesDirs.includes(nodeModulesDir)
+        ? [...currentNodeModulesDirs, nodeModulesDir]
+        : currentNodeModulesDirs
+      const hasNewNodeModules = mergedNodeModulesDirs.length !== currentNodeModulesDirs.length
+
+      // Detect framework packages present in project but not yet installed in builder
+      const projectDeps: string[] = depsData.deps ?? []
+      const needed = FRAMEWORK_PACKAGES.filter(
+        pkg => projectDeps.includes(pkg) && !currentPackages.includes(pkg),
+      )
+      setDetectedPackages(needed)
+
+      if (hasNewAliases || hasNewNodeModules) {
+        await fetch('/__source/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aliases: merged, packages: currentPackages, nodeModulesDirs: mergedNodeModulesDirs }),
+        })
+      }
+    } catch {
+      // best-effort
+    }
+  }
 
   async function loadProject(root: string) {
     // Notify server so isSafeFile allows files within this project
@@ -135,6 +201,8 @@ export default function App() {
       fetchComponents(root),
       fetchExpressions(root),
     ])
+    console.log('[loadProject] pages:', loadedPages.length, loadedPages.map(p => p.id))
+    console.log('[loadProject] components:', loadedComponents.length, loadedComponents.map(c => c.id))
     setPages(loadedPages)
     setComponents(loadedComponents)
     setExpressions(loadedExpressions)
@@ -145,6 +213,8 @@ export default function App() {
     setProjectRoot(root)
     localStorage.setItem('cockpit:projectRoot', root)
     setShowPicker(false)
+    // Auto-populate path aliases and detect framework packages
+    autoPopulateSettings(root)
   }
   // Persist inspector state to sessionStorage so it survives reload.
   useEffect(() => {
@@ -160,6 +230,11 @@ export default function App() {
   // Sync URL whenever the routable state changes.
   useEffect(() => {
     pushUrlState(activeSection, previewPage, previewComponent)
+  }, [activeSection, previewPage, previewComponent])
+
+  // Clear runtime error flag when the user navigates to a different page/component.
+  useEffect(() => {
+    setPreviewHasError(false)
   }, [activeSection, previewPage, previewComponent])
 
   useEffect(() => {
@@ -178,10 +253,50 @@ export default function App() {
     }
   }, [])
   const canvasRef = useRef<HTMLDivElement>(null)
+  const [canvasHasError, setCanvasHasError] = useState(false)
+
+  // Reset canvas error immediately when navigating so the old-page error banner
+  // doesn't linger in the tree while the new page loads.
+  useEffect(() => {
+    setCanvasHasError(false)
+  }, [activeSection, previewPage, previewComponent])
+
+  // Poll the canvas for load-error state so DOMTreePanel can show a stub node.
+  useEffect(() => {
+    let raf = 0
+    function check() {
+      const hasErr = !!(canvasRef.current?.querySelector('[data-load-error]'))
+      setCanvasHasError(prev => prev !== hasErr ? hasErr : prev)
+      raf = requestAnimationFrame(check)
+    }
+    raf = requestAnimationFrame(check)
+    return () => cancelAnimationFrame(raf)
+  }, [])
   // Callback bridge: InspectorPanel picker → ExpressionTester insert
   const insertTagRef = useRef<((tag: string) => void) | null>(null)
 
   const activePage = pages.find(p => p.id === previewPage) ?? pages[0]
+
+  // When the user switches pages or components via the nav, update the inspector
+  // location so it loads the new file — otherwise it stays stuck on the previous one.
+  // page.file / comp.file are relative paths from the server (e.g. "SetNewPassword" or
+  // "Auth/SetNewPassword") — we must join them with pagesDir/componentsDir to get the
+  // absolute path the inspector needs (the server resolves relative paths from cwd,
+  // which is builder-app, not the project root).
+  useEffect(() => {
+    if (!panelOpen) return
+    if (activeSection === 'pages') {
+      const page = pages.find(p => p.id === previewPage)
+      if (page?.file && pagesDir) {
+        setLocation({ file: `${pagesDir}/${page.file}.tsx`, line: 1, inspectMode: 'file', componentName: page.root })
+      }
+    } else if (activeSection === 'components') {
+      const comp = components.find(c => c.name === previewComponent)
+      if (comp?.file && componentsDir) {
+        setLocation({ file: `${componentsDir}/${comp.file}.tsx`, line: 1, inspectMode: 'file', componentName: comp.name })
+      }
+    }
+  }, [previewPage, previewComponent, activeSection]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openInspector(
     file: string,
@@ -302,8 +417,54 @@ export default function App() {
           >
             Change
           </button>
+          <button
+            style={{
+              padding: '3px 8px', fontSize: 13, borderRadius: 5,
+              background: 'rgba(203,214,244,0.08)', border: '1px solid rgba(203,214,244,0.14)',
+              color: '#a6adc8', cursor: 'pointer', lineHeight: 1,
+            }}
+            title="Project settings"
+            onClick={() => setShowSettings(true)}
+          >
+            ⚙
+          </button>
         </div>
       </header>
+
+      {/* Reload banner — shown when path aliases were auto-updated */}
+      {aliasesNeedReload && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+          background: '#1c2a1c', borderBottom: '1px solid #2a5c2a',
+          padding: '6px 16px', fontSize: 12, fontFamily: 'system-ui, sans-serif',
+          color: '#a6e3a1', flexShrink: 0,
+        }}>
+          <span>
+            {aliasesWereNew
+              ? <>✓ Path aliases auto-detected from <strong>{projectInfo?.name}</strong> tsconfig.json. Reload to apply.</>
+              : <>✓ Path aliases already configured for <strong>{projectInfo?.name}</strong>.</>
+            }
+          </span>
+          {detectedPackages.length > 0 && (
+            <span style={{ color: '#f9e2af' }}>
+              Also detected: <strong>{detectedPackages.join(', ')}</strong> — install via ⚙ Settings.
+            </span>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#a6e3a1', color: '#1e1e2e', border: 'none', borderRadius: 5,
+              fontSize: 11, fontWeight: 700, padding: '3px 12px', cursor: 'pointer',
+            }}
+          >
+            Reload now
+          </button>
+          <button
+            onClick={() => setAliasesNeedReload(false)}
+            style={{ background: 'none', border: 'none', color: '#6c7086', fontSize: 16, cursor: 'pointer', padding: '0 2px' }}
+          >×</button>
+        </div>
+      )}
 
       {/* Main area */}
       <div style={styles.main}>
@@ -366,6 +527,13 @@ export default function App() {
             }
             setPanelOpen(true)
           }}
+          hasLoadError={canvasHasError}
+          loadErrorComponentName={
+            activeSection === 'components' ? (previewComponent ?? undefined)
+            : activePage?.root
+          }
+          pagesDir={pagesDir || undefined}
+          componentsDir={componentsDir || undefined}
         />
 
         {/* Center: preview canvas */}
@@ -438,10 +606,10 @@ export default function App() {
                   style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}
                 >
                   {activeSection === 'pages' && activePage && (
-                    <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} />
+                    <ComponentLoader page={previewPage} componentName={activePage.root} componentPath={activePage.file} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', activePage.root)} onRuntimeError={() => setPreviewHasError(true)} />
                   )}
                   {activeSection === 'components' && previewComponent && (
-                    <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} />
+                    <ComponentLoader page={previewComponent} componentName={previewComponent} componentPath={components.find(c => c.name === previewComponent)?.file} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', previewComponent)} onRuntimeError={() => setPreviewHasError(true)} />
                   )}
                 </div>
               )}
@@ -452,10 +620,10 @@ export default function App() {
             style={{ ...styles.canvas, background: activeSection === 'expressions' ? '#24273a' : '#f5f5f5' }}
           >
           {activeSection === 'pages' && activePage && (
-            <ComponentLoader page={previewPage} componentName={activePage.root} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} />
+            <ComponentLoader page={previewPage} componentName={activePage.root} componentPath={activePage.file} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', activePage.root)} onRuntimeError={() => setPreviewHasError(true)} />
           )}
           {activeSection === 'components' && previewComponent && (
-            <ComponentLoader page={previewComponent} componentName={previewComponent} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} />
+            <ComponentLoader page={previewComponent} componentName={previewComponent} componentPath={components.find(c => c.name === previewComponent)?.file} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', previewComponent)} onRuntimeError={() => setPreviewHasError(true)} />
           )}
           {activeSection === 'components' && !previewComponent && (
             <div style={styles.emptyState}>Select a component to preview it here.</div>
@@ -482,7 +650,7 @@ export default function App() {
             inspectMode={location?.inspectMode ?? 'file'}
             componentName={location?.componentName}
             selectedNode={selectedNode}
-            rootComponentName={activeSection === 'components' ? (previewComponent ?? activePage.root) : activePage.root}
+            rootComponentName={activeSection === 'components' ? (previewComponent ?? activePage?.root) : activePage?.root}
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
             expressionMode={activeSection === 'expressions'}
@@ -493,6 +661,7 @@ export default function App() {
             wrapExpressions={wrapIntent ? expressions : []}
             wrapChosenExpr={wrapChosenExpr}
             onWrapChooseExpr={setWrapChosenExpr}
+            hasRuntimeError={previewHasError}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)
               setActiveSection('components')
@@ -534,6 +703,16 @@ export default function App() {
             setExpressions((prev) => [...prev, expr])
             setAddExpressionOpen(false)
           }}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          projectRoot={projectRoot}
+          detectedPackages={detectedPackages}
+          pendingInstallPackages={pendingInstallPackages}
+          onClose={() => { setShowSettings(false); setPendingInstallPackages([]) }}
+          onProjectDirsChanged={() => { if (projectRoot) void loadProject(projectRoot) }}
         />
       )}
     </div>
