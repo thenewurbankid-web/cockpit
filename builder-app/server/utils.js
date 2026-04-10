@@ -82,3 +82,47 @@ export function warmDiagnosticsCache(projectRoot) {
   _pending.set(id, () => {}) // fire-and-forget — result is ignored
   getWorker().postMessage({ id, type: 'warm', projectRoot })
 }
+
+// ── Per-project .cockpit/config.json helpers ──────────────────────────────────
+
+const COCKPIT_DIR = '.cockpit'
+const COCKPIT_CONFIG = 'config.json'
+
+const DEFAULT_PROJECT_CONFIG = {
+  name: '',
+  pagesDir: '',
+  componentsDir: '',
+  expressionsDir: '',
+  aliases: {},
+  packages: [],
+  nodeModulesDirs: [],
+  cssFiles: [],
+  publicDirs: [],
+  fontLinks: [],
+}
+
+/**
+ * Read the per-project config from <projectRoot>/.cockpit/config.json.
+ * Returns defaults if the file is missing or unparseable.
+ */
+export function readProjectConfig(projectRoot) {
+  const configPath = path.join(path.resolve(projectRoot), COCKPIT_DIR, COCKPIT_CONFIG)
+  try {
+    if (!fs.existsSync(configPath)) return { ...DEFAULT_PROJECT_CONFIG }
+    const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+    return { ...DEFAULT_PROJECT_CONFIG, ...data }
+  } catch {
+    return { ...DEFAULT_PROJECT_CONFIG }
+  }
+}
+
+/**
+ * Write the per-project config to <projectRoot>/.cockpit/config.json.
+ * Creates the .cockpit directory if it does not exist.
+ */
+export function writeProjectConfig(projectRoot, config) {
+  const cockpitDir = path.join(path.resolve(projectRoot), COCKPIT_DIR)
+  fs.mkdirSync(cockpitDir, { recursive: true })
+  const configPath = path.join(cockpitDir, COCKPIT_CONFIG)
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
+}

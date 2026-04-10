@@ -1,5 +1,5 @@
 import { parse } from '@babel/parser'
-import { getElementSourceInfo, collectExpressionInstances, fiberTreeContainsComponent, type ElementSourceInfo, type ExpressionInstance } from '../fiberSource'
+import { getElementSourceInfo, collectExpressionInstances, fiberTreeContainsComponent, findTopmostProjectComponentName, type ElementSourceInfo, type ExpressionInstance } from '../fiberSource'
 import type { RawDomNode, DisplayNode, DisplayDomNode, DisplayGhostNode } from './types'
 
 function isLikelyReactComponentName(name: string | null | undefined): boolean {
@@ -78,8 +78,8 @@ export function inferPageRoot(
   preferredRootComponentName?: string,
   projectDirs?: string[]
 ): { name: string; file: string; line: number } | null {
-  const all: ElementSourceInfo[] = []
-  for (const root of rawRoots) collectSourceInfos(root, all)
+  const allRaw: ElementSourceInfo[] = []
+  for (const root of rawRoots) collectSourceInfos(root, allRaw)
 
   // Build a predicate that matches files inside any of the configured project
   // source dirs (e.g. 'src/subframe-pages') or falls back to the generic
@@ -91,6 +91,13 @@ export function inferPageRoot(
     }
     return f.includes('/pages/') || f.includes('/components/')
   }
+
+  function isBuilderFile(filePath: string): boolean {
+    return normalizeSlashes(filePath).includes('builder-app/src/')
+  }
+
+  // Never let builder-app source files appear as the page root.
+  const all = allRaw.filter(info => !isBuilderFile(info.file) && !isBuilderFile(info.ownerFile ?? ''))
 
   if (preferredRootComponentName && isLikelyReactComponentName(preferredRootComponentName)) {
     for (const info of all) {
@@ -106,21 +113,29 @@ export function inferPageRoot(
       }
     }
 
-    const srcInfo = all.find((info) => isProjectFile(info.file))
+    // Subframe pages render Subframe components (in src/ui/) rather than DOM
+    // elements directly. Their leaf elements' `file` is in src/ui/ (not in
+    // pagesDir/componentsDir), but their `ownerFile` points back to the page
+    // file (where <BadgeRoot/> etc. appear in JSX). Check ownerFile first.
+    const srcInfo =
+      all.find((info) => isProjectFile(info.ownerFile ?? '')) ??
+      all.find((info) => isProjectFile(info.file))
     if (srcInfo) {
+      const useOwner = srcInfo.ownerFile && isProjectFile(srcInfo.ownerFile)
       return {
         name: preferredRootComponentName,
-        file: srcInfo.file,
-        line: srcInfo.line,
+        file: useOwner ? srcInfo.ownerFile! : srcInfo.file,
+        line: useOwner ? (srcInfo.ownerLine ?? srcInfo.line) : srcInfo.line,
       }
     }
 
     const first = all[0]
     if (first) {
+      const useOwner = first.ownerFile && isProjectFile(first.ownerFile)
       return {
         name: preferredRootComponentName,
-        file: first.file,
-        line: first.line,
+        file: useOwner ? first.ownerFile! : first.file,
+        line: useOwner ? (first.ownerLine ?? first.line) : first.line,
       }
     }
 
@@ -162,7 +177,17 @@ function toMixedTree(
   depth: number,
   parentOwnerName: string | null,
   keyPrefix: string
-): DisplayNode {
+): DisplayNode | null {
+  // Exclude DOM elements whose own JSX definition lives in builder-app source.
+  // NOTE: we intentionally do NOT check ownerFile here. In the iframe preview
+  // the page component (e.g. AlSignIn) is instantiated from ComponentLoader.tsx
+  // (builder-app), so its direct DOM children have ownerFile=ComponentLoader.tsx.
+  // Checking ownerFile would wrongly filter out all of the page's DOM output.
+  // Builder-app DOM elements are already excluded by addRawRoots() which skips
+  // builder-app wrapper elements before they ever reach toMixedTree.
+  const elementFile = normalizeSlashes(node.sourceInfo?.file ?? '')
+  if (elementFile.includes('builder-app/src/')) return null
+
   const ownerName = isLikelyReactComponentName(node.sourceInfo?.ownerComponentName)
     ? node.sourceInfo?.ownerComponentName ?? null
     : null
@@ -177,19 +202,12 @@ function toMixedTree(
     tag: node.tag,
     sourceInfo: node.sourceInfo,
     depth,
-    children: node.children.map((child, i) =>
-      toMixedTree(child, depth + 1, currentOwnerName, `${keyPrefix}-${i}`)
-    ),
+    children: node.children
+      .map((child, i) => toMixedTree(child, depth + 1, currentOwnerName, `${keyPrefix}-${i}`))
+      .filter((n): n is DisplayNode => n !== null),
   }
 
-  // Don't wrap in a component node if this DOM element's source file is from
-  // the builder itself (e.g. the Suspense loading div or EmptyDetector wrapRef
-  // div in ComponentLoader.tsx). Their nearest React component ancestor ends up
-  // being PreviewCanvas/EmptyDetector — builder internals that must stay invisible.
-  const elementFile = normalizeSlashes(node.sourceInfo?.file ?? '')
-  const isBuilderElement = elementFile.includes('builder-app/src/')
-
-  if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName && !isBuilderElement) {
+  if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName) {
     return {
       kind: 'component',
       key: `${keyPrefix}-comp-${effectiveOwnerName}`,
@@ -208,9 +226,26 @@ function toMixedTree(
 
 export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[]): DisplayNode[] | null {
   const rawRoots: RawDomNode[] = []
+
+  // Collect raw DOM roots from canvas children, but transparently unwrap any
+  // builder-app wrapper elements (e.g. the <div> rendered by PreviewCanvas in
+  // ComponentLoader.tsx). We detect these by their own JSX definition file
+  // (fiber._debugSource.fileName). We do NOT check ownerFile here because
+  // the page component (e.g. AlSignIn) is instantiated from ComponentLoader.tsx,
+  // making ownerFile=ComponentLoader.tsx for every element AlSignIn renders —
+  // checking ownerFile would wrongly strip the entire page structure.
+  function addRawRoots(el: Element) {
+    const info = getElementSourceInfo(el)
+    const file = normalizeSlashes(info?.file ?? '')
+    if (file.includes('builder-app/src/')) {
+      // Transparent builder wrapper (e.g. PreviewCanvas div) — recurse into children
+      for (const child of Array.from(el.children)) addRawRoots(child)
+    } else {
+      rawRoots.push(buildRawDomTree(el))
+    }
+  }
   for (let i = 0; i < root.children.length; i++) {
-    const child = root.children[i]
-    rawRoots.push(buildRawDomTree(child))
+    addRawRoots(root.children[i])
   }
 
   // If a specific page/component is expected, verify the canvas actually contains
@@ -220,19 +255,44 @@ export function buildMixedTree(root: Element, preferredRootComponentName?: strin
   // page root as ownerComponentName since it is never the nearest parent of
   // any DOM element.  Instead we walk the fiber.return chain from the canvas's
   // first child upward — if the page component is mounted it will appear there.
+  //
+  // If the preferred name is NOT found, check whether the canvas has any React
+  // content from outside builder-app. It might be present because the exported
+  // function name differs from the file name (e.g. SignInPage.tsx exports
+  // `AlSignIn`). In that case we still build the tree — canvasEl is nulled out
+  // on every page change so stale content from a previous page can't bleed
+  // through. We just drop the preferred-name hint so inferPageRoot auto-detects
+  // the actual root component name from the fiber data.
   if (preferredRootComponentName) {
-    const firstChild = root.firstElementChild
-    const found = firstChild
-      ? fiberTreeContainsComponent(firstChild, preferredRootComponentName)
+    // Use the first unwrapped project element for fiber chain walking.
+    // root.firstElementChild may be a builder-app wrapper (PreviewCanvas div).
+    const firstProjectEl = rawRoots[0]?.el ?? root.firstElementChild
+    const found = firstProjectEl
+      ? fiberTreeContainsComponent(firstProjectEl, preferredRootComponentName)
       : false
-    if (!found) return null
+    if (!found) {
+      // Check if the canvas has any non-builder React source infos — i.e. the
+      // page has actually rendered but its export name ≠ its file name.
+      const allInfos: ElementSourceInfo[] = []
+      for (const raw of rawRoots) collectSourceInfos(raw, allInfos)
+      const hasProjectContent = allInfos.some(
+        info => !normalizeSlashes(info.file).includes('builder-app/src/')
+      )
+      // No project content → canvas still loading / Suspense fallback only.
+      if (!hasProjectContent) return null
+      // Project content is present but the exported function name differs from
+      // the file name (e.g. SignInPage.tsx exports AlSignIn). Walk the fiber
+      // chain to find the real topmost project component and use that name.
+      const actualName = firstProjectEl ? findTopmostProjectComponentName(firstProjectEl) : null
+      preferredRootComponentName = actualName ?? undefined
+    }
   }
 
   const pageRoot = inferPageRoot(rawRoots, preferredRootComponentName, projectDirs)
 
-  const out: DisplayNode[] = rawRoots.map((raw, i) =>
-    toMixedTree(raw, pageRoot ? 1 : 0, pageRoot?.name ?? null, `root-${i}`)
-  )
+  const out: DisplayNode[] = rawRoots
+    .map((raw, i) => toMixedTree(raw, pageRoot ? 1 : 0, pageRoot?.name ?? null, `root-${i}`))
+    .filter((n): n is DisplayNode => n !== null)
 
   if (pageRoot) {
     return [

@@ -18,11 +18,22 @@ const refreshCallbacks = new Set<() => void>()
 // mechanism Vite uses internally for HMR-invalidated modules.
 let importTimestamp = 0
 
+// Reference to the preview iframe's contentWindow so notifyPreviewRefresh()
+// can forward the signal there when the builder is rendering via an iframe.
+let previewIframeWindow: Window | null = null
+
+export function setPreviewIframeWindow(w: Window | null): void {
+  previewIframeWindow = w
+}
+
 export function notifyPreviewRefresh(): void {
   importTimestamp = Date.now()
   pageCache.clear()
   componentCache.clear()
   refreshCallbacks.forEach((cb) => cb())
+  try {
+    previewIframeWindow?.postMessage({ type: 'cockpit:refresh' }, location.origin)
+  } catch { /* cross-origin safety */ }
 }
 
 if (import.meta.hot) {

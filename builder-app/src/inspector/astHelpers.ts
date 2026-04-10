@@ -232,6 +232,22 @@ export function extractBlock(
     const root = ast.program as unknown as AstNode
     const targetLine1 = target + 1
 
+    if (options?.inspectMode === 'component-usage') {
+      // Collect all JSX elements that contain targetLine, sorted smallest to largest.
+      // Return the second-smallest (the parent container, e.g. <TextField> wrapping <TextField.Input>).
+      const results: AstNode[] = []
+      ;(function collectJsx(node: AstNode) {
+        if (!nodeContainsLine(node, targetLine1)) return
+        if (node.type === 'JSXElement' || node.type === 'JSXFragment') results.push(node)
+        for (const child of getChildNodes(node)) collectJsx(child)
+      })(root)
+      results.sort((a, b) => nodeSpan(a) - nodeSpan(b))
+      const exactJsx = results[0]
+      if (exactJsx?.loc) {
+        return extractFromLoc(lines, exactJsx.loc, jsxNameFromNode(exactJsx))
+      }
+    }
+
     if (options?.inspectMode === 'expression') {
       const callNode = findSmallestContainingNode(
         root,

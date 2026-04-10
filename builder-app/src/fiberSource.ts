@@ -137,6 +137,23 @@ export function fiberTreeContainsComponent(el: Element, componentName: string): 
   return false
 }
 
+/**
+ * Returns true if the element's React fiber debug source (or any ancestor's)
+ * comes from the builder-app itself. Used to suppress highlighting and tree
+ * display of builder UI elements when the preview canvas is empty.
+ */
+export function isBuilderAppElement(el: Element): boolean {
+  const fiber = getReactFiber(el)
+  if (!fiber) return false
+  let f = fiber
+  while (f) {
+    const src: FiberDebugSource | undefined = f._debugSource
+    if (src?.fileName && src.fileName.replace(/\\/g, '/').includes('builder-app/src/')) return true
+    f = f.return
+  }
+  return false
+}
+
 /** Extract source location info from a DOM element via its React fiber. */
 export function getElementSourceInfo(el: Element): ElementSourceInfo | null {
   const fiber = getReactFiber(el)
@@ -187,6 +204,49 @@ export interface ExpressionInstance {
   parentDomEl: Element | null
   /** First DOM child of parentDomEl that comes AFTER this expression in fiber order. Used to insert ghost nodes at the correct position. */
   nextDomSiblingEl: Element | null
+}
+
+/**
+ * Walk down a fiber's child chain to find the first _debugSource entry,
+ * without crossing into siblings. Used to find where a component renders
+ * its own JSX (i.e., the component's definition file), as opposed to where
+ * the component is *called from* (fiber._debugSource of a component fiber).
+ */
+function getFirstChildSource(fiber: any, maxDepth = 8): FiberDebugSource | null {
+  if (!fiber || maxDepth <= 0) return null
+  if (fiber._debugSource) return fiber._debugSource as FiberDebugSource
+  return getFirstChildSource(fiber.child, maxDepth - 1)
+}
+
+/**
+ * Walk the fiber.return chain from `el` upward and return the name of the
+ * topmost component that is defined (not just called) outside builder-app/src/.
+ *
+ * KEY INSIGHT: a component fiber's own `_debugSource` points to where that
+ * component is *used* (its JSX call site). So AlSignIn's fiber._debugSource
+ * = ComponentLoader.tsx (builder-app). To find where AlSignIn is *defined*,
+ * we look at fiber.child._debugSource — the first child's source reveals the
+ * file where AlSignIn's own JSX body is written (SignInPage.tsx).
+ */
+export function findTopmostProjectComponentName(el: Element): string | null {
+  const fiber = getReactFiber(el)
+  if (!fiber) return null
+  let f = fiber
+  let topmost: string | null = null
+  while (f) {
+    const name = getComponentName(f)
+    if (name) {
+      const childSrc = getFirstChildSource(f.child)
+      if (childSrc) {
+        const file = childSrc.fileName.replace(/\\/g, '/')
+        if (!file.includes('builder-app/src/')) {
+          topmost = name // keep updating — last seen = topmost in tree
+        }
+      }
+    }
+    f = f.return
+  }
+  return topmost
 }
 
 function findParentDomEl(fiber: any): Element | null {

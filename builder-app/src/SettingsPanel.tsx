@@ -5,15 +5,20 @@ interface SettingsPanelProps {
   projectRoot: string | null
   detectedPackages?: string[]
   pendingInstallPackages?: string[]
+  locked?: boolean
   onClose: () => void
+  onChangeProject?: () => void
   onProjectDirsChanged?: () => void
 }
 
 interface Settings {
+  name?: string
   aliases: Record<string, string>
   packages: string[]
   nodeModulesDirs: string[]
-  projectDirs?: Record<string, { pagesDir?: string; componentsDir?: string; expressionsDir?: string }>
+  pagesDir?: string
+  componentsDir?: string
+  expressionsDir?: string
   cssFiles?: string[]
   publicDirs?: string[]
   fontLinks?: string[]
@@ -30,10 +35,11 @@ interface BrowseEntry { name: string; isDir: boolean }
 interface BrowseResult { path: string; parent: string | null; entries: BrowseEntry[] }
 
 function DirPickerField({
-  label, value, onChange,
+  label, value, projectRoot, onChange,
 }: {
   label: string
   value: string
+  projectRoot: string | null
   onChange: (v: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -61,7 +67,13 @@ function DirPickerField({
 
   function openPicker() {
     setOpen(true)
-    browse(value || undefined)
+    // Start browser at absolute path if value looks absolute; otherwise fall back to project root or default
+    const startAt = value && (value.startsWith('/') || /^[A-Za-z]:/.test(value))
+      ? value
+      : projectRoot
+        ? (value ? projectRoot.replace(/[/\\]$/, '') + '/' + value : projectRoot)
+        : undefined
+    browse(startAt)
   }
 
   function pickDir(name: string) {
@@ -69,8 +81,18 @@ function DirPickerField({
     browse(browsePath + sep + name)
   }
 
+  /** Convert absolute browsePath to a relative path if inside projectRoot. */
   function confirm() {
-    onChange(browsePath.replace(/\\/g, '/'))
+    let absPath = browsePath.replace(/\\/g, '/')
+    if (projectRoot) {
+      const rootNorm = projectRoot.replace(/\\/g, '/').replace(/\/$/, '')
+      if (absPath.toLowerCase().startsWith(rootNorm.toLowerCase() + '/')) {
+        absPath = absPath.slice(rootNorm.length + 1)
+      } else if (absPath.toLowerCase() === rootNorm.toLowerCase()) {
+        absPath = ''
+      }
+    }
+    onChange(absPath)
     setOpen(false)
   }
 
@@ -128,7 +150,7 @@ function entriesToAliases(entries: AliasEntry[]): Record<string, string> {
   return result
 }
 
-export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInstallPackages = [], onClose, onProjectDirsChanged }: SettingsPanelProps) {
+export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInstallPackages = [], locked = false, onClose, onChangeProject, onProjectDirsChanged }: SettingsPanelProps) {
   const [aliases, setAliases] = useState<AliasEntry[]>([])
   const [packages, setPackages] = useState<string[]>([])
   const [nodeModulesDirs, setNodeModulesDirs] = useState<string[]>([])
@@ -142,12 +164,28 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
   const [installLog, setInstallLog] = useState<string>('')
   const [installOk, setInstallOk] = useState<boolean | null>(null)
   const [detectLoading, setDetectLoading] = useState(false)
+  const [detectCssLoading, setDetectCssLoading] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'typescript' | 'packages' | 'css' | 'builder'>('typescript')
+  const [addingDefaultExprs, setAddingDefaultExprs] = useState(false)
+  const [addDefaultExprsResult, setAddDefaultExprsResult] = useState<Record<string, string> | null>(null)
   const logEndRef = useRef<HTMLDivElement>(null)
 
+  // Project dependencies (from projectRoot/package.json)
+  const [projectDeps, setProjectDeps] = useState<Record<string, string>>({})
+  const [projectDevDeps, setProjectDevDeps] = useState<Record<string, string>>({})
+  const [depsLoading, setDepsLoading] = useState(false)
+  const [addDepInput, setAddDepInput] = useState('')
+  const [addDepDev, setAddDepDev] = useState(true)
+  const [addingDep, setAddingDep] = useState(false)
+  const [addDepLog, setAddDepLog] = useState('')
+  const [addDepOk, setAddDepOk] = useState<boolean | null>(null)
+  const addDepLogEndRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    fetch('/__source/settings')
+    if (!projectRoot) return
+    fetch(`/__source/settings?root=${encodeURIComponent(projectRoot)}`)
       .then(r => r.json())
       .then((data: Settings) => {
         setAliases(settingsToEntries(data.aliases ?? {}))
@@ -156,14 +194,11 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
         setCssFiles(data.cssFiles ?? [])
         setPublicDirs(data.publicDirs ?? [])
         setFontLinks(data.fontLinks ?? [])
-        if (projectRoot) {
-          const overrides = (data.projectDirs ?? {})[projectRoot] ?? {}
-          setProjectDirs({
-            pagesDir: overrides.pagesDir ?? '',
-            componentsDir: overrides.componentsDir ?? '',
-            expressionsDir: overrides.expressionsDir ?? '',
-          })
-        }
+        setProjectDirs({
+          pagesDir: data.pagesDir ?? '',
+          componentsDir: data.componentsDir ?? '',
+          expressionsDir: data.expressionsDir ?? '',
+        })
       })
       .catch(() => setError('Could not load settings'))
   }, [])
@@ -196,28 +231,49 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
     }
   }
 
+  async function detectCssFiles() {
+    if (!projectRoot) return
+    setDetectCssLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/__source/detect-css?root=${encodeURIComponent(projectRoot)}`)
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Detection failed'); return }
+      const detected: string[] = data.cssFiles ?? []
+      if (detected.length === 0) { setError('No CSS files found in common locations'); return }
+      // Merge: keep existing non-empty entries, add detected ones not already included
+      setCssFiles(prev => {
+        const existing = prev.filter(f => f.trim())
+        const existingSet = new Set(existing.map(f => f.replace(/\\/g, '/')))
+        const toAdd = detected.filter(f => !existingSet.has(f.replace(/\\/g, '/')))
+        return [...existing, ...toAdd]
+      })
+    } finally {
+      setDetectCssLoading(false)
+    }
+  }
+
   async function save(andReload = false) {
+    if (!projectRoot) return
     setSaving(true)
     setSaveMsg(null)
     setError(null)
     try {
-      // Read current settings to preserve projectDirs for other projects.
-      const current = await fetch('/__source/settings').then(r => r.json()).catch(() => ({}))
-      const currentProjectDirs: Record<string, object> = (current as Settings).projectDirs ?? {}
-      const updatedProjectDirs = projectRoot
-        ? {
-            ...currentProjectDirs,
-            [projectRoot]: {
-              ...(projectDirs.pagesDir ? { pagesDir: projectDirs.pagesDir } : {}),
-              ...(projectDirs.componentsDir ? { componentsDir: projectDirs.componentsDir } : {}),
-              ...(projectDirs.expressionsDir ? { expressionsDir: projectDirs.expressionsDir } : {}),
-            },
-          }
-        : currentProjectDirs
       const res = await fetch('/__source/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aliases: entriesToAliases(aliases), packages, nodeModulesDirs, projectDirs: updatedProjectDirs, cssFiles, publicDirs, fontLinks }),
+        body: JSON.stringify({
+          root: projectRoot,
+          aliases: entriesToAliases(aliases),
+          packages,
+          nodeModulesDirs,
+          pagesDir: projectDirs.pagesDir,
+          componentsDir: projectDirs.componentsDir,
+          expressionsDir: projectDirs.expressionsDir,
+          cssFiles,
+          publicDirs,
+          fontLinks,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Save failed'); return }
@@ -291,6 +347,78 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [installLog])
 
+  useEffect(() => {
+    addDepLogEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [addDepLog])
+
+  function fetchProjectDeps() {
+    if (!projectRoot) return
+    setDepsLoading(true)
+    fetch(`/__source/project-deps-full?root=${encodeURIComponent(projectRoot)}`)
+      .then(r => r.json())
+      .then(data => {
+        setProjectDeps(data.dependencies ?? {})
+        setProjectDevDeps(data.devDependencies ?? {})
+      })
+      .catch(() => {})
+      .finally(() => setDepsLoading(false))
+  }
+
+  useEffect(() => {
+    if (activeTab === 'packages') fetchProjectDeps()
+  }, [activeTab, projectRoot])
+
+  function addDep() {
+    const pkg = addDepInput.trim()
+    if (!pkg || !projectRoot) return
+    setAddingDep(true)
+    setAddDepLog('')
+    setAddDepOk(null)
+
+    fetch('/__source/install-project-package', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packageName: pkg, root: projectRoot, dev: addDepDev }),
+    }).then(res => {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      function pump(): Promise<void> {
+        return reader.read().then(({ done, value }) => {
+          if (value) buf += decoder.decode(value, { stream: !done })
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              const msg = JSON.parse(line.slice(6)) as { type: string; data: string }
+              if (msg.type === 'stdout' || msg.type === 'stderr' || msg.type === 'start') {
+                setAddDepLog(prev => prev + msg.data)
+              } else if (msg.type === 'done') {
+                setAddDepLog(prev => prev + msg.data)
+                setAddDepOk(true)
+                setAddDepInput('')
+                setAddingDep(false)
+                fetchProjectDeps()
+              } else if (msg.type === 'error') {
+                setAddDepLog(prev => prev + msg.data)
+                setAddDepOk(false)
+                setAddingDep(false)
+              }
+            } catch { /* ignore */ }
+          }
+          if (done) { setAddingDep(false); return }
+          return pump()
+        })
+      }
+      return pump()
+    }).catch(err => {
+      setAddDepLog(`✗ ${err.message}`)
+      setAddDepOk(false)
+      setAddingDep(false)
+    })
+  }
+
   function updateAlias(idx: number, field: 'key' | 'value', val: string) {
     setAliases(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e))
   }
@@ -300,19 +428,69 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
   }
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#181825', display: 'flex', flexDirection: 'column' }}>
       <div
-        style={{ ...modalStyles.dialog, width: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+        style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={modalStyles.header}>
+        <div style={{ ...modalStyles.header, padding: '0.85rem 1.5rem' }}>
           <span style={modalStyles.title}>⚙ Project Settings</span>
-          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              style={{ ...modalStyles.cancelBtn, fontSize: 11, padding: '4px 12px' }}
+              onClick={onChangeProject}
+            >
+              ⇄ Change project
+            </button>
+            {!locked && <button style={modalStyles.closeBtn} onClick={onClose}>×</button>}
+          </div>
+        </div>
+        {locked && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: 'rgba(243,139,168,0.10)', borderBottom: '1px solid rgba(243,139,168,0.25)',
+            padding: '10px 1.5rem', fontFamily: 'system-ui, sans-serif',
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+            <span style={{ fontSize: 12, color: '#f38ba8', lineHeight: 1.6 }}>
+              <strong>React or Next.js not detected in this project.</strong>{' '}
+              Install React/Next.js in your project (<code style={{ fontFamily: 'monospace', background: 'rgba(243,139,168,0.12)', padding: '1px 4px', borderRadius: 3 }}>npm install react react-dom</code>),
+              then configure the source directories below and click <strong>Save &amp; Reload</strong>.
+            </span>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #313244', background: '#181825', flexShrink: 0 }}>
+          {(['typescript', 'packages', 'css', 'builder'] as const).map(tab => (
+            <button
+              key={tab}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid #89b4fa' : '2px solid transparent',
+                color: activeTab === tab ? '#cdd6f4' : '#6c7086',
+                cursor: 'pointer',
+                fontFamily: 'system-ui, sans-serif',
+                fontSize: 12,
+                padding: '8px 18px',
+                textTransform: 'capitalize',
+                transition: 'color 0.1s',
+              }}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
         {/* Body */}
-        <div style={{ ...modalStyles.body, overflowY: 'auto', gap: 20 }}>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ ...modalStyles.body, gap: 20, maxWidth: 720, margin: '0 auto', padding: '1.5rem' }}>
+
+          {/* TypeScript tab */}
+          {activeTab === 'typescript' && <>
 
           {/* Path Aliases */}
           <section>
@@ -366,93 +544,105 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
             </button>
           </section>
 
-          {/* Packages */}
+          </>}
+
+          {/* Packages tab */}
+          {activeTab === 'packages' && <>
+
+          {/* Project Dependencies */}
           <section>
-            <span style={{ ...modalStyles.title, fontSize: 12, display: 'block', marginBottom: 8 }}>
-              Install Dev Packages
-            </span>
-            <p style={s.hint}>
-              Install packages (e.g. <code style={s.code}>next</code>) into the builder so framework
-              imports resolve correctly. Requires a page reload after installing.
-            </p>
-
-            {pendingInstallPackages.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ ...s.hint, color: '#f38ba8', marginBottom: 6 }}>
-                  Missing imports — click to install:
-                </div>
-                <div style={s.packageList}>
-                  {pendingInstallPackages.map(pkg => (
-                    <button
-                      key={pkg}
-                      style={{ ...s.packageChip, background: '#2a1010', color: '#f38ba8', border: '1px solid #4a1010', cursor: 'pointer' }}
-                      onClick={() => setPackageInput(pkg)}
-                      title={`Click to queue ${pkg} for install`}
-                    >
-                      + {pkg}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {detectedPackages.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ ...s.hint, color: '#f9e2af', marginBottom: 6 }}>
-                  Detected in project — click to install:
-                </div>
-                <div style={s.packageList}>
-                  {detectedPackages.map(pkg => (
-                    <button
-                      key={pkg}
-                      style={{ ...s.packageChip, background: '#2a2210', color: '#f9e2af', border: '1px solid #4a3a10', cursor: 'pointer' }}
-                      onClick={() => setPackageInput(pkg)}
-                      title={`Click to queue ${pkg} for install`}
-                    >
-                      + {pkg}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {packages.length > 0 && (
-              <div style={s.packageList}>
-                {packages.map(p => (
-                  <span key={p} style={s.packageChip}>{p}</span>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <input
-                style={{ ...modalStyles.input, flex: 1 }}
-                value={packageInput}
-                onChange={e => setPackageInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !installing && installPackage()}
-                placeholder="package-name"
-                spellCheck={false}
-                disabled={installing}
-              />
-              <button
-                style={{ ...modalStyles.submitBtn, opacity: installing || !packageInput.trim() ? 0.6 : 1, minWidth: 90 }}
-                disabled={installing || !packageInput.trim()}
-                onClick={installPackage}
-              >
-                {installing ? 'Installing…' : 'Install'}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ ...modalStyles.title, fontSize: 12 }}>Project Dependencies</span>
+              <button style={{ ...s.smallBtn, opacity: depsLoading ? 0.6 : 1 }} disabled={depsLoading} onClick={fetchProjectDeps}>
+                {depsLoading ? 'Loading…' : '↻ Refresh'}
               </button>
             </div>
 
-            {installLog && (
-              <div style={s.logBox}>
-                <pre style={s.logPre}>{installLog}</pre>
-                <div ref={logEndRef} />
-                {!installing && installOk !== null && (
-                  <div style={{ borderTop: '1px solid #313244', padding: '4px 8px', fontSize: 11, color: installOk ? '#a6e3a1' : '#f38ba8' }}>
-                    {installOk ? '✓ Done — click Save & Reload to apply' : '✗ Install failed'}
+            {/* Add dependency row */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center' }}>
+              <input
+                style={{ ...modalStyles.input, flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                value={addDepInput}
+                onChange={e => setAddDepInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !addingDep && addDep()}
+                placeholder="package-name or package@version"
+                spellCheck={false}
+                disabled={addingDep}
+              />
+              <button
+                style={{
+                  ...s.smallBtn,
+                  background: addDepDev ? 'rgba(203,214,244,0.07)' : 'rgba(166,227,161,0.12)',
+                  color: addDepDev ? '#a6adc8' : '#a6e3a1',
+                  border: `1px solid ${addDepDev ? 'rgba(203,214,244,0.12)' : 'rgba(166,227,161,0.25)'}`,
+                  minWidth: 60,
+                }}
+                onClick={() => setAddDepDev(v => !v)}
+                title="Toggle between devDependency and dependency"
+              >
+                {addDepDev ? 'dev' : 'dep'}
+              </button>
+              <button
+                style={{ ...modalStyles.submitBtn, opacity: addingDep || !addDepInput.trim() ? 0.6 : 1, minWidth: 70 }}
+                disabled={addingDep || !addDepInput.trim()}
+                onClick={addDep}
+              >
+                {addingDep ? 'Adding…' : '+ Add'}
+              </button>
+            </div>
+
+            {addDepLog && (
+              <div style={{ ...s.logBox, marginBottom: 12 }}>
+                <pre style={s.logPre}>{addDepLog}</pre>
+                <div ref={addDepLogEndRef} />
+                {!addingDep && addDepOk !== null && (
+                  <div style={{ borderTop: '1px solid #313244', padding: '4px 8px', fontSize: 11, color: addDepOk ? '#a6e3a1' : '#f38ba8' }}>
+                    {addDepOk ? '✓ Installed' : '✗ Failed'}
                   </div>
                 )}
               </div>
+            )}
+
+            {depsLoading && Object.keys(projectDeps).length === 0 && Object.keys(projectDevDeps).length === 0 && (
+              <div style={{ color: '#45475a', fontSize: 12, fontStyle: 'italic', fontFamily: 'system-ui, sans-serif' }}>Loading…</div>
+            )}
+
+            {/* dependencies */}
+            {Object.keys(projectDeps).length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#a6adc8', fontFamily: 'system-ui, sans-serif', marginBottom: 4 }}>
+                  dependencies ({Object.keys(projectDeps).length})
+                </div>
+                <div style={s.depTable}>
+                  {Object.entries(projectDeps).map(([name, version]) => (
+                    <div key={name} style={s.depRow}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#cdd6f4', flex: 1 }}>{name}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6c7086' }}>{version}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* devDependencies */}
+            {Object.keys(projectDevDeps).length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, color: '#a6adc8', fontFamily: 'system-ui, sans-serif', marginBottom: 4 }}>
+                  devDependencies ({Object.keys(projectDevDeps).length})
+                </div>
+                <div style={s.depTable}>
+                  {Object.entries(projectDevDeps).map(([name, version]) => (
+                    <div key={name} style={s.depRow}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#cdd6f4', flex: 1 }}>{name}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6c7086' }}>{version}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!depsLoading && Object.keys(projectDeps).length === 0 && Object.keys(projectDevDeps).length === 0 && (
+              <div style={s.empty}>No dependencies found in package.json.</div>
             )}
           </section>
 
@@ -475,9 +665,23 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
             </section>
           )}
 
+          </>}
+
+          {/* CSS tab */}
+          {activeTab === 'css' && <>
+
           {/* CSS / Style Sheets */}
           <section>
-            <span style={{ ...modalStyles.title, fontSize: 12, display: 'block', marginBottom: 4 }}>CSS / Style Sheets</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ ...modalStyles.title, fontSize: 12 }}>CSS / Style Sheets</span>
+              <button
+                style={{ ...s.smallBtn, opacity: detectCssLoading ? 0.6 : 1 }}
+                disabled={detectCssLoading}
+                onClick={detectCssFiles}
+              >
+                {detectCssLoading ? 'Detecting…' : 'Auto-detect'}
+              </button>
+            </div>
             <p style={s.hint}>
               Load CSS or Tailwind stylesheet files from the child app into the preview
               (e.g. <code style={s.code}>globals.css</code>, <code style={s.code}>tailwind.css</code>).
@@ -500,34 +704,6 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
               onClick={() => setCssFiles(prev => [...prev, ''])}
             >
               + Add CSS file
-            </button>
-          </section>
-
-          {/* Public / Static Assets */}
-          <section>
-            <span style={{ ...modalStyles.title, fontSize: 12, display: 'block', marginBottom: 4 }}>Public / Static Assets</span>
-            <p style={s.hint}>
-              Directories served as additional static roots (like Next.js <code style={s.code}>public/</code>).
-              Requests like <code style={s.code}>/assets/images/logo.png</code> will be resolved from these folders.
-              Changes require a page reload.
-            </p>
-            {publicDirs.map((d, idx) => (
-              <div key={idx} style={s.aliasRow}>
-                <input
-                  style={{ ...modalStyles.input, flex: 1, fontFamily: 'monospace', fontSize: 11 }}
-                  value={d}
-                  onChange={e => setPublicDirs(prev => prev.map((x, i) => i === idx ? e.target.value : x))}
-                  placeholder="/absolute/path/to/public"
-                  spellCheck={false}
-                />
-                <button style={s.removeBtn} onClick={() => setPublicDirs(prev => prev.filter((_, i) => i !== idx))}>×</button>
-              </div>
-            ))}
-            <button
-              style={{ ...s.smallBtn, marginTop: 6 }}
-              onClick={() => setPublicDirs(prev => [...prev, ''])}
-            >
-              + Add public directory
             </button>
           </section>
 
@@ -559,6 +735,39 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
             </button>
           </section>
 
+          {/* Public / Static Assets */}
+          <section>
+            <span style={{ ...modalStyles.title, fontSize: 12, display: 'block', marginBottom: 4 }}>Public / Static Assets</span>
+            <p style={s.hint}>
+              Directories served as additional static roots (like Next.js <code style={s.code}>public/</code>).
+              Requests like <code style={s.code}>/assets/images/logo.png</code> will be resolved from these folders.
+              Changes require a page reload.
+            </p>
+            {publicDirs.map((d, idx) => (
+              <div key={idx} style={s.aliasRow}>
+                <input
+                  style={{ ...modalStyles.input, flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                  value={d}
+                  onChange={e => setPublicDirs(prev => prev.map((x, i) => i === idx ? e.target.value : x))}
+                  placeholder="/absolute/path/to/public"
+                  spellCheck={false}
+                />
+                <button style={s.removeBtn} onClick={() => setPublicDirs(prev => prev.filter((_, i) => i !== idx))}>×</button>
+              </div>
+            ))}
+            <button
+              style={{ ...s.smallBtn, marginTop: 6 }}
+              onClick={() => setPublicDirs(prev => [...prev, ''])}
+            >
+              + Add public directory
+            </button>
+          </section>
+
+          </>}
+
+          {/* Builder tab */}
+          {activeTab === 'builder' && <>
+
           {/* Source Directories */}
           {projectRoot && (
             <section>
@@ -570,25 +779,75 @@ export function SettingsPanel({ projectRoot, detectedPackages = [], pendingInsta
               <DirPickerField
                 label="Pages directory"
                 value={projectDirs.pagesDir}
+                projectRoot={projectRoot}
                 onChange={v => setProjectDirs(p => ({ ...p, pagesDir: v }))}
               />
               <DirPickerField
                 label="Components directory"
                 value={projectDirs.componentsDir}
+                projectRoot={projectRoot}
                 onChange={v => setProjectDirs(p => ({ ...p, componentsDir: v }))}
               />
               <DirPickerField
                 label="Expressions directory"
                 value={projectDirs.expressionsDir}
+                projectRoot={projectRoot}
                 onChange={v => setProjectDirs(p => ({ ...p, expressionsDir: v }))}
               />
             </section>
           )}
+
+          {/* Default Expressions */}
+          {projectRoot && (
+            <section>
+              <span style={{ ...modalStyles.title, fontSize: 12, display: 'block', marginBottom: 4 }}>Default Expressions</span>
+              <p style={s.hint}>
+                Add the built-in expression components to this project's expressions directory:
+                <code style={s.code}>IfExpression</code>, <code style={s.code}>ElseExpression</code>, <code style={s.code}>IfElseExpression</code>, <code style={s.code}>LoopExpression</code>, <code style={s.code}>SwitchExpression</code>.
+                Files that already exist are skipped.
+              </p>
+              {addDefaultExprsResult && (
+                <div style={{ marginBottom: 8 }}>
+                  {Object.entries(addDefaultExprsResult).map(([name, status]) => (
+                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: 'monospace', color: status === 'created' ? '#a6e3a1' : status === 'exists' ? '#6c7086' : '#f38ba8', marginBottom: 2 }}>
+                      <span>{status === 'created' ? '✓' : status === 'exists' ? '–' : '✗'}</span>
+                      <span>{name}</span>
+                      <span style={{ color: '#585b70' }}>{status === 'created' ? 'created' : status === 'exists' ? 'already exists' : 'denied'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                style={{ ...modalStyles.submitBtn, opacity: addingDefaultExprs ? 0.6 : 1, cursor: addingDefaultExprs ? 'not-allowed' : 'pointer' }}
+                disabled={addingDefaultExprs}
+                onClick={async () => {
+                  setAddingDefaultExprs(true)
+                  setAddDefaultExprsResult(null)
+                  try {
+                    const res = await fetch('/__source/add-default-expressions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ projectRoot }),
+                    })
+                    const data = await res.json()
+                    if (data.results) setAddDefaultExprsResult(data.results)
+                  } catch { /* ignore */ } finally {
+                    setAddingDefaultExprs(false)
+                  }
+                }}
+              >
+                {addingDefaultExprs ? 'Adding…' : 'Add default expressions'}
+              </button>
+            </section>
+          )}
+
+          </>}
+        </div>
         </div>
 
         {/* Footer */}
-        <div style={{ ...modalStyles.actions, padding: '0.75rem 1rem', borderTop: '1px solid #313244', flexShrink: 0 }}>
-          <button style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+        <div style={{ ...modalStyles.actions, padding: '0.75rem 1.5rem', borderTop: '1px solid #313244', flexShrink: 0 }}>
+          {!locked && <button style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>}
           <button
             style={{ ...modalStyles.submitBtn, opacity: saving ? 0.6 : 1 }}
             disabled={saving}
@@ -696,6 +955,19 @@ const s: Record<string, React.CSSProperties> = {
     whiteSpace: 'pre-wrap' as const,
     wordBreak: 'break-all' as const,
     flex: 1,
+  },
+  depTable: {
+    background: '#11111b',
+    border: '1px solid #313244',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  depRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '4px 10px',
+    borderBottom: '1px solid #1e1e2e',
   },
 }
 

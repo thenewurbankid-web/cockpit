@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { highlightElement, clearHighlight } from '../highlight'
-import { collectExpressionInstances, type ExpressionInstance } from '../fiberSource'
+import { collectExpressionInstances, isBuilderAppElement, type ExpressionInstance } from '../fiberSource'
 import { wrapNodesWithExpression } from './expressionRewriter'
 import type { ExpressionMeta, WrapIntentNode, DisplayNode, SelectedNodeSnapshot, DOMTreePanelProps } from './types'
 import { hasMultipleComponents, collectComponentFiles, buildMixedTree, firstDomElement, mergeExpressionData } from './treeBuilders'
@@ -9,6 +9,43 @@ import { TreeRow } from './TreeRow'
 import { styles } from './styles'
 
 export type { ExpressionMeta, WrapIntentNode, SelectedNodeSnapshot }
+
+/** Extract the qualified JSX tag (e.g. "TextField.Input") from a line of source. */
+function extractJsxTagAtLine(source: string, line: number): string | null {
+  const lines = source.split('\n')
+  const text = lines[line - 1] ?? ''
+  // Match opening JSX tag — qualified name like TextField.Input or plain name like TextField.
+  // No trailing character required since the tag name may end the line when attrs are on next lines.
+  const m = text.match(/<([A-Z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)*)/)
+  return m ? m[1] : null
+}
+
+/** Walk a tree and collect all component nodes that have usageFile + usageLine set. */
+function collectComponentNodes(nodes: DisplayNode[]): Array<{ node: DisplayNode & { kind: 'component' }; path: number[] }> {
+  const result: Array<{ node: DisplayNode & { kind: 'component' }; path: number[] }> = []
+  function walk(ns: DisplayNode[], path: number[]) {
+    ns.forEach((n, i) => {
+      if (n.kind === 'component' && n.usageFile && n.usageLine) {
+        result.push({ node: n as DisplayNode & { kind: 'component' }, path: [...path, i] })
+      }
+      walk(n.children, [...path, i])
+    })
+  }
+  walk(nodes, [])
+  return result
+}
+
+/** Deep-clone a DisplayNode tree applying name patches as displayName (preserving name for AST lookups). */
+function applyNamePatches(nodes: DisplayNode[], patches: Map<string, string>): DisplayNode[] {
+  return nodes.map(n => {
+    const children = applyNamePatches(n.children, patches)
+    if (n.kind === 'component') {
+      const patched = patches.get(n.key)
+      return patched ? { ...n, displayName: patched, children } : { ...n, children }
+    }
+    return { ...n, children }
+  })
+}
 
 /** Tiny "i" icon that shows a popover on hover. */
 function InfoIcon({ text }: { text: string }) {
@@ -40,7 +77,7 @@ function InfoIcon({ text }: { text: string }) {
 }
 
 export function DOMTreePanel({
-  canvasRef,
+  canvasEl,
   onLocate,
   onNodeSelect,
   preferredRootComponentName,
@@ -71,6 +108,8 @@ export function DOMTreePanel({
   componentsDir,
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
+  const [treeVersion, setTreeVersion] = useState(0)
+  const treeVersionRef = useRef(0)
   const prevRootNameRef = useRef<string | undefined>(undefined)
   const needsInitialExpandRef = useRef(true)
   const needsInitialSelectRef = useRef(true)
@@ -78,6 +117,43 @@ export function DOMTreePanel({
   const [hoveredCanvasElement, setHoveredCanvasElement] = useState<Element | null>(null)
   const rafRef = useRef<number>(0)
   const fileMultiCacheRef = useRef<Map<string, boolean>>(new Map())
+
+  // Async enrichment: replace short names like "Input" with qualified JSX tags like "TextField.Input"
+  // by reading the usage-site source file at the stored usageLine.
+  useEffect(() => {
+    if (tree.length === 0) return
+    const candidates = collectComponentNodes(tree)
+    if (candidates.length === 0) return
+    // Group by usageFile to batch fetches.
+    const byFile = new Map<string, Array<{ key: string; line: number; currentName: string }>>()
+    for (const { node } of candidates) {
+      if (!node.usageFile || !node.usageLine) continue
+      if (!byFile.has(node.usageFile)) byFile.set(node.usageFile, [])
+      byFile.get(node.usageFile)!.push({ key: node.key, line: node.usageLine, currentName: node.name })
+    }
+    if (byFile.size === 0) return
+    let cancelled = false
+    void (async () => {
+      const patches = new Map<string, string>()
+      await Promise.all(Array.from(byFile.entries()).map(async ([file, entries]) => {
+        try {
+          const res = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+          if (!res.ok || cancelled) return
+          const src = await res.text()
+          for (const { key, line, currentName } of entries) {
+            const tag = extractJsxTagAtLine(src, line)
+            // Patch whenever the source tag differs from the fiber function name
+            // (handles both "Input" → "TextField.Input" and "TextFieldRoot" → "TextField").
+            if (tag && tag !== currentName) patches.set(key, tag)
+          }
+        } catch { /* ignore fetch errors */ }
+      }))
+      if (!cancelled && patches.size > 0) {
+        setTree(prev => applyNamePatches(prev, patches))
+      }
+    })()
+    return () => { cancelled = true }
+  }, [treeVersion]) // re-run whenever the RAF loop builds a fresh tree
   const fileSourcesRef = useRef<Map<string, string>>(new Map())
   const treeWithGhostsRef = useRef<DisplayNode[]>([])
   const handleSelectRef = useRef<(node: DisplayNode) => void>(() => {})
@@ -218,12 +294,18 @@ export function DOMTreePanel({
   // Track which element the mouse is over in the preview canvas so the
   // corresponding tree row can glow amber (canvas hover → tree highlight).
   useEffect(() => {
-    const canvas = canvasRef.current
+    const canvas = canvasEl
     if (!canvas) return
 
     function onMouseMove(e: MouseEvent) {
       const el = e.target as Element | null
       if (el && canvas!.contains(el) && el !== canvas) {
+        // Don't interact with builder-app elements (e.g. SectionEmptyState empty state).
+        if (isBuilderAppElement(el)) {
+          setHoveredCanvasElement(null)
+          clearHighlight()
+          return
+        }
         setHoveredCanvasElement(el)
         if (e.altKey || pickerModeRef.current) {
           highlightElement(el)
@@ -283,15 +365,15 @@ export function DOMTreePanel({
       canvas.removeEventListener('mousedown', onCanvasAltMousedown, true)
       canvas.removeEventListener('click', onCanvasPickerBlockClick, true)
     }
-  }, [canvasRef])
+  }, [canvasEl])
 
   // Apply crosshair cursor on canvas when picker mode is active.
   useEffect(() => {
-    const canvas = canvasRef.current
+    const canvas = canvasEl
     if (!canvas) return
     canvas.style.cursor = pickerMode ? 'crosshair' : ''
-    return () => { if (canvasRef.current) canvasRef.current.style.cursor = '' }
-  }, [pickerMode, canvasRef])
+    return () => { if (canvasEl) canvasEl.style.cursor = '' }
+  }, [pickerMode, canvasEl])
 
   // Poll via rAF — cheap, catches every HMR re-render without MutationObserver setup.
   useEffect(() => {
@@ -336,7 +418,7 @@ export function DOMTreePanel({
     }
 
     function tick() {
-      const root = canvasRef.current
+      const root = canvasEl
       if (root && root.children.length > 0) {
         // If the canvas is showing a load error, stop tree rebuilding —
         // the tree content is driven by hasLoadError prop instead.
@@ -356,7 +438,18 @@ export function DOMTreePanel({
             return
           }
           lastHTML = html
-          setTree(newTree)
+          treeVersionRef.current += 1
+          setTreeVersion(treeVersionRef.current)
+          // Apply name patches synchronously from cached sources before rendering.
+          const syncPatches = new Map<string, string>()
+          for (const { node } of collectComponentNodes(newTree)) {
+            if (!node.usageFile || !node.usageLine) continue
+            const cached = fileSourcesRef.current.get(node.usageFile)
+            if (!cached) continue
+            const tag = extractJsxTagAtLine(cached, node.usageLine)
+            if (tag && tag !== node.name) syncPatches.set(node.key, tag)
+          }
+          setTree(syncPatches.size > 0 ? applyNamePatches(newTree, syncPatches) : newTree)
           if (needsInitialExpandRef.current) {
             needsInitialExpandRef.current = false
             setExpandGen(g => g + 1)
@@ -381,7 +474,7 @@ export function DOMTreePanel({
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [canvasRef, preferredRootComponentName])
+  }, [canvasEl, preferredRootComponentName])
 
   function handleSelect(node: DisplayNode) {
     handleSelectRef.current = handleSelect
@@ -406,7 +499,12 @@ export function DOMTreePanel({
         return
       }
       if (node.file) {
-        onLocate(node.file, node.line, 'file', node.name)
+        if (node.usageFile && node.usageLine) {
+          // Navigate to the usage site (page/parent file) and show the parent JSX container.
+          onLocate(node.usageFile, node.usageLine, 'component-usage', node.name)
+        } else {
+          onLocate(node.file, node.line, 'component', node.name)
+        }
       }
       const el = firstDomElement(node)
       if (el) {
@@ -429,7 +527,13 @@ export function DOMTreePanel({
     setSelected(node.el)
     // Use fiber source info to navigate to source
     const info = node.sourceInfo
-    if (info) {
+    const infoFile = info?.file ?? ''
+    // Only check the element's own file — NOT ownerFile. In the iframe setup
+    // the page component (e.g. AlSignIn) is called from ComponentLoader.tsx, so
+    // all elements it renders directly have ownerFile=ComponentLoader.tsx.
+    // Treating those as builder elements breaks navigation and text child editing.
+    const isBuilderInfo = infoFile.toLowerCase().includes('builder-app/src/')
+    if (info && !isBuilderInfo) {
       onLocate(info.file, info.line, 'node')
     }
     node.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -442,11 +546,11 @@ export function DOMTreePanel({
       onNodeSelect({
         tag: node.tag,
         locatorId: null,
-        locatorFile: info?.file ?? null,
-        locatorLine: info?.line ?? null,
-        ownerComponentName: info?.ownerComponentName ?? null,
-        ownerFile: info?.ownerFile ?? null,
-        ownerLine: info?.ownerLine ?? null,
+        locatorFile: (!isBuilderInfo && info?.file) ? info.file : null,
+        locatorLine: (!isBuilderInfo && info?.line) ? info.line : null,
+        ownerComponentName: !isBuilderInfo ? (info?.ownerComponentName ?? null) : null,
+        ownerFile: !isBuilderInfo ? (info?.ownerFile ?? null) : null,
+        ownerLine: !isBuilderInfo ? (info?.ownerLine ?? null) : null,
         domAttributes: domAttrs,
       })
     }
@@ -457,12 +561,12 @@ export function DOMTreePanel({
     if (!needsInitialSelectRef.current || tree.length === 0 || !onAutoSelect) return
     needsInitialSelectRef.current = false
     const first = tree[0]
-    if (first.kind === 'component' && first.file) {
+    if (first.kind === 'component') {
       const el = firstDomElement(first)
       if (el) setSelected(el)
       onAutoSelect(
-        { tag: first.name, locatorId: null, locatorFile: first.file, locatorLine: first.line, ownerComponentName: first.name, domAttributes: [] },
-        first.file, first.line, first.name
+        { tag: first.name, locatorId: null, locatorFile: first.file || '', locatorLine: first.line, ownerComponentName: first.name, domAttributes: [] },
+        first.file || '', first.line, first.name
       )
     } else if (first.kind === 'dom') {
       setSelected(first.el)
@@ -557,7 +661,7 @@ export function DOMTreePanel({
         }}
         title="Drag to resize panel"
       />
-      {activeSection === 'pages' && pages && pages.length > 0 && (
+      {activeSection === 'pages' && pages && (
         <>
           <div
             style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
@@ -570,7 +674,7 @@ export function DOMTreePanel({
           </div>
           {pagesOpen && (
             <div style={styles.pagesSection}>
-              <div style={styles.pageSearch}>
+              {pages.length > 0 && <div style={styles.pageSearch}>
                 <div style={styles.pageSearchBox}>
                   <span style={styles.pageSearchIcon}>⌕</span>
                   <input
@@ -587,9 +691,11 @@ export function DOMTreePanel({
                     >×</span>
                   )}
                 </div>
-              </div>
+              </div>}
               <div style={styles.pagesScroll}>
-                {filteredPages.length === 0 ? (
+                {pages.length === 0 ? (
+                  <div style={{ color: '#45475a', fontSize: 11, padding: '0.4rem 0.75rem', fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' }}>No pages yet</div>
+                ) : filteredPages.length === 0 ? (
                   <div style={{ color: '#6c7086', fontSize: 11, padding: '0.4rem 0.75rem', fontFamily: 'system-ui, sans-serif' }}>No pages match</div>
                 ) : filteredPages.map((p) => {
                   const isActive = activePage === p.id
@@ -911,7 +1017,7 @@ export function DOMTreePanel({
         </div>
       )}
 
-      {activeSection !== 'expressions' && <div
+      {activeSection !== 'expressions' && activePage && <div
         style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
         onClick={() => setTreeOpen(o => !o)}
       >
@@ -950,7 +1056,7 @@ export function DOMTreePanel({
           )}
         </span>
       </div>}
-      {activeSection !== 'expressions' && treeOpen && (
+      {activeSection !== 'expressions' && activePage && treeOpen && (
         <div style={styles.scroll}>
           {hasLoadError ? (
             <div style={{ padding: '6px 0' }}>

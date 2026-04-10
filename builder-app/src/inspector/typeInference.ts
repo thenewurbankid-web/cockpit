@@ -129,6 +129,21 @@ export function inferTypeFromValueString(raw: string): string {
   const trimmed = raw.trim()
   if (!trimmed) return ''
   const isExpression = trimmed.startsWith('{') && trimmed.endsWith('}')
+  // Try parsing as a parenthesised expression first (handles object literals like {key: val}).
+  if (isExpression) {
+    try {
+      const ast = parse(`(${trimmed})`, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+      const stmts = (ast.program as unknown as { body: AstNode[] }).body
+      const first = stmts[0]
+      if (first) {
+        const expr = first.type === 'ExpressionStatement'
+          ? (first as AstNode & { expression?: AstNode }).expression ?? first
+          : first
+        const t = inferTypeFromExpression(expr)
+        if (t !== 'unknown') return t
+      }
+    } catch { /* fall through */ }
+  }
   const unwrapped = isExpression ? trimmed.slice(1, -1).trim() : trimmed
   try {
     const ast = parse(unwrapped, { sourceType: 'module', plugins: ['typescript', 'jsx'] })

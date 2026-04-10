@@ -67,6 +67,68 @@ export function buildExpressionTemplate(componentName, props) {
   ].join('\n')
 }
 
+// ── Default expressions ───────────────────────────────────────────────────────
+
+export const DEFAULT_EXPRESSIONS = {
+  IfExpression: `import type { ReactNode } from 'react'
+
+interface IfExpressionProps {
+  condition: boolean
+  children: ReactNode
+}
+
+export function IfExpression({ condition, children }: IfExpressionProps) {
+  return condition ? <>{children}</> : null
+}
+`,
+  ElseExpression: `import type { ReactNode } from 'react'
+
+interface ElseExpressionProps {
+  condition: boolean
+  children: ReactNode
+}
+
+export function ElseExpression({ condition, children }: ElseExpressionProps) {
+  return !condition ? <>{children}</> : null
+}
+`,
+  IfElseExpression: `import type { ReactNode } from 'react'
+
+interface IfElseExpressionProps {
+  condition: boolean
+  then: ReactNode
+  else: ReactNode
+}
+
+export function IfElseExpression({ condition, then: thenNode, else: elseNode }: IfElseExpressionProps) {
+  return condition ? <>{thenNode}</> : <>{elseNode}</>
+}
+`,
+  LoopExpression: `import type { ReactNode } from 'react'
+
+interface LoopExpressionProps {
+  items: unknown[]
+  children: (item: unknown, index: number) => ReactNode
+}
+
+export function LoopExpression({ items, children }: LoopExpressionProps) {
+  return <>{items.map((item, i) => children(item, i))}</>
+}
+`,
+  SwitchExpression: `import type { ReactNode } from 'react'
+
+interface SwitchExpressionProps {
+  value: string | number
+  cases: Record<string, ReactNode>
+  default?: ReactNode
+}
+
+export function SwitchExpression({ value, cases, default: defaultCase }: SwitchExpressionProps) {
+  return <>{cases[String(value)] ?? defaultCase ?? null}</>
+}
+`,
+}
+
 // ── Expression prop extraction ────────────────────────────────────────────────
 
 /**

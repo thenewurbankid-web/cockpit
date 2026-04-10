@@ -5,7 +5,7 @@ import { findNearestSourceElement } from '../fiberSource'
 // useLocator — Alt+Click any element to resolve its source location via
 // React fiber _debugSource (injected by @babel/plugin-transform-react-jsx-source,
 // which @vitejs/plugin-react enables automatically in development).
-export function useLocator(onLocate: (loc: SourceLocation) => void) {
+export function useLocator(onLocate: (loc: SourceLocation) => void, extraWindow?: Window | null) {
   useEffect(() => {
     if (import.meta.env.PROD) return
 
@@ -25,6 +25,10 @@ export function useLocator(onLocate: (loc: SourceLocation) => void) {
     }
 
     window.addEventListener('click', handleClick, true)
-    return () => window.removeEventListener('click', handleClick, true)
-  }, [onLocate])
+    extraWindow?.addEventListener('click', handleClick, true)
+    return () => {
+      window.removeEventListener('click', handleClick, true)
+      extraWindow?.removeEventListener('click', handleClick, true)
+    }
+  }, [onLocate, extraWindow])
 }

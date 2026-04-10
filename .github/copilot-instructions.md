@@ -10,16 +10,19 @@ Cockpit is a visual dev tool for inspecting and editing React component source c
 cockpit/
 ├── builder-app/          ← visual builder UI (Vite 5 + React 18, port 5174)
 │   ├── server/
-│   │   ├── devServer.js      ← Express routes + server startup
-│   │   ├── utils.js          ← REPO_ROOT, isSafeFile, TS diagnostics
-│   │   ├── astInfo.js        ← AST extraction (babel parser)
-│   │   └── templates.js      ← Page/Component/Expression file templates
+│   │   ├── devServer.js          ← Express routes + server startup
+│   │   ├── utils.js              ← REPO_ROOT, isSafeFile, TS diagnostics
+│   │   ├── astInfo.js            ← AST extraction (babel parser)
+│   │   ├── diagnosticsWorker.js  ← TypeScript diagnostics worker thread
+│   │   └── templates.js          ← Page/Component/Expression file templates
 │   ├── src/
 │   │   ├── App.tsx               ← root layout: tree | canvas | inspector
 │   │   ├── modals.tsx            ← AddPageModal, AddComponentModal, AddExpressionModal
 │   │   ├── appStyles.ts          ← CSS-in-JS styles for App + modals
 │   │   ├── fiberSource.ts        ← React fiber → source location resolver
 │   │   ├── highlight.ts          ← DOM element highlight overlay
+│   │   ├── ProjectPickerModal.tsx ← project selection/creation UI
+│   │   ├── SettingsPanel.tsx     ← full-screen settings (tabs: typescript/packages/css/builder)
 │   │   ├── inspector/
 │   │   │   ├── InspectorPanel.tsx    ← main component: bindings, Monaco editor
 │   │   │   ├── types.ts             ← all interfaces
@@ -42,12 +45,12 @@ cockpit/
 │   │   │   └── expressionRewriter.ts ← expression wrapping AST transforms
 │   │   ├── locator/useLocator.ts     ← Alt+Click → source location
 │   │   └── preview/
-│   │       ├── ComponentLoader.tsx       ← lazy-loads login-app via /@fs/ imports
+│   │       ├── ComponentLoader.tsx       ← lazy-loads target app via /@fs/ imports
 │   │       ├── ExpressionAssignPanel.tsx  ← expression assignment UI
 │   │       └── ExpressionTester.tsx       ← expression testing sandbox
 │   └── vite.config.ts
 │
-├── login-app/            ← target app being edited (Vite 5 + React 18, port 5173)
+├── login-app/            ← example target app (Vite 5 + React 18, port 5173)
 │   └── src/
 │       ├── pages/        ← full-page components (*Page.tsx)
 │       ├── components/   ← shared UI components
@@ -76,9 +79,13 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 |--------|----------|---------|
 | `GET` | `/__source?file=<abs-path>` | Read file as plain text |
 | `POST` | `/__source` | Write `{ file, content }` to disk |
+| `GET` | `/__source/diff?file=<abs>` | Get stored original↔modified diff |
 | `POST` | `/__diagnostics` | TypeScript diagnostics for `{ file, content? }` |
 | `GET` | `/__source/ast-info?file=<path>` | AST component/expression metadata |
-| `GET` | `/__source/list-pages` | List pages in login-app/src/pages/ |
+| `GET` | `/__source/browse?path=<dir>` | Browse directory tree (dirs only) |
+| `GET` | `/__source/project-info?root=<dir>` | Probe a directory: validity, pages/components/expressions dirs |
+| `POST` | `/__source/set-active-project` | Set active project root `{ root }`, warm TS cache |
+| `GET` | `/__source/list-pages` | List pages in configured pagesDir |
 | `POST` | `/__source/create-page` | Create new page `{ name }` |
 | `DELETE` | `/__source/page/:name` | Delete page |
 | `GET` | `/__source/list-components` | List components |
@@ -87,6 +94,16 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 | `GET` | `/__source/list-expressions` | List expression components |
 | `POST` | `/__source/create-expression` | Create expression `{ name, props? }` |
 | `DELETE` | `/__source/expression/:name` | Delete expression |
+| `GET` | `/__source/settings?root=<dir>` | Read `.cockpit/config.json` for the project |
+| `POST` | `/__source/settings` | Write `.cockpit/config.json` |
+| `GET` | `/__source/project-deps?root=<dir>` | All dependency names from package.json |
+| `GET` | `/__source/project-deps-full?root=<dir>` | Full `{ dependencies, devDependencies }` with versions |
+| `POST` | `/__source/install-project-package` | Install into project via npm `{ packageName, root, dev? }` — SSE stream |
+| `POST` | `/__source/create-project` | Scaffold a new project directory `{ name, location }` |
+| `POST` | `/__source/init-project` | Init `.cockpit/config.json` in an existing dir `{ root }` |
+| `GET` | `/__source/tsconfig-paths?root=<dir>` | Extract path aliases from tsconfig.json |
+| `GET` | `/__source/check-imports?file=<abs>` | Check for unresolved imports |
+| `POST` | `/__source/install-package` | Install into builder's own `node_modules` `{ packageName }` — SSE stream |
 
 ## Architecture Principles
 
@@ -134,10 +151,19 @@ The tree panel is modular — find the right file in `src/tree/`:
 - **Tree building**: `treeBuilders.ts` — `buildRawDomTree`, `toMixedTree`, `inferPageRoot`
 - **Helpers**: `helpers.ts` — `findPathToEl`, `findNodeByKey`, `getNodeFile`
 - **Row rendering**: `TreeRow.tsx` — single tree row component
-- **Main component**: `DOMTreePanel.tsx` (~1170 lines) — selection, picker mode, context menus
+- **Main component**: `DOMTreePanel.tsx` (~1200 lines) — selection, picker mode, context menus
+  - Pages section always renders when `activeSection === 'pages'` (not gated on `pages.length > 0`)
+  - The "+ Add page" button is visible even when there are no pages yet
+
+### Modifying SettingsPanel
+`SettingsPanel.tsx` is a full-screen overlay with four tabs:
+- **typescript** — Path aliases (auto-detect from tsconfig)
+- **packages** — Project dependency viewer (`dependencies` + `devDependencies` with versions) and add-dependency UI with dev/prod toggle; calls `project-deps-full` and `install-project-package` endpoints
+- **css** — CSS/Stylesheet files, Font links, Public/Static asset directories (merged)
+- **builder** — Source directory overrides (pages, components, expressions dirs)
 
 ## Windows-Specific Notes
 
 - Drive letter casing can differ (`d:` vs `D:`) — `isSafeFile()` uses case-insensitive comparison
-- Use forward slashes in paths exposed to the browser (`__LOGIN_APP_PAGES_DIR__`)
+- Use forward slashes in paths exposed to the browser
 - `path.resolve()` normalizes paths on Windows

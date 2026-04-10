@@ -1,5 +1,5 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { ComponentLoader } from './preview/ComponentLoader'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { setPreviewIframeWindow } from './preview/ComponentLoader'
 import { ExpressionTester } from './preview/ExpressionTester'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import type { SelectedNodeContext } from './inspector/InspectorPanel'
@@ -13,6 +13,7 @@ import { ProjectPickerModal } from './ProjectPickerModal'
 import { SettingsPanel } from './SettingsPanel'
 import { appStyles as styles } from './appStyles'
 // Side-effect: imports CSS/Tailwind files listed in cockpit.settings.json cssFiles.
+// Still needed for the expressions section which renders components inline.
 import 'virtual:cockpit-css'
 
 export type PreviewPage = string
@@ -23,6 +24,8 @@ interface ProjectInfo {
   pagesDir: string | null
   componentsDir: string | null
   expressionsDir: string | null
+  hasPackageJson: boolean
+  isReactProject: boolean
   valid: boolean
 }
 
@@ -65,7 +68,7 @@ async function fetchExpressions(projectRoot: string): Promise<ExpressionMeta[]> 
 export interface SourceLocation {
   file: string
   line: number
-  inspectMode?: 'node' | 'component' | 'file' | 'expression'
+  inspectMode?: 'node' | 'component' | 'file' | 'expression' | 'component-usage'
   componentName?: string
 }
 
@@ -98,6 +101,50 @@ function readSessionJson<T>(key: string, fallback: T): T {
   } catch { return fallback }
 }
 
+// ── Section empty states ──────────────────────────────────────────────────────
+
+const emptyLinkBtn: React.CSSProperties = {
+  background: 'none', border: 'none', padding: 0,
+  color: '#89b4fa', cursor: 'pointer', fontSize: 'inherit',
+  fontFamily: 'inherit', textDecoration: 'underline',
+}
+
+const emptyCode: React.CSSProperties = {
+  fontFamily: 'monospace', background: 'rgba(137,180,250,0.12)',
+  padding: '1px 5px', borderRadius: 3, color: '#89b4fa',
+}
+
+function SectionEmptyState({ icon, title, message, action }: {
+  icon: string
+  title: string
+  message: React.ReactNode
+  action?: { label: string; onClick: () => void }
+}) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: 12, padding: '40px 32px', textAlign: 'center',
+    }}>
+      <span style={{ fontSize: 36, lineHeight: 1 }}>{icon}</span>
+      <span style={{ fontSize: 15, fontWeight: 600, color: '#cdd6f4', fontFamily: 'system-ui, sans-serif' }}>{title}</span>
+      <span style={{ fontSize: 12, color: '#6c7086', fontFamily: 'system-ui, sans-serif', maxWidth: 320, lineHeight: 1.6 }}>{message}</span>
+      {action && (
+        <button
+          style={{
+            marginTop: 4, padding: '7px 20px', borderRadius: 7,
+            background: 'rgba(137,180,250,0.12)', border: '1px solid rgba(137,180,250,0.25)',
+            color: '#89b4fa', fontSize: 12, fontWeight: 600,
+            fontFamily: 'system-ui, sans-serif', cursor: 'pointer',
+          }}
+          onClick={action.onClick}
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const initial = readUrlState()
   const [location, setLocation] = useState<SourceLocation | null>(null)
@@ -118,6 +165,9 @@ export default function App() {
   const [wrapChosenExpr, setWrapChosenExpr] = useState<ExpressionMeta | null>(null)
   const [hoveredWrapKey, setHoveredWrapKey] = useState<string | null>(null)
   const [wrapCenterTab, setWrapCenterTab] = useState<'nodes' | 'preview'>('nodes')
+  // The actual resolved component name from fiber (e.g. 'AlSignIn' for SignInPage.tsx).
+  // Overrides activePage?.root / previewComponent for isReadOnly checks when they differ.
+  const [resolvedRootName, setResolvedRootName] = useState<string | null>(null)
 
   // Project selection
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
@@ -139,7 +189,7 @@ export default function App() {
       const [pathsRes, depsRes, settingsRes] = await Promise.all([
         fetch(`/__source/tsconfig-paths?root=${encodeURIComponent(root)}`),
         fetch(`/__source/project-deps?root=${encodeURIComponent(root)}`),
-        fetch('/__source/settings'),
+        fetch(`/__source/settings?root=${encodeURIComponent(root)}`),
       ])
       const [pathsData, depsData, currentSettings] = await Promise.all([
         pathsRes.json(),
@@ -176,7 +226,7 @@ export default function App() {
         await fetch('/__source/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ aliases: merged, packages: currentPackages, nodeModulesDirs: mergedNodeModulesDirs }),
+          body: JSON.stringify({ root, aliases: merged, packages: currentPackages, nodeModulesDirs: mergedNodeModulesDirs }),
         })
       }
     } catch {
@@ -213,6 +263,10 @@ export default function App() {
     setProjectRoot(root)
     localStorage.setItem('cockpit:projectRoot', root)
     setShowPicker(false)
+    // Force settings open if project has no package.json or no React/Next dependency
+    if (!info.hasPackageJson || !info.isReactProject) {
+      setShowSettings(true)
+    }
     // Auto-populate path aliases and detect framework packages
     autoPopulateSettings(root)
   }
@@ -252,26 +306,33 @@ export default function App() {
       })
     }
   }, [])
-  const canvasRef = useRef<HTMLDivElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  /** The live DOM element that the DOMTreePanel uses as its canvas root.
+   *  For pages/components: points to the preview iframe's body (set after iframe loads).
+   *  For expressions: points to the expression tester container div. */
+  const [canvasEl, setCanvasEl] = useState<HTMLElement | null>(null)
+  /** The iframe's contentWindow — forwarded to useLocator so Alt+Click works inside the iframe. */
+  const [iframeWindow, setIframeWindow] = useState<Window | null>(null)
   const [canvasHasError, setCanvasHasError] = useState(false)
 
-  // Reset canvas error immediately when navigating so the old-page error banner
-  // doesn't linger in the tree while the new page loads.
+  // Reset canvas error and canvas refs when navigating to a new preview target.
   useEffect(() => {
     setCanvasHasError(false)
+    setResolvedRootName(null)
   }, [activeSection, previewPage, previewComponent])
 
-  // Poll the canvas for load-error state so DOMTreePanel can show a stub node.
+  // Poll the canvas element for load-error state so DOMTreePanel can show a stub node.
   useEffect(() => {
+    if (!canvasEl) { setCanvasHasError(false); return }
     let raf = 0
     function check() {
-      const hasErr = !!(canvasRef.current?.querySelector('[data-load-error]'))
+      const hasErr = !!(canvasEl?.querySelector('[data-load-error]'))
       setCanvasHasError(prev => prev !== hasErr ? hasErr : prev)
       raf = requestAnimationFrame(check)
     }
     raf = requestAnimationFrame(check)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [canvasEl])
   // Callback bridge: InspectorPanel picker → ExpressionTester insert
   const insertTagRef = useRef<((tag: string) => void) | null>(null)
 
@@ -284,16 +345,17 @@ export default function App() {
   // absolute path the inspector needs (the server resolves relative paths from cwd,
   // which is builder-app, not the project root).
   useEffect(() => {
-    if (!panelOpen) return
     if (activeSection === 'pages') {
       const page = pages.find(p => p.id === previewPage)
       if (page?.file && pagesDir) {
         setLocation({ file: `${pagesDir}/${page.file}.tsx`, line: 1, inspectMode: 'file', componentName: page.root })
+        setPanelOpen(true)
       }
     } else if (activeSection === 'components') {
       const comp = components.find(c => c.name === previewComponent)
       if (comp?.file && componentsDir) {
         setLocation({ file: `${componentsDir}/${comp.file}.tsx`, line: 1, inspectMode: 'file', componentName: comp.name })
+        setPanelOpen(true)
       }
     }
   }, [previewPage, previewComponent, activeSection]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -301,9 +363,11 @@ export default function App() {
   function openInspector(
     file: string,
     line: number,
-    inspectMode: 'node' | 'component' | 'file' | 'expression' = 'node',
+    inspectMode: 'node' | 'component' | 'file' | 'expression' | 'component-usage' = 'node',
     componentName?: string
   ) {
+    // Never expose builder-app source files in the inspector.
+    if (file.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')) return
     setLocation({ file, line, inspectMode, componentName })
     setPanelOpen(true)
     if (inspectMode === 'expression') {
@@ -318,7 +382,7 @@ export default function App() {
     openInspector(expr.file, 1, 'file', expr.name)
   }
 
-  useLocator((loc) => openInspector(loc.file, loc.line))
+  useLocator((loc) => openInspector(loc.file, loc.line), iframeWindow)
 
   async function deletePage(id: string, root: string) {
     try {
@@ -359,12 +423,66 @@ export default function App() {
   const pagesDir = projectInfo?.pagesDir ?? ''
   const componentsDir = projectInfo?.componentsDir ?? ''
 
+  // Build the URL for the preview iframe. Empty string = no iframe (show empty state instead).
+  const previewSrc = useMemo(() => {
+    if (activeSection === 'pages' && activePage && pagesDir) {
+      const p = new URLSearchParams({
+        page: activePage.root,
+        componentPath: activePage.file ?? activePage.root,
+        pagesDir,
+        componentsDir: componentsDir || '',
+        section: 'pages',
+      })
+      return `/preview.html?${p.toString()}`
+    }
+    if (activeSection === 'components' && previewComponent && componentsDir) {
+      const comp = components.find(c => c.name === previewComponent)
+      const p = new URLSearchParams({
+        page: previewComponent,
+        componentPath: comp?.file ?? previewComponent,
+        pagesDir: pagesDir || '',
+        componentsDir,
+        section: 'components',
+      })
+      return `/preview.html?${p.toString()}`
+    }
+    return ''
+  }, [activeSection, activePage, previewComponent, pagesDir, componentsDir, components])
+
+  // Clear canvas state while the iframe transitions to a new src.
+  useEffect(() => {
+    setCanvasEl(null)
+    setIframeWindow(null)
+    setPreviewIframeWindow(null)
+  }, [previewSrc])
+
+  function handleIframeLoad() {
+    try {
+      const doc = iframeRef.current?.contentDocument
+      // Use the #root container (not body) so that root.firstElementChild is the
+      // actual component output — fiberTreeContainsComponent walks .return upward
+      // from firstElementChild, which must be a JSX-rendered element, not the
+      // React mount container itself.
+      const root = doc?.getElementById('root') ?? doc?.body ?? null
+      const win = iframeRef.current?.contentWindow ?? null
+      setCanvasEl(root)
+      setIframeWindow(win)
+      setPreviewIframeWindow(win)
+    } catch {
+      // Cross-origin safety (should not happen — preview.html is same-origin)
+    }
+  }
+
   // Show project picker if no project is loaded yet, or the user clicked "Change"
   if (!projectRoot || showPicker) {
+    const isLocked = !!projectInfo && (!projectInfo.hasPackageJson || !projectInfo.isReactProject)
     return (
       <ProjectPickerModal
         onProjectSelected={loadProject}
-        onCancel={projectRoot ? () => setShowPicker(false) : undefined}
+        onCancel={projectRoot ? () => {
+          setShowPicker(false)
+          if (isLocked) setShowSettings(true)
+        } : undefined}
       />
     )
   }
@@ -470,7 +588,7 @@ export default function App() {
       <div style={styles.main}>
         {/* Left: DOM tree */}
         <DOMTreePanel
-          canvasRef={canvasRef}
+          canvasEl={canvasEl}
           onLocate={openInspector}
           onNodeSelect={(snapshot) => {
             setSelectedNode(snapshot)
@@ -515,7 +633,19 @@ export default function App() {
           }}
           onAutoSelect={(snapshot, file, line, componentName) => {
             setSelectedNode(snapshot)
-            setLocation({ file, line, inspectMode: 'file', componentName })
+            // Track the actual resolved component name from fiber (may differ from page ID / file stem).
+            if (componentName) setResolvedRootName(componentName)
+            // If fiber couldn't determine the file (new/empty page), look it up from the pages/components list.
+            let resolvedFile = file
+            if (!resolvedFile && componentName) {
+              const page = pages.find(p => p.root === componentName)
+              if (page?.file && pagesDir) resolvedFile = `${pagesDir}/${page.file}.tsx`
+            }
+            if (!resolvedFile && componentName) {
+              const comp = components.find(c => c.name === componentName)
+              if (comp?.file && componentsDir) resolvedFile = `${componentsDir}/${comp.file}.tsx`
+            }
+            if (resolvedFile) setLocation({ file: resolvedFile, line, inspectMode: 'file', componentName })
             setPanelOpen(true)
           }}
           onExpressionNodeClick={(nodes, exprName) => {
@@ -565,80 +695,130 @@ export default function App() {
             )}
           </div>
 
-          {/* Scrollable canvas */}
-          {wrapIntent ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-              {/* Tab bar */}
-              <div style={{ display: 'flex', background: '#181825', borderBottom: '1px solid #313244', flexShrink: 0 }}>
-                {(['nodes', 'preview'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setWrapCenterTab(tab)}
-                    style={{
-                      padding: '6px 16px', fontSize: 12, fontFamily: 'system-ui, sans-serif',
-                      background: 'transparent', border: 'none', cursor: 'pointer',
-                      color: wrapCenterTab === tab ? '#cdd6f4' : '#6c7086',
-                      borderBottom: wrapCenterTab === tab ? '2px solid #89b4fa' : '2px solid transparent',
-                      fontWeight: wrapCenterTab === tab ? 600 : 400,
-                    }}
-                  >
-                    {tab === 'nodes' ? 'Selected Nodes' : 'Page Preview'}
-                  </button>
-                ))}
-              </div>
-              {/* Tab content */}
-              {wrapCenterTab === 'nodes' && (
-                <ExpressionAssignPanel
-                  nodes={wrapIntent.nodes}
-                  expressions={expressions}
-                  selectedNode={selectedNode}
-                  chosenExpr={wrapChosenExpr}
-                  onChooseExpr={setWrapChosenExpr}
-                  onHoverNode={(node) => setHoveredWrapKey(node.key)}
-                  onLeaveNode={() => setHoveredWrapKey(null)}
-                  onCancel={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
-                  onDone={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
-                />
-              )}
-              {wrapCenterTab === 'preview' && (
-                <div
-                  ref={canvasRef}
-                  style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}
+          {/* Wrap intent tab bar */}
+          {wrapIntent && (
+            <div style={{ display: 'flex', background: '#181825', borderBottom: '1px solid #313244', flexShrink: 0 }}>
+              {(['nodes', 'preview'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setWrapCenterTab(tab)}
+                  style={{
+                    padding: '6px 16px', fontSize: 12, fontFamily: 'system-ui, sans-serif',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: wrapCenterTab === tab ? '#cdd6f4' : '#6c7086',
+                    borderBottom: wrapCenterTab === tab ? '2px solid #89b4fa' : '2px solid transparent',
+                    fontWeight: wrapCenterTab === tab ? 600 : 400,
+                  }}
                 >
-                  {activeSection === 'pages' && activePage && (
-                    <ComponentLoader page={previewPage} componentName={activePage.root} componentPath={activePage.file} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', activePage.root)} onRuntimeError={() => setPreviewHasError(true)} />
-                  )}
-                  {activeSection === 'components' && previewComponent && (
-                    <ComponentLoader page={previewComponent} componentName={previewComponent} componentPath={components.find(c => c.name === previewComponent)?.file} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', previewComponent)} onRuntimeError={() => setPreviewHasError(true)} />
-                  )}
-                </div>
-              )}
+                  {tab === 'nodes' ? 'Selected Nodes' : 'Page Preview'}
+                </button>
+              ))}
             </div>
-          ) : (
-          <div
-            ref={canvasRef}
-            style={{ ...styles.canvas, background: activeSection === 'expressions' ? '#24273a' : '#f5f5f5' }}
-          >
-          {activeSection === 'pages' && activePage && (
-            <ComponentLoader page={previewPage} componentName={activePage.root} componentPath={activePage.file} folder="pages" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', activePage.root)} onRuntimeError={() => setPreviewHasError(true)} />
           )}
-          {activeSection === 'components' && previewComponent && (
-            <ComponentLoader page={previewComponent} componentName={previewComponent} componentPath={components.find(c => c.name === previewComponent)?.file} folder="components" pagesDir={pagesDir} componentsDir={componentsDir} onOpenSettings={(pkgs) => { setPendingInstallPackages(pkgs); setShowSettings(true) }} onOpenSource={(f) => openInspector(f, 1, 'file', previewComponent)} onRuntimeError={() => setPreviewHasError(true)} />
-          )}
-          {activeSection === 'components' && !previewComponent && (
-            <div style={styles.emptyState}>Select a component to preview it here.</div>
-          )}
-          {activeSection === 'expressions' && (
-            <ExpressionTester
-              expr={expressions.find((e) => e.name === activeExpression) ?? null}
-              pages={pages}
-              components={components}
-              pagesDir={pagesDir}
-              componentsDir={componentsDir}
-              registerInsert={(fn) => { insertTagRef.current = fn }}
+
+          {/* Wrap intent node-assignment panel (shown over the preview) */}
+          {wrapIntent && wrapCenterTab === 'nodes' && (
+            <ExpressionAssignPanel
+              nodes={wrapIntent.nodes}
+              expressions={expressions}
+              selectedNode={selectedNode}
+              chosenExpr={wrapChosenExpr}
+              onChooseExpr={setWrapChosenExpr}
+              onHoverNode={(node) => setHoveredWrapKey(node.key)}
+              onLeaveNode={() => setHoveredWrapKey(null)}
+              onCancel={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
+              onDone={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
             />
           )}
-          </div>
+
+          {/* Preview iframe — pages & components section */}
+          {activeSection !== 'expressions' && previewSrc && (
+            <iframe
+              ref={iframeRef}
+              src={previewSrc}
+              title="Preview"
+              style={{
+                flex: 1,
+                border: 'none',
+                display: (wrapIntent && wrapCenterTab === 'nodes') ? 'none' : 'block',
+                background: '#ffffff',
+              }}
+              onLoad={handleIframeLoad}
+            />
+          )}
+
+          {/* Empty states — pages section, no active page */}
+          {activeSection === 'pages' && !activePage && (
+            <div style={{ flex: 1, background: '#11111b' }}>
+              {!projectInfo?.pagesDir && (
+                <SectionEmptyState
+                  icon="📄"
+                  title="Pages directory not configured"
+                  message={<>No pages directory found in this project. Configure it in <button style={emptyLinkBtn} onClick={() => setShowSettings(true)}>Settings</button> or create a <code style={emptyCode}>src/pages/</code> folder.</>}
+                  action={{ label: '⚙ Open Settings', onClick: () => setShowSettings(true) }}
+                />
+              )}
+              {!!projectInfo?.pagesDir && pages.length === 0 && (
+                <SectionEmptyState
+                  icon="📄"
+                  title="No pages yet"
+                  message="Create your first page to see it here."
+                  action={{ label: '+ New Page', onClick: () => setAddPageOpen(true) }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Empty states — components section, no active component */}
+          {activeSection === 'components' && !previewComponent && (
+            <div style={{ flex: 1, background: '#11111b' }}>
+              {!projectInfo?.componentsDir && (
+                <SectionEmptyState
+                  icon="🧩"
+                  title="Components directory not configured"
+                  message={<>No components directory found in this project. Configure it in <button style={emptyLinkBtn} onClick={() => setShowSettings(true)}>Settings</button> or create a <code style={emptyCode}>src/components/</code> folder.</>}
+                  action={{ label: '⚙ Open Settings', onClick: () => setShowSettings(true) }}
+                />
+              )}
+              {!!projectInfo?.componentsDir && components.length === 0 && (
+                <SectionEmptyState
+                  icon="🧩"
+                  title="No components yet"
+                  message="Create your first component to see it here."
+                  action={{ label: '+ New Component', onClick: () => setAddComponentOpen(true) }}
+                />
+              )}
+              {!!projectInfo?.componentsDir && components.length > 0 && (
+                <div style={{ ...styles.emptyState, color: '#6c7086' }}>Select a component to preview it here.</div>
+              )}
+            </div>
+          )}
+
+          {/* Expressions section — inline rendering (ExpressionTester needs fiber access in same doc) */}
+          {activeSection === 'expressions' && (
+            <div
+              ref={(el) => setCanvasEl(el)}
+              style={{ flex: 1, overflow: 'auto', background: '#11111b' }}
+            >
+              {expressions.length === 0 && (
+                <SectionEmptyState
+                  icon="🔀"
+                  title="No expressions yet"
+                  message="Expressions let you wrap nodes in conditional or loop logic. Create your first one to get started."
+                  action={{ label: '+ New Expression', onClick: () => setAddExpressionOpen(true) }}
+                />
+              )}
+              {expressions.length > 0 && (
+                <ExpressionTester
+                  expr={expressions.find((e) => e.name === activeExpression) ?? null}
+                  pages={pages}
+                  components={components}
+                  pagesDir={pagesDir}
+                  componentsDir={componentsDir}
+                  registerInsert={(fn) => { insertTagRef.current = fn }}
+                />
+              )}
+            </div>
           )}
         </div>
 
@@ -650,7 +830,7 @@ export default function App() {
             inspectMode={location?.inspectMode ?? 'file'}
             componentName={location?.componentName}
             selectedNode={selectedNode}
-            rootComponentName={activeSection === 'components' ? (previewComponent ?? activePage?.root) : activePage?.root}
+            rootComponentName={resolvedRootName ?? (activeSection === 'components' ? (previewComponent ?? activePage?.root) : activePage?.root)}
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
             expressionMode={activeSection === 'expressions'}
@@ -680,6 +860,10 @@ export default function App() {
             setPages((prev) => [...prev, page])
             setPreviewPage(page.id)
             setAddPageOpen(false)
+            if (pagesDir) {
+              setLocation({ file: `${pagesDir}/${page.root}.tsx`, line: 1, inspectMode: 'file', componentName: page.root })
+              setPanelOpen(true)
+            }
           }}
         />
       )}
@@ -711,7 +895,9 @@ export default function App() {
           projectRoot={projectRoot}
           detectedPackages={detectedPackages}
           pendingInstallPackages={pendingInstallPackages}
+          locked={!!projectInfo && (!projectInfo.hasPackageJson || !projectInfo.isReactProject)}
           onClose={() => { setShowSettings(false); setPendingInstallPackages([]) }}
+          onChangeProject={() => { setShowSettings(false); setShowPicker(true) }}
           onProjectDirsChanged={() => { if (projectRoot) void loadProject(projectRoot) }}
         />
       )}

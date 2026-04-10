@@ -30,7 +30,10 @@ interface DisplayDomNode {
 interface DisplayComponentNode {
   kind: 'component'
   key: string
+  /** Fiber-derived function name — used for AST lookups (e.g. "Input"). */
   name: string
+  /** Qualified JSX tag for display (e.g. "TextField.Input"). Set by async enrichment. */
+  displayName?: string
   file: string
   line: number
   depth: number
@@ -98,11 +101,12 @@ export interface ComponentEntry {
 }
 
 export interface DOMTreePanelProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>
+  /** The live DOM element that contains the preview content (iframe body or expression div). */
+  canvasEl: HTMLElement | null
   onLocate: (
     file: string,
     line: number,
-    inspectMode?: 'node' | 'component' | 'file' | 'expression',
+    inspectMode?: 'node' | 'component' | 'file' | 'expression' | 'component-usage',
     componentName?: string
   ) => void
   /** Called after a DOM node is selected in the tree. Does NOT change locate/navigation behaviour. */

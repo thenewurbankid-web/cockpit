@@ -16,7 +16,7 @@ The tree panel is split into focused modules under `builder-app/src/tree/`:
 | `helpers.ts` | Utility functions: `countNodes`, `findPathToEl`, `findNodeByKey`, `getNodeFile`, `getNodeLine`, `computeRelativeImportPath` |
 | `TreeRow.tsx` | `TreeRow` component — renders a single expandable tree row with icons, labels, and context menus |
 | `styles.ts` | CSS-in-JS styles for the tree panel |
-| `DOMTreePanel.tsx` | Main component: selection, picker mode, context menus, multi-select (~1170 lines) |
+| `DOMTreePanel.tsx` | Main component: selection, picker mode, context menus, multi-select (~1200 lines) |
 
 ## Tree Architecture
 
@@ -65,6 +65,13 @@ interface DisplayComponentNode {
 - Canvas `mousedown` (capture phase) intercepts clicks when `pickerMode` or Alt is held
 - Canvas `mousemove` shows orange outline on hover (no Alt needed in picker mode)
 - Picker uses `handleSelectRef` to call the full `handleSelect` flow
+
+## Pages Section Visibility
+
+- The **Pages** sidebar section always renders when `activeSection === 'pages'` — it is NOT gated on `pages.length > 0`
+- The search box is only shown when there is at least one page (`pages.length > 0`)
+- A "No pages yet" placeholder is shown when the list is empty so the "+ Add page" button remains visible
+- Canvas background is `#11111b` (dark) for all empty states: no active page, no active component, and the expressions section; `#f5f5f5` (light) otherwise
 
 ## Event Handler Constraints
 

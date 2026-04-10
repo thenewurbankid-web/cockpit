@@ -170,6 +170,86 @@ export function extractJsxTextChildren(source: string, targetLine: number): JsxT
   }
 }
 
+/** Collects all identifiers used as JSX expression attribute values anywhere inside
+ *  the named component function in the given source. Returns a Set of base identifier
+ *  names (e.g. `{user.name}` → `'user'`, `{email}` → `'email'`). */
+export function collectAllJsxExpressionIdentifiers(source: string, componentName: string): Set<string> {
+  const result = new Set<string>()
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body = (ast.program.body as AstNode[])
+
+    // Find the function/arrow that declares componentName.
+    function findComponentNode(nodes: AstNode[]): AstNode | null {
+      for (const node of nodes) {
+        if (
+          (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') &&
+          (node as AstNode & { id?: { name?: string } }).id?.name === componentName
+        ) return node
+        if (node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration') {
+          const decl = (node as AstNode & { declaration?: AstNode }).declaration
+          if (decl) { const r = findComponentNode([decl]); if (r) return r }
+        }
+        if (node.type === 'VariableDeclaration') {
+          for (const decl of (node as AstNode & { declarations?: AstNode[] }).declarations ?? []) {
+            const id = (decl as AstNode & { id?: AstNode & { name?: string } }).id
+            const init = (decl as AstNode & { init?: AstNode }).init
+            if (id?.name === componentName && init) return init
+          }
+        }
+      }
+      return null
+    }
+
+    const compNode = findComponentNode(body)
+
+    // Walk the subtree collecting JSXAttribute expression values.
+    function walk(node: AstNode | null | undefined) {
+      if (!node || typeof node !== 'object') return
+      if (node.type === 'JSXAttribute') {
+        const val = (node as AstNode & { value?: AstNode }).value
+        if (val?.type === 'JSXExpressionContainer') {
+          const expr = (val as AstNode & { expression?: AstNode }).expression
+          if (expr && expr.type !== 'JSXEmptyExpression') {
+            // Extract base identifier (handle member access, calls, etc.)
+            extractIdentifiers(expr)
+          }
+        }
+        return // don't descend into attribute name
+      }
+      for (const key of Object.keys(node)) {
+        if (key === 'type' || key === 'loc' || key === 'start' || key === 'end') continue
+        const child = (node as Record<string, unknown>)[key]
+        if (Array.isArray(child)) child.forEach(c => walk(c as AstNode))
+        else if (child && typeof child === 'object') walk(child as AstNode)
+      }
+    }
+
+    function extractIdentifiers(node: AstNode) {
+      if (!node) return
+      if (node.type === 'Identifier') {
+        result.add((node as AstNode & { name?: string }).name ?? '')
+      } else if (node.type === 'MemberExpression') {
+        const obj = (node as AstNode & { object?: AstNode }).object
+        if (obj?.type === 'Identifier') result.add((obj as AstNode & { name?: string }).name ?? '')
+        else if (obj) extractIdentifiers(obj)
+      } else if (node.type === 'CallExpression') {
+        const callee = (node as AstNode & { callee?: AstNode }).callee
+        if (callee) extractIdentifiers(callee)
+      } else if (node.type === 'ConditionalExpression' || node.type === 'LogicalExpression' || node.type === 'BinaryExpression') {
+        extractIdentifiers((node as AstNode & { test?: AstNode; left?: AstNode; right?: AstNode; consequent?: AstNode; alternate?: AstNode }).test!)
+        extractIdentifiers((node as AstNode & { left?: AstNode }).left!)
+        extractIdentifiers((node as AstNode & { right?: AstNode }).right!)
+        extractIdentifiers((node as AstNode & { consequent?: AstNode }).consequent!)
+        extractIdentifiers((node as AstNode & { alternate?: AstNode }).alternate!)
+      }
+    }
+
+    walk(compNode)
+  } catch { /* parse error — return empty */ }
+  return result
+}
+
 export function rewriteJsxTextChild(source: string, child: JsxTextChild, newValue: string): string {
   const lines = source.split('\n')
   if (child.startLine === child.endLine) {

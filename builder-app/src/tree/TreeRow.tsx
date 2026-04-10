@@ -3,6 +3,20 @@ import { highlightElement, clearHighlight } from '../highlight'
 import type { DisplayNode } from './types'
 import { firstDomElement } from './treeBuilders'
 
+/** Recursively extracts non-DOM nodes from a children list, hoisting component/ghost/loop
+ *  nodes out of any DOM wrappers so only the React component hierarchy is shown. */
+function flattenToComponents(nodes: DisplayNode[]): DisplayNode[] {
+  const result: DisplayNode[] = []
+  for (const node of nodes) {
+    if (node.kind === 'dom') {
+      result.push(...flattenToComponents(node.children))
+    } else {
+      result.push(node)
+    }
+  }
+  return result
+}
+
 interface RowProps {
   node: DisplayNode
   selected: Element | null
@@ -31,13 +45,20 @@ interface RowProps {
   expandedAncestors?: Set<string> | null
   /** Key of the node that should be scrolled into view */
   scrollToKey?: string | null
+  /** When true, DOM nodes are hidden — only component/ghost/loop nodes are shown. */
+  filterDomNodes?: boolean
 }
 
-export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey }: RowProps) {
-  const [open, setOpen] = useState(true)
+export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey, filterDomNodes = false }: RowProps) {
+  // Child component nodes (depth > 0) start collapsed but are expandable.
+  const isChildComponent = node.kind === 'component' && node.depth > 0
+  // Once inside a child component subtree, DOM nodes are hidden.
+  const hideDOM = isChildComponent || filterDomNodes
+  const [open, setOpen] = useState(!isChildComponent)
   const rowRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { if (expandGen > 0) setOpen(true) }, [expandGen])
+  // expandGen expands everything except child component nodes (they start collapsed).
+  useEffect(() => { if (expandGen > 0 && !isChildComponent) setOpen(true) }, [expandGen])
   useEffect(() => { if (collapseGen > 0) setOpen(node.depth === 0) }, [collapseGen])
   useEffect(() => {
     if (scrollToKey === node.key && rowRef.current) {
@@ -50,7 +71,9 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
   const nodeElement = firstDomElement(node)
   const isSelected = nodeElement !== null && nodeElement === selected
   const isMultiSelected = multiSelectedKeys.has(node.key)
-  const hasChildren = node.children.length > 0
+  // Pre-processed children: when inside a child component subtree, strip DOM nodes.
+  const visibleChildren = hideDOM ? flattenToComponents(node.children) : node.children
+  const hasChildren = visibleChildren.length > 0
 
   const isDom = node.kind === 'dom'
   const el = isDom ? node.el : null
@@ -99,14 +122,15 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
           <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>:{node.sourceLine}</span>
           <span style={{ color: '#585b70', fontSize: 10, marginLeft: 4 }}>×{node.count}</span>
         </div>
-        {effectiveOpen && node.children.map((child, i) => (
+        {effectiveOpen && visibleChildren.map((child, i) => (
           <TreeRow key={i} node={child} selected={selected} onSelect={onSelect}
             hoveredElement={hoveredElement} multiCompFiles={multiCompFiles}
             multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle}
             onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey}
             expandGen={expandGen} collapseGen={collapseGen}
             forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
-            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
+            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey}
+            filterDomNodes={hideDOM} />
         ))}
       </div>
     )
@@ -138,7 +162,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
             onClick={e => { e.stopPropagation(); onClearForceExpand?.(); setOpen(o => !o) }}
           >{effectiveOpen ? '▾' : '▸'}</span>
           <span style={{ color: '#f9e2af' }}>{'<>'}</span>
-          <span style={{ color: '#f9e2af', fontWeight: 600 }}>{node.name}</span>
+          <span style={{ color: '#f9e2af', fontWeight: 600 }}>{node.displayName ?? node.name}</span>
           {Object.entries(node.exprProps).map(([k, v]) => (
             <span key={k} style={{ color: '#585b70', fontSize: 11, fontFamily: 'monospace' }}>
               {k}=<span style={{ color: '#cba6f7' }}>{v}</span>
@@ -149,14 +173,15 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
             <span style={{ marginLeft: 'auto', background: '#1e1e2e', border: '1px solid #45475a', color: '#89b4fa', fontSize: 9, padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>src</span>
           )}
         </div>
-        {effectiveOpen && hasChildren && node.children.map((child, i) => (
+        {effectiveOpen && hasChildren && visibleChildren.map((child, i) => (
           <TreeRow key={i} node={child} selected={selected} onSelect={onSelect}
             hoveredElement={hoveredElement} multiCompFiles={multiCompFiles}
             multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle}
             onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey}
             expandGen={expandGen} collapseGen={collapseGen}
             forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
-            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
+            expandedAncestors={expandedAncestors} scrollToKey={scrollToKey}
+            filterDomNodes={hideDOM} />
         ))}
       </div>
     )
@@ -223,7 +248,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
           <>
             <span style={{ color: '#f9e2af' }}>{'<>'}</span>
             <span style={{ color: '#f9e2af', fontWeight: 600 }} title={node.name}>
-              {node.name}
+              {node.displayName ?? node.name}
             </span>
             {node.exprProps
               ? Object.entries(node.exprProps).map(([k, v]) => (
@@ -300,8 +325,8 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
 
       {effectiveOpen &&
         hasChildren &&
-        node.children.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} expandGen={expandGen} collapseGen={collapseGen} forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand} expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} />
+        visibleChildren.map((child, i) => (
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} expandGen={expandGen} collapseGen={collapseGen} forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand} expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} filterDomNodes={hideDOM} />
         ))}
     </div>
   )

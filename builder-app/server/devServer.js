@@ -12,9 +12,9 @@ import fs from 'fs'
 import path from 'path'
 import { execSync, spawn } from 'child_process'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, setActiveProjectRoot, warmDiagnosticsCache } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, setActiveProjectRoot, warmDiagnosticsCache, readProjectConfig, writeProjectConfig } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
-import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps } from './templates.js'
+import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS } from './templates.js'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -72,7 +72,7 @@ app.get('/__source', (req, res) => {
 })
 
 app.post('/__source', (req, res) => {
-  const { file: rawFile, content } = req.body ?? {}
+  const { file: rawFile, content, agent } = req.body ?? {}
 
   if (typeof rawFile !== 'string' || typeof content !== 'string') {
     return res.status(400).json({ error: 'Body must contain { file: string, content: string }' })
@@ -84,15 +84,18 @@ app.post('/__source', (req, res) => {
     return res.status(403).json({ error: 'Access denied' })
   }
 
-  // Capture original content for diff tracking before overwriting.
-  let original = ''
-  try { original = fs.readFileSync(filePath, 'utf-8') } catch { /* new file */ }
-
-  fs.writeFileSync(filePath, content, 'utf-8')
-
-  // Store diff so the inspector can display it.
-  if (original !== content) {
-    fileDiffStore.set(filePath, { original, modified: content })
+  if (agent) {
+    // Agent write: capture original and store diff so the inspector can display it.
+    let original = ''
+    try { original = fs.readFileSync(filePath, 'utf-8') } catch { /* new file */ }
+    fs.writeFileSync(filePath, content, 'utf-8')
+    if (original !== content) {
+      fileDiffStore.set(filePath, { original, modified: content })
+    }
+  } else {
+    // User-initiated write: clear any stored agent diff so it stops showing in Changes tab.
+    fileDiffStore.delete(filePath)
+    fs.writeFileSync(filePath, content, 'utf-8')
   }
 
   // Vite HMR will detect the file change automatically.
@@ -113,6 +116,19 @@ app.get('/__source/diff', (req, res) => {
     return res.status(404).json({ error: 'No diff stored for this file' })
   }
   res.json(diff)
+})
+
+app.delete('/__source/diff', (req, res) => {
+  const rawFile = req.query.file
+  if (typeof rawFile !== 'string' || !rawFile) {
+    return res.status(400).json({ error: 'Missing ?file= query parameter' })
+  }
+  const filePath = path.resolve(rawFile)
+  if (!isSafeFile(filePath)) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+  fileDiffStore.delete(filePath)
+  res.json({ ok: true })
 })
 
 // ── Project selection ─────────────────────────────────────────────────────────
@@ -181,6 +197,18 @@ app.get('/__source/project-info', (req, res) => {
   const hasPages = fs.existsSync(pagesDir)
   const hasComponents = fs.existsSync(componentsDir)
   const hasExpressions = fs.existsSync(expressionsDir)
+  const hasConfig = fs.existsSync(path.join(resolved, '.cockpit', 'config.json'))
+
+  const pkgPath = path.join(resolved, 'package.json')
+  const hasPackageJson = fs.existsSync(pkgPath)
+  let isReactProject = false
+  if (hasPackageJson) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies }
+      isReactProject = 'react' in allDeps || 'next' in allDeps
+    } catch { /* ignore malformed package.json */ }
+  }
 
   res.json({
     name: path.basename(resolved),
@@ -189,9 +217,115 @@ app.get('/__source/project-info', (req, res) => {
     componentsDir: hasComponents ? componentsDir.replace(/\\/g, '/') : null,
     expressionsDir: hasExpressions ? expressionsDir.replace(/\\/g, '/') : null,
     hasSrc: fs.existsSync(path.join(resolved, 'src')),
+    hasConfig,
+    hasPackageJson,
+    isReactProject,
     valid: hasPages || hasComponents,
   })
 })
+
+/**
+ * Sync a project's .cockpit/config.json settings into the monorepo-level
+ * cockpit.settings.json so Vite plugins (cockpitCssInjector, cockpitAssets,
+ * cockpitDynamicAlias) pick up the correct CSS files, aliases, and source
+ * directories for the newly-active project.
+ */
+function syncProjectSettingsToGlobal(projectRoot) {
+  try {
+    const cfg = readProjectConfig(projectRoot)
+    const dirs = getProjectDirs(projectRoot)
+    const globalPath = path.resolve(REPO_ROOT, 'cockpit.settings.json')
+    let globalSettings = {}
+    try {
+      if (fs.existsSync(globalPath)) {
+        globalSettings = JSON.parse(fs.readFileSync(globalPath, 'utf-8'))
+      }
+    } catch { /* use empty defaults */ }
+    const updated = {
+      ...globalSettings,
+      aliases: cfg.aliases ?? {},
+      packages: cfg.packages ?? [],
+      nodeModulesDirs: cfg.nodeModulesDirs ?? [],
+      cssFiles: cfg.cssFiles ?? [],
+      publicDirs: cfg.publicDirs ?? [],
+      fontLinks: cfg.fontLinks ?? [],
+      projectDirs: {
+        [projectRoot]: {
+          pagesDir: dirs.pagesDir.replace(/\\/g, '/'),
+          componentsDir: dirs.componentsDir.replace(/\\/g, '/'),
+        },
+      },
+    }
+    fs.writeFileSync(globalPath, JSON.stringify(updated, null, 2), 'utf-8')
+    console.log(`[syncProjectSettings] Wrote cockpit.settings.json for ${projectRoot}`)
+  } catch (e) {
+    console.warn(`[syncProjectSettings] Failed: ${e.message}`)
+  }
+}
+
+/**
+ * Detect if a project uses @subframe/core and auto-populate missing CSS files
+ * and font links so Subframe components render correctly out of the box.
+ *
+ * Only fills in values that are not already configured — never overwrites
+ * user-specified settings.
+ *
+ * Auto-added when @subframe/core is detected:
+ *   cssFiles  — any Subframe theme CSS files found on disk (src/ui/theme.css,
+ *               src/subframe/theme.css, etc.) that are not already listed.
+ *   fontLinks — Inter font from Google Fonts (common Subframe default font).
+ *
+ * The updated config is written back to .cockpit/config.json and then synced
+ * to the global cockpit.settings.json so Vite picks up the changes immediately.
+ */
+function autoConfigureSubframe(projectRoot) {
+  let pkg = {}
+  try {
+    const pkgPath = path.join(projectRoot, 'package.json')
+    if (fs.existsSync(pkgPath)) pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+  } catch { /* ignore */ }
+
+  const allDeps = { ...pkg.dependencies, ...pkg.devDependencies }
+  if (!allDeps['@subframe/core']) return // not a Subframe project
+
+  const cfg = readProjectConfig(projectRoot)
+
+  // ── CSS files ──────────────────────────────────────────────────────────────
+  // Subframe projects typically have a theme.css that is NOT imported by
+  // globals.css (Next.js loads it separately). We auto-add it so the builder
+  // has all @theme variables available.
+  const subframeThemeCandidates = [
+    'src/ui/theme.css',
+    'src/subframe/theme.css',
+    'src/subframe-theme.css',
+    'src/subframe/styles/theme.css',
+  ]
+
+  const existingCss = new Set((cfg.cssFiles ?? []).map(f => path.resolve(f).toLowerCase()))
+  const cssToAdd = []
+  for (const rel of subframeThemeCandidates) {
+    const abs = path.join(projectRoot, rel)
+    if (fs.existsSync(abs) && !existingCss.has(abs.toLowerCase())) {
+      cssToAdd.push(abs.replace(/\\/g, '/'))
+    }
+  }
+
+  // ── Font links ─────────────────────────────────────────────────────────────
+  // Inter is the default Subframe font. Add it only if no font links are set.
+  const INTER_FONT_URL = 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'
+  const existingFonts = cfg.fontLinks ?? []
+  const fontsToAdd = existingFonts.length === 0 ? [INTER_FONT_URL] : []
+
+  if (cssToAdd.length === 0 && fontsToAdd.length === 0) return // nothing to do
+
+  const updatedCfg = {
+    ...cfg,
+    cssFiles: [...(cfg.cssFiles ?? []), ...cssToAdd],
+    fontLinks: [...existingFonts, ...fontsToAdd],
+  }
+  writeProjectConfig(projectRoot, updatedCfg)
+  console.log(`[autoConfigureSubframe] Added ${cssToAdd.length} CSS file(s) and ${fontsToAdd.length} font link(s) for ${projectRoot}`)
+}
 
 /** Set the active project root so isSafeFile allows files within it. */
 app.post('/__source/set-active-project', (req, res) => {
@@ -205,6 +339,11 @@ app.post('/__source/set-active-project', (req, res) => {
   }
   setActiveProjectRoot(resolved)
   console.log(`[set-active-project] ${resolved}`)
+  // Auto-configure Subframe-specific CSS and font links if not already set.
+  autoConfigureSubframe(resolved)
+  // Sync per-project config (CSS files, aliases, etc.) into cockpit.settings.json
+  // so that Vite plugins pick up the correct settings for this project.
+  syncProjectSettingsToGlobal(resolved)
   // Pre-warm the TypeScript program cache in the background so the first
   // diagnostics request hits the warm cache instead of cold-starting (~2-6s).
   warmDiagnosticsCache(resolved)
@@ -477,6 +616,22 @@ app.post('/__source/create-expression', (req, res) => {
   res.json({ ok: true, componentName, file: filePath })
 })
 
+app.post('/__source/add-default-expressions', (req, res) => {
+  const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
+  if (!isSafeFile(EXPRESSIONS_DIR)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(EXPRESSIONS_DIR, { recursive: true })
+  const results = {}
+  for (const [name, content] of Object.entries(DEFAULT_EXPRESSIONS)) {
+    const filePath = path.join(EXPRESSIONS_DIR, `${name}.tsx`)
+    if (!isSafeFile(filePath)) { results[name] = 'denied'; continue }
+    if (fs.existsSync(filePath)) { results[name] = 'exists'; continue }
+    fs.writeFileSync(filePath, content, 'utf-8')
+    console.log(`[add-default-expressions] Created ${filePath}`)
+    results[name] = 'created'
+  }
+  res.json({ ok: true, results })
+})
+
 app.delete('/__source/expression/:name', (req, res) => {
   const { name } = req.params
   if (!name || !/^[A-Z][a-zA-Z0-9]+$/.test(name)) {
@@ -498,36 +653,33 @@ app.delete('/__source/expression/:name', (req, res) => {
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
-const SETTINGS_FILE = path.resolve(REPO_ROOT, 'cockpit.settings.json')
-
-function readSettings() {
-  try {
-    if (!fs.existsSync(SETTINGS_FILE)) return { aliases: {}, packages: [], nodeModulesDirs: [], projectDirs: {} }
-    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
-    return { projectDirs: {}, ...data }
-  } catch { return { aliases: {}, packages: [], nodeModulesDirs: [], projectDirs: {} } }
-}
-
 /**
- * Resolve pages/components/expressions directories for a project root,
- * applying any per-project overrides stored in cockpit.settings.json.
+ * Resolve pages/components/expressions directories for a project root.
+ * Relative paths (e.g. "src/pages") are resolved against the project root.
+ * Absolute override paths are used as-is.
  */
 function getProjectDirs(projectRootArg) {
   const resolved = path.resolve(projectRootArg)
-  const overrides = (readSettings().projectDirs ?? {})[resolved] ?? {}
+  const cfg = readProjectConfig(resolved)
   return {
-    pagesDir: overrides.pagesDir ? path.resolve(overrides.pagesDir) : path.join(resolved, 'src', 'pages'),
-    componentsDir: overrides.componentsDir ? path.resolve(overrides.componentsDir) : path.join(resolved, 'src', 'components'),
-    expressionsDir: overrides.expressionsDir ? path.resolve(overrides.expressionsDir) : path.join(resolved, 'src', 'expressions'),
+    pagesDir: cfg.pagesDir
+      ? (path.isAbsolute(cfg.pagesDir) ? cfg.pagesDir : path.join(resolved, cfg.pagesDir))
+      : path.join(resolved, 'src', 'pages'),
+    componentsDir: cfg.componentsDir
+      ? (path.isAbsolute(cfg.componentsDir) ? cfg.componentsDir : path.join(resolved, cfg.componentsDir))
+      : path.join(resolved, 'src', 'components'),
+    expressionsDir: cfg.expressionsDir
+      ? (path.isAbsolute(cfg.expressionsDir) ? cfg.expressionsDir : path.join(resolved, cfg.expressionsDir))
+      : path.join(resolved, 'src', 'expressions'),
   }
 }
 
-function writeSettings(data) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf-8')
-}
-
-app.get('/__source/settings', (_req, res) => {
-  res.json(readSettings())
+app.get('/__source/settings', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+  const resolved = path.resolve(root)
+  if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'Project root not found' })
+  res.json(readProjectConfig(resolved))
 })
 
 app.get('/__source/project-deps', (req, res) => {
@@ -548,8 +700,74 @@ app.get('/__source/project-deps', (req, res) => {
   }
 })
 
+app.get('/__source/project-deps-full', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+  const pkgPath = path.join(path.resolve(root), 'package.json')
+  if (!fs.existsSync(pkgPath)) return res.json({ dependencies: {}, devDependencies: {} })
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+    res.json({
+      dependencies: pkg.dependencies ?? {},
+      devDependencies: pkg.devDependencies ?? {},
+    })
+  } catch (e) {
+    res.status(400).json({ error: `Failed to read package.json: ${e.message}` })
+  }
+})
+
+app.post('/__source/install-project-package', (req, res) => {
+  const { packageName, root, dev = true } = req.body ?? {}
+  if (typeof packageName !== 'string' || !/^[@a-zA-Z0-9_\-./]+(@[^\s]+)?$/.test(packageName)) {
+    return res.status(400).json({ error: 'Invalid package name' })
+  }
+  const resolved = path.resolve(root ?? '')
+  if (!root || !isSafeFile(resolved) || !fs.existsSync(resolved)) {
+    return res.status(400).json({ error: 'Invalid or missing project root' })
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  function send(type, data) {
+    res.write(`data: ${JSON.stringify({ type, data })}\n\n`)
+  }
+
+  const flag = dev ? '--save-dev' : '--save'
+  send('start', `Installing ${packageName}…\n`)
+
+  const child = spawn('npm', ['install', flag, packageName], {
+    cwd: resolved,
+    shell: true,
+    env: { ...process.env, FORCE_COLOR: '0' },
+  })
+
+  child.stdout.on('data', (chunk) => send('stdout', chunk.toString()))
+  child.stderr.on('data', (chunk) => send('stderr', chunk.toString()))
+
+  child.on('close', (code) => {
+    if (code === 0) {
+      send('done', `\n✓ ${packageName} installed successfully.`)
+    } else {
+      send('error', `\n✗ Install failed (exit code ${code}).`)
+    }
+    res.end()
+  })
+
+  child.on('error', (err) => {
+    send('error', `\n✗ ${err.message}`)
+    res.end()
+  })
+})
+
 app.post('/__source/settings', (req, res) => {
-  const { aliases, packages, nodeModulesDirs, projectDirs, cssFiles, publicDirs, fontLinks } = req.body ?? {}
+  const { root: rawRoot, aliases, packages, nodeModulesDirs, cssFiles, publicDirs, fontLinks,
+          pagesDir, componentsDir, expressionsDir } = req.body ?? {}
+  if (!rawRoot || typeof rawRoot !== 'string') {
+    return res.status(400).json({ error: 'Body must contain { root: string }' })
+  }
   if (typeof aliases !== 'object' || aliases === null || Array.isArray(aliases)) {
     return res.status(400).json({ error: 'Body must contain { aliases: object }' })
   }
@@ -558,15 +776,97 @@ app.post('/__source/settings', (req, res) => {
       return res.status(400).json({ error: 'Alias keys and values must be strings' })
     }
   }
-  writeSettings({
+  const resolved = path.resolve(rawRoot)
+  if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'Project root not found' })
+  // Preserve the existing config name
+  const existing = readProjectConfig(resolved)
+  writeProjectConfig(resolved, {
+    name: existing.name,
+    pagesDir: typeof pagesDir === 'string' ? pagesDir : existing.pagesDir,
+    componentsDir: typeof componentsDir === 'string' ? componentsDir : existing.componentsDir,
+    expressionsDir: typeof expressionsDir === 'string' ? expressionsDir : existing.expressionsDir,
     aliases,
     packages: Array.isArray(packages) ? packages : [],
     nodeModulesDirs: Array.isArray(nodeModulesDirs) ? nodeModulesDirs : [],
-    projectDirs: (typeof projectDirs === 'object' && projectDirs !== null && !Array.isArray(projectDirs)) ? projectDirs : {},
     cssFiles: Array.isArray(cssFiles) ? cssFiles.filter(f => typeof f === 'string' && f.trim()) : [],
     publicDirs: Array.isArray(publicDirs) ? publicDirs.filter(f => typeof f === 'string' && f.trim()) : [],
     fontLinks: Array.isArray(fontLinks) ? fontLinks.filter(f => typeof f === 'string' && f.trim()) : [],
   })
+  // Also sync the active project's settings into cockpit.settings.json so Vite
+  // plugins (CSS injector, asset server, alias resolver) pick up changes immediately
+  // without requiring a server restart.
+  syncProjectSettingsToGlobal(resolved)
+  res.json({ ok: true })
+})
+
+/** Create a brand-new project directory with a .cockpit/config.json. */
+app.post('/__source/create-project', (req, res) => {
+  const { name, location, pagesDir = '', componentsDir = '', expressionsDir = '' } = req.body ?? {}
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Body must contain { name: string }' })
+  }
+  if (!/^[a-zA-Z0-9_\-. ]+$/.test(name)) {
+    return res.status(400).json({ error: 'Project name contains invalid characters' })
+  }
+  if (typeof location !== 'string' || !location.trim()) {
+    return res.status(400).json({ error: 'Body must contain { location: string }' })
+  }
+  const parentDir = path.resolve(location)
+  if (!fs.existsSync(parentDir) || !fs.statSync(parentDir).isDirectory()) {
+    return res.status(400).json({ error: 'Location does not exist or is not a directory' })
+  }
+  // Prevent path traversal in name
+  const safeName = path.basename(name.trim())
+  const newRoot = path.join(parentDir, safeName)
+  if (fs.existsSync(newRoot)) {
+    return res.status(409).json({ error: `Directory already exists: ${newRoot}` })
+  }
+  fs.mkdirSync(newRoot, { recursive: true })
+  writeProjectConfig(newRoot, {
+    name: safeName,
+    pagesDir: typeof pagesDir === 'string' ? pagesDir : '',
+    componentsDir: typeof componentsDir === 'string' ? componentsDir : '',
+    expressionsDir: typeof expressionsDir === 'string' ? expressionsDir : '',
+    aliases: {},
+    packages: [],
+    nodeModulesDirs: [],
+    cssFiles: [],
+    publicDirs: [],
+    fontLinks: [],
+  })
+  setActiveProjectRoot(newRoot)
+  console.log(`[create-project] Created ${newRoot}`)
+  res.json({ ok: true, root: newRoot.replace(/\\/g, '/') })
+})
+
+/** Initialise an existing directory as a Cockpit project (creates .cockpit/config.json). */
+app.post('/__source/init-project', (req, res) => {
+  const { root: rawRoot, name, pagesDir = '', componentsDir = '', expressionsDir = '' } = req.body ?? {}
+  if (!rawRoot || typeof rawRoot !== 'string') {
+    return res.status(400).json({ error: 'Body must contain { root: string }' })
+  }
+  const resolved = path.resolve(rawRoot)
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+    return res.status(404).json({ error: 'Directory not found' })
+  }
+  const configPath = path.join(resolved, '.cockpit', 'config.json')
+  if (fs.existsSync(configPath)) {
+    return res.status(409).json({ error: '.cockpit/config.json already exists' })
+  }
+  writeProjectConfig(resolved, {
+    name: (typeof name === 'string' && name.trim()) ? name.trim() : path.basename(resolved),
+    pagesDir: typeof pagesDir === 'string' ? pagesDir : '',
+    componentsDir: typeof componentsDir === 'string' ? componentsDir : '',
+    expressionsDir: typeof expressionsDir === 'string' ? expressionsDir : '',
+    aliases: {},
+    packages: [],
+    nodeModulesDirs: [],
+    cssFiles: [],
+    publicDirs: [],
+    fontLinks: [],
+  })
+  setActiveProjectRoot(resolved)
+  console.log(`[init-project] Initialised ${resolved}`)
   res.json({ ok: true })
 })
 
@@ -597,6 +897,63 @@ function stripJsoncComments(str) {
   // Remove trailing commas before } or ]
   return result.replace(/,(\s*[}\]])/g, '$1')
 }
+
+app.get('/__source/detect-css', (req, res) => {
+  const root = req.query.root
+  if (!root) return res.status(400).json({ error: 'Missing ?root= query parameter' })
+  const projectRoot = path.resolve(root)
+  if (!fs.existsSync(projectRoot)) return res.status(404).json({ error: 'Project root not found' })
+
+  // Common CSS entry-point patterns, ordered by precedence.
+  const candidates = [
+    'src/styles/globals.css',
+    'src/styles/global.css',
+    'src/app/globals.css',
+    'src/app/global.css',
+    'src/index.css',
+    'src/main.css',
+    'src/style.css',
+    'src/styles.css',
+    'app/globals.css',
+    'styles/globals.css',
+    'styles/global.css',
+    'styles/index.css',
+    // Subframe-specific theme CSS locations
+    'src/ui/theme.css',
+    'src/subframe/theme.css',
+    'src/subframe-theme.css',
+    'src/subframe/styles/theme.css',
+  ]
+
+  // Also scan src/styles/, src/, src/ui/, src/subframe/, and styles/ for any
+  // .css files not already in candidates.
+  const extraDirs = ['src/styles', 'src', 'src/ui', 'src/subframe', 'styles']
+  const found = []
+  const foundSet = new Set()
+
+  for (const rel of candidates) {
+    const abs = path.join(projectRoot, rel)
+    if (fs.existsSync(abs)) {
+      const normalised = abs.replace(/\\/g, '/')
+      if (!foundSet.has(normalised)) { found.push(normalised); foundSet.add(normalised) }
+    }
+  }
+
+  for (const dir of extraDirs) {
+    const absDir = path.join(projectRoot, dir)
+    if (!fs.existsSync(absDir)) continue
+    let entries
+    try { entries = fs.readdirSync(absDir) } catch { continue }
+    for (const name of entries) {
+      if (!name.endsWith('.css')) continue
+      const abs = path.join(absDir, name)
+      const normalised = abs.replace(/\\/g, '/')
+      if (!foundSet.has(normalised)) { found.push(normalised); foundSet.add(normalised) }
+    }
+  }
+
+  res.json({ cssFiles: found })
+})
 
 app.get('/__source/tsconfig-paths', (req, res) => {
   const root = req.query.root
@@ -639,14 +996,23 @@ app.get('/__source/check-imports', (req, res) => {
   if (!filePath || !isSafeFile(filePath)) return res.status(400).json({ error: 'Invalid file' })
   if (!fs.existsSync(filePath)) return res.json({ missing: [] })
 
-  // Read configured nodeModulesDirs and aliases from settings.
+  // Read configured nodeModulesDirs and aliases from the project config.
   let nodeModulesDirs = []
   let aliases = {}
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
-      nodeModulesDirs = Array.isArray(s.nodeModulesDirs) ? s.nodeModulesDirs : []
-      aliases = (s.aliases && typeof s.aliases === 'object') ? s.aliases : {}
+    // Walk up from the file to find a .cockpit/config.json
+    let dir = path.dirname(path.resolve(filePath))
+    let cfg = null
+    for (let i = 0; i < 15 && !cfg; i++) {
+      const candidate = path.join(dir, '.cockpit', 'config.json')
+      if (fs.existsSync(candidate)) { cfg = JSON.parse(fs.readFileSync(candidate, 'utf-8')); break }
+      const parent = path.dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
+    if (cfg) {
+      nodeModulesDirs = Array.isArray(cfg.nodeModulesDirs) ? cfg.nodeModulesDirs : []
+      aliases = (cfg.aliases && typeof cfg.aliases === 'object') ? cfg.aliases : {}
     }
   } catch {}
 
@@ -720,11 +1086,6 @@ app.post('/__source/install-package', (req, res) => {
 
   child.on('close', (code) => {
     if (code === 0) {
-      const settings = readSettings()
-      if (!settings.packages.includes(packageName)) {
-        settings.packages = [...(settings.packages ?? []), packageName]
-        writeSettings(settings)
-      }
       send('done', `\n✓ ${packageName} installed successfully.`)
     } else {
       send('error', `\n✗ Install failed (exit code ${code}).`)

@@ -70,7 +70,7 @@ export interface ScopeLayer {
 export interface InspectorPanelProps {
   file: string
   line: number
-  inspectMode?: 'node' | 'component' | 'file' | 'expression'
+  inspectMode?: 'node' | 'component' | 'file' | 'expression' | 'component-usage'
   componentName?: string
   /** Populated by DOMTreePanel after a DOM node is selected — drives the Bindings tab. */
   selectedNode?: SelectedNodeContext | null

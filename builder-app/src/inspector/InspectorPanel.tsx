@@ -24,7 +24,7 @@ import type {
 } from './types'
 import { extractBlock } from './astHelpers'
 import { extractImports, countReactComponentsInSource, collectModuleUsages, normalizePath, candidateImportFiles, filePathToModelUri, buildBareModuleDeclarations } from './importHelpers'
-import { extractJsxAttrs, extractJsxTextChildren, rewriteJsxTextChild, findLocatorUsages } from './jsxExtraction'
+import { extractJsxAttrs, extractJsxTextChildren, rewriteJsxTextChild, findLocatorUsages, collectAllJsxExpressionIdentifiers } from './jsxExtraction'
 import { enrichWithTypeDeclaration, stringifyTSType, inferTypeFromExpression, inferTypeFromValueString, inferTypeOfLocal, extractComponentLocals, inferOwnerComponentName, componentHasPropTypeDef, extractOwnerProps } from './typeInference'
 import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue } from './astRewriters'
 import { ScopePanel } from './ScopePanel'
@@ -45,7 +45,7 @@ function InlineMonaco({
   onChange: (v: string) => void
   readOnly?: boolean
 }) {
-  const [height, setHeight] = useState(22)
+  const [height, setHeight] = useState(60)
   const dragging = useRef(false)
   const startY = useRef(0)
   const startH = useRef(0)
@@ -58,7 +58,7 @@ function InlineMonaco({
     startH.current = height
     const onMove = (ev: PointerEvent) => {
       if (!dragging.current) return
-      const newH = Math.max(22, Math.min(200, startH.current + (ev.clientY - startY.current)))
+      const newH = Math.max(22, Math.min(400, startH.current + (ev.clientY - startY.current)))
       setHeight(newH)
     }
     const onUp = () => {
@@ -96,7 +96,7 @@ function InlineMonaco({
           overviewRulerBorder: false,
           overviewRulerLanes: 0,
           hideCursorInOverviewRuler: true,
-          wordWrap: height > 22 ? 'on' : 'off',
+          wordWrap: 'on',
           scrollBeyondLastLine: false,
           renderLineHighlight: 'none',
           readOnly,
@@ -116,9 +116,9 @@ function InlineMonaco({
           bottom: 0,
           left: 0,
           right: 0,
-          height: 4,
+          height: 5,
           cursor: 'ns-resize',
-          background: 'transparent',
+          background: 'rgba(99,102,120,0.35)',
         }}
       />
     </div>
@@ -201,7 +201,7 @@ export function InspectorPanel({
   // Read-only only for DOM nodes explicitly owned by a non-root child component.
   // Component nodes (uppercase tag) are always editable — selecting one edits the props
   // passed TO it from the root's JSX, which is fair game regardless of which component it is.
-  const isReadOnly = !!rootComponentName && !!selectedNode && (
+  const isReadOnly = inspectMode !== 'component-usage' && !!rootComponentName && !!selectedNode && (
     !/^[A-Z]/.test(selectedNode.tag) &&
     !!selectedNode.ownerComponentName &&
     selectedNode.ownerComponentName !== rootComponentName
@@ -261,6 +261,11 @@ export function InspectorPanel({
   const [newPropAsExpr, setNewPropAsExpr] = useState(false)
   const [newPropTypeInferred, setNewPropTypeInferred] = useState(false)
   const [showAddProp, setShowAddProp] = useState(false)
+  const [showAddAttr, setShowAddAttr] = useState(false)
+  const [newAttrName, setNewAttrName] = useState('')
+  const [newAttrValue, setNewAttrValue] = useState('')
+  const [newAttrIsExpr, setNewAttrIsExpr] = useState(false)
+  const [showListenerDropdown, setShowListenerDropdown] = useState(false)
   /** Per-prop value mode for existing binding rows. */
   const [propValueMode, setPropValueMode] = useState<Record<string, 'scope' | 'expression' | 'value'>>({})
   /** Per-prop default value mode (expression vs literal). */
@@ -398,6 +403,8 @@ export function InspectorPanel({
   }
 
   async function fetchSourceFile(filePath: string): Promise<string | null> {
+    // Never fetch or expose builder-app source files.
+    if (filePath.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')) return null
     try {
       const res = await fetch(`/__source?file=${encodeURIComponent(filePath)}`)
       if (!res.ok) return null
@@ -494,6 +501,15 @@ export function InspectorPanel({
         () => null
       )
       setDisplayCode(newBlockContent)
+      // Keep blockRangeRef in sync with the new block's actual line count so that
+      // buildFullSourceFromEditorValue always splices the correct tail from fullSourceRef.
+      if (blockRangeRef.current) {
+        const newLineCount = newBlockContent.split('\n').length
+        blockRangeRef.current = {
+          startLine: blockRangeRef.current.startLine,
+          endLine: blockRangeRef.current.startLine + newLineCount - 1,
+        }
+      }
     }
 
     // Persist to disk.
@@ -610,6 +626,76 @@ export function InspectorPanel({
     setInspectingComponent(isComponentNode)
 
     if (isComponentNode) {
+      // ── component-usage mode ───────────────────────────────────────────────
+      // source = page/usage file; attrs are directly available; own component
+      // file (locatorFile) must be fetched separately for declared props.
+      if (inspectMode === 'component-usage') {
+        const tag = node.tag
+        const usageLineHere = line
+        const usageAttrsHere = extractJsxAttrs(source, usageLineHere)
+        const locatorFile = node.locatorFile
+        void (async () => {
+          let ownSource = ''
+          if (locatorFile) {
+            try {
+              const res = await fetch(`/__source?file=${encodeURIComponent(locatorFile)}`)
+              if (res.ok) ownSource = await res.text()
+            } catch { /* skip */ }
+          }
+          const ownerP = ownSource ? extractOwnerProps(ownSource, tag) : []
+          setOwnerProps(ownerP)
+          setHasPropTypeDef(ownSource ? componentHasPropTypeDef(ownSource, tag) : true)
+          // Always set usageInfo so saves work even when the element has no attrs yet.
+          setUsageAttrs(usageAttrsHere)
+          setUsageInfo({ file, line: usageLineHere })
+          const initModes: Record<string, 'scope' | 'expression' | 'value'> = {}
+          for (const a of usageAttrsHere) {
+            if (!a.isSpread) initModes[a.name] = a.isExpression ? 'expression' : 'value'
+          }
+          setPropValueMode(initModes)
+          // Build scope layers using page source for parent, own source for child.
+          const allUsed = ownSource ? collectAllJsxExpressionIdentifiers(ownSource, tag) : new Set<string>()
+          const childProps = ownerP.filter(p => p.source === 'owner')
+            .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) }))
+          const childState = ownSource
+            ? extractComponentLocals(ownSource, tag)
+                .filter(n => !ownerP.find(p => p.name === n))
+                .map(n => ({ name: n, typeStr: inferTypeOfLocal(ownSource, tag, n), usedInNode: allUsed.has(n) }))
+            : []
+          const parentName = inferOwnerComponentName(source, usageLineHere)
+          if (parentName) {
+            const passedValues = new Set(
+              usageAttrsHere.filter(a => !a.isSpread).flatMap(a => {
+                const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+                const base = stripped.split(/[.\[(]/)[0].trim()
+                return base && base !== stripped ? [stripped, base] : [stripped]
+              })
+            )
+            const pLocals = extractComponentLocals(source, parentName)
+            setParentLocals(pLocals)
+            setParentSource(source)
+            setParentComponentName(parentName)
+            const parentPropsArr = extractOwnerProps(source, parentName)
+            const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
+              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
+            const parentStateItems = pLocals
+              .filter(n => !parentPropsArr.find(p => p.name === n))
+              .map(n => ({ name: n, typeStr: inferTypeOfLocal(source, parentName, n), usedInNode: passedValues.has(n) }))
+            const links = usageAttrsHere.filter(a => !a.isSpread && a.isExpression)
+              .map(a => ({ parentVar: a.rawValue.replace(/^\{|\}$/g, '').trim().split(/[.\[(]/)[0], childProp: a.name }))
+              .filter(l => l.parentVar)
+            setScopeLayers([
+              { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
+              { componentName: tag, isCurrent: true, props: childProps, state: childState, links },
+            ])
+          } else {
+            setScopeLayers([{ componentName: tag, isCurrent: true, props: childProps, state: childState }])
+          }
+          setBindingsLoading(false)
+        })()
+        return
+      }
+
       // Show the component's own declared props (signature + interface/type).
       // No JSX attr extraction needed — we don't have the usage-site source here.
       const ownerP = extractOwnerProps(source, node.tag)
@@ -619,13 +705,15 @@ export function InspectorPanel({
     const ownerPCapture = ownerP
     const sourceCapture = source
     const tagCapture = node.tag
+    // Highlight props that are referenced anywhere as JSX expression values in this component's source.
+    const allUsed = collectAllJsxExpressionIdentifiers(sourceCapture, tagCapture)
     setScopeLayers([{
       componentName: tagCapture,
       isCurrent: true,
-      props: ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: false })),
+      props: ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) })),
       state: extractComponentLocals(sourceCapture, tagCapture)
         .filter(n => !ownerPCapture.find(p => p.name === n))
-        .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: false })),
+        .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) })),
     }])
       // Asynchronously find the usage site of this component to:
       // 1. populate the "currently passed" value column
@@ -675,10 +763,10 @@ export function InspectorPanel({
                   })
                 )
                 const childProps = ownerPCapture.filter(p => p.source === 'owner')
-                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedNames.has(p.name) }))
+                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) }))
                 const childState = extractComponentLocals(sourceCapture, tagCapture)
                   .filter(n => !ownerPCapture.find(p => p.name === n))
-                  .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: false }))
+                  .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) }))
                 const parentPropsArr = extractOwnerProps(usageSource, parentName)
                 const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
                   .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
@@ -768,8 +856,11 @@ export function InspectorPanel({
       const ownerNameCapture = ownerName
       const directOwnerFile = node.ownerFile ?? null
       const directOwnerLine = node.ownerLine ?? null
+      // Never use builder-app files as parent scope sources — ComponentLoader.tsx calls
+      // the page component, so its ownerFile points there rather than any project file.
+      const isBuilderOwnerFile = !!directOwnerFile && directOwnerFile.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')
       const candidateUsages: Array<{ file: string; line: number }> =
-        directOwnerFile && directOwnerLine
+        directOwnerFile && directOwnerLine && !isBuilderOwnerFile
           ? [{ file: directOwnerFile, line: directOwnerLine }]
           : findLocatorUsages(ownerNameCapture)
       void (async () => {
@@ -821,7 +912,7 @@ export function InspectorPanel({
     setBlockName(block.name)
     setDisplayCode(block.code)
     lastValidSourceRef.current = block.code
-    // Highlight the clicked line relative to the block start.
+    // Scroll to the clicked line but don't select anything.
     requestAnimationFrame(() => {
       const ed = editorRef.current
       const monaco = monacoRef.current
@@ -830,8 +921,6 @@ export function InspectorPanel({
         ? Math.max(targetLine, 1)
         : Math.max(targetLine - block.range.startLine, 1)
       ed.revealLineInCenter(lineInModel)
-      const blockLines = Math.max(block.code.split('\n').length, 1)
-      ed.setSelection(new monaco.Selection(1, 1, blockLines, 1))
       ed.deltaDecorations([], [{
         range: new monaco.Range(lineInModel, 1, lineInModel, 1),
         options: { isWholeLine: true, className: 'highlighted-line' },
@@ -852,6 +941,8 @@ export function InspectorPanel({
       // previous file's content while the new one is in flight.
       fullSourceRef.current = ''
       setDisplayCode('')
+      // Scroll to top immediately so the old scroll position doesn't persist.
+      editorRef.current?.revealLine(1)
       // Cancel any in-flight fetch from a previous file switch.
       fetchAbortRef.current?.abort()
       const abortCtrl = new AbortController()
@@ -911,7 +1002,7 @@ export function InspectorPanel({
   }, [selectedNode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep Monaco readOnly in sync when the selected node changes
-  const sourceReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder
+  const sourceReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage'
   useEffect(() => {
     editorRef.current?.updateOptions({ readOnly: sourceReadOnly })
   }, [sourceReadOnly])
@@ -927,6 +1018,34 @@ export function InspectorPanel({
   }, [])
 
   // ── bindings mutations — all route through pushToMonacoAndSave ─────────────
+
+  /** Clears the value passed to a child component prop at the usage site (removes the JSX attr). */
+  async function handleClearPropValue(propName: string) {
+    if (!usageInfo) return
+    setDeletingProp(propName)
+    try {
+      const res = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
+      if (!res.ok) return
+      const src = await res.text()
+      const updated = removeAttr(src, usageInfo.line, propName)
+      if (usageInfo.file === file) {
+        await pushToMonacoAndSave(updated)
+      } else {
+        await fetch('/__source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: usageInfo.file, content: updated }),
+        })
+        setSaveStatus('saved')
+        void invalidateAndRefresh([usageInfo.file])
+      }
+      setUsageAttrs(extractJsxAttrs(updated, usageInfo.line))
+      setPropValueEdits(prev => { const n = { ...prev }; delete n[propName]; return n })
+    } finally {
+      setDeletingProp(null)
+    }
+  }
+
   async function handleDeleteProp(propName: string) {
     setDeletingProp(propName)
     try {
@@ -1015,45 +1134,66 @@ export function InspectorPanel({
 
   async function handlePropTypeSave() {
     if (!fullSourceRef.current || (Object.keys(propTypeEdits).length === 0 && Object.keys(propValueEdits).length === 0 && Object.keys(propDefaultEdits).length === 0)) return
+    // Snapshot edits immediately and clear state to prevent double-saves on rapid clicks.
+    const valueEditsSnapshot = { ...propValueEdits }
+    const typeEditsSnapshot = { ...propTypeEdits }
+    const defaultEditsSnapshot = { ...propDefaultEdits }
+    setPropValueEdits({})
+    setPropTypeEdits({})
+    setPropDefaultEdits({})
     setBindingsSaving(true)
     try {
       const ownerName = selectedNode?.ownerComponentName ?? componentName ?? ''
 
       // ── Value edits: write to the PARENT file's JSX usage site ─────────────
-      if (Object.keys(propValueEdits).length > 0 && usageInfo) {
+      if (Object.keys(valueEditsSnapshot).length > 0 && usageInfo) {
         const parentRes = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
         if (!parentRes.ok) throw new Error('Fetch parent failed')
         let parentSrc = await parentRes.text()
-        for (const [propName, newVal] of Object.entries(propValueEdits)) {
+        for (const [propName, newVal] of Object.entries(valueEditsSnapshot)) {
           const original = usageAttrs.find((a) => a.name === propName)
           // Skip if unchanged from what the parent is already passing.
           if (original && newVal === original.rawValue) continue
           // Use propValueMode to determine whether to write as expression or string literal.
           const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
           const modeIsVar = propMode === 'scope' || propMode === 'expression'
-          parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
+          if (original) {
+            parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
+          } else {
+            // Attr was cleared (or never set) — insert it fresh.
+            parentSrc = insertAttr(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
+          }
         }
-        // Persist parent file directly (it's a different file — don't push through Monaco).
-        await fetch('/__source', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file: usageInfo.file, content: parentSrc }),
-        })
+        // Persist parent file — if it's the same file being viewed (component-usage mode),
+        // route through Monaco so the editor, fullSourceRef, blockRangeRef and preview stay in sync.
+        if (usageInfo.file === file) {
+          const ok = await pushToMonacoAndSave(parentSrc)
+          if (!ok) return
+        } else {
+          const res = await fetch('/__source', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: usageInfo.file, content: parentSrc }),
+          })
+          if (!res.ok) throw new Error('Save failed')
+          setSaveStatus('saved')
+          void invalidateAndRefresh([usageInfo.file])
+        }
         // Refresh usageAttrs from the updated source.
         setUsageAttrs(extractJsxAttrs(parentSrc, usageInfo.line))
       }
 
       // ── Type + default edits: write to the CHILD component file ────────────
-      if (Object.keys(propTypeEdits).length > 0 || Object.keys(propDefaultEdits).length > 0) {
+      if (Object.keys(typeEditsSnapshot).length > 0 || Object.keys(defaultEditsSnapshot).length > 0) {
         const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
         if (!freshRes.ok) throw new Error('Fetch failed')
         let modified = await freshRes.text()
-        for (const [propName, newType] of Object.entries(propTypeEdits)) {
+        for (const [propName, newType] of Object.entries(typeEditsSnapshot)) {
           const original = ownerProps.find((p) => p.name === propName)
           if (!original || newType === original.typeStr) continue
           modified = rewritePropType(modified, ownerName, propName, newType)
         }
-        for (const [propName, newDefault] of Object.entries(propDefaultEdits)) {
+        for (const [propName, newDefault] of Object.entries(defaultEditsSnapshot)) {
           const original = ownerProps.find((p) => p.name === propName)
           if (newDefault === (original?.defaultValue ?? '')) continue
           modified = rewriteDefaultValue(modified, ownerName, propName, newDefault)
@@ -1061,10 +1201,6 @@ export function InspectorPanel({
         const ok = await pushToMonacoAndSave(modified)
         if (!ok) return
       }
-
-      setPropTypeEdits({})
-      setPropValueEdits({})
-      setPropDefaultEdits({})
     } catch {
       setSaveStatus('error')
     } finally {
@@ -1264,10 +1400,14 @@ export function InspectorPanel({
       setTextChildEdits({})
       setPendingDiff(null)
       setSaveStatus('saved')
+      // Clear server-side diff so it doesn't reappear on reload.
+      const allFiles = Array.from(new Set(pendingDiff.entries.map((e) => e.file)))
+      await Promise.all(allFiles.map((f) =>
+        fetch(`/__source/diff?file=${encodeURIComponent(f)}`, { method: 'DELETE' }).catch(() => {})
+      ))
       // Invalidate Vite's transform cache for every file we just wrote, then
       // trigger a preview remount. `pushToMonacoAndSave` already handled the
-      // main file; collect any secondary files from the diff.
-      const allFiles = Array.from(new Set(pendingDiff.entries.map((e) => e.file)))
+      // main file.
       void invalidateAndRefresh(allFiles)
       if (activeTab === 'changes') setActiveTab('source')
     } catch {
@@ -1278,6 +1418,13 @@ export function InspectorPanel({
   }
 
   function discardPendingDiff() {
+    // Clear server-side diff so it doesn't reappear on reload.
+    if (pendingDiff) {
+      const files = Array.from(new Set(pendingDiff.entries.map((e) => e.file)))
+      files.forEach((f) =>
+        fetch(`/__source/diff?file=${encodeURIComponent(f)}`, { method: 'DELETE' }).catch(() => {})
+      )
+    }
     setPendingDiff(null)
     // Reset all edit state — forms will revert to original values
     setPropTypeEdits({})
@@ -1477,6 +1624,84 @@ export function InspectorPanel({
     jsxAttrs.some(a => a.name === newPropNameTrimmed) ||
     scopeLayers.some(l => l.props.some(p => p.name === newPropNameTrimmed) || l.state.some(s => s.name === newPropNameTrimmed))
   )
+
+  // Event listeners available per element tag.
+  function getListenersForTag(tag: string): string[] {
+    const common = ['onClick', 'onDoubleClick', 'onMouseEnter', 'onMouseLeave', 'onMouseDown', 'onMouseUp', 'onMouseMove', 'onKeyDown', 'onKeyUp', 'onKeyPress', 'onFocus', 'onBlur', 'onContextMenu']
+    const inputLike = ['onChange', 'onInput', 'onSelect', 'onInvalid']
+    const formLike = ['onSubmit', 'onReset']
+    const mediaLike = ['onPlay', 'onPause', 'onEnded', 'onVolumeChange', 'onTimeUpdate', 'onLoadedData', 'onError']
+    const scrollable = ['onScroll', 'onWheel']
+    const dragDrop = ['onDragStart', 'onDrag', 'onDragEnd', 'onDragOver', 'onDragEnter', 'onDragLeave', 'onDrop']
+    const t = tag.toLowerCase()
+    if (t === 'input' || t === 'textarea' || t === 'select') return [...inputLike, ...common, ...scrollable, ...dragDrop]
+    if (t === 'form') return [...formLike, ...common]
+    if (t === 'button') return ['onClick', 'onDoubleClick', 'onMouseEnter', 'onMouseLeave', 'onMouseDown', 'onMouseUp', 'onFocus', 'onBlur', 'onKeyDown', 'onKeyUp']
+    if (t === 'a') return ['onClick', 'onMouseEnter', 'onMouseLeave', 'onFocus', 'onBlur']
+    if (t === 'video' || t === 'audio') return [...mediaLike, ...common]
+    if (t === 'img') return ['onClick', 'onLoad', 'onError', 'onMouseEnter', 'onMouseLeave']
+    // Generic container (div, span, section, etc.)
+    return [...common, ...scrollable, ...dragDrop]
+  }
+
+  const listenerTag = selectedNode?.tag ?? ''
+  const availableListeners = getListenersForTag(listenerTag).filter(
+    l => !jsxAttrs.some(a => a.name === l) && !usageAttrs.some(a => a.name === l)
+  )
+
+  async function handleAddAttr() {
+    const name = newAttrName.trim()
+    if (!name || !usageInfo) return
+    try {
+      const res = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
+      if (!res.ok) return
+      let src = await res.text()
+      src = insertAttr(src, usageInfo.line, name, newAttrValue.trim(), newAttrIsExpr)
+      if (usageInfo.file === file) {
+        await pushToMonacoAndSave(src)
+      } else {
+        await fetch('/__source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: usageInfo.file, content: src }),
+        })
+        setSaveStatus('saved')
+        void invalidateAndRefresh([usageInfo.file])
+      }
+      setUsageAttrs(extractJsxAttrs(src, usageInfo.line))
+      setNewAttrName('')
+      setNewAttrValue('')
+      setNewAttrIsExpr(false)
+      setShowAddAttr(false)
+    } catch { /* non-fatal */ }
+  }
+
+  async function handleAddListener(eventName: string) {
+    setShowListenerDropdown(false)
+    const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+    if (!freshRes.ok) return
+    let modified = await freshRes.text()
+    const nodeLocLine = selectedNode?.locatorLine ?? line
+    if (inspectingComponent && usageInfo) {
+      // Insert on parent usage site
+      try {
+        const parentRes = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
+        if (parentRes.ok) {
+          let parentSrc = await parentRes.text()
+          parentSrc = insertAttr(parentSrc, usageInfo.line, eventName, '() => {}', true)
+          await fetch('/__source', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: usageInfo.file, content: parentSrc }),
+          })
+          setUsageAttrs(extractJsxAttrs(parentSrc, usageInfo.line))
+        }
+      } catch { /* non-fatal */ }
+    } else {
+      modified = insertAttr(modified, nodeLocLine, eventName, '() => {}', true)
+      await pushToMonacoAndSave(modified)
+    }
+  }
 
   async function handleCreateProp() {
     const name = newPropName.trim()
@@ -1725,7 +1950,7 @@ export function InspectorPanel({
             if (hasEdits || pendingDiff) base.push('changes')
             return base
           })().map((tab) => {
-            const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && (tab === 'defaults' || tab === 'source')
+            const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage' && (tab === 'defaults' || tab === 'source')
             const tabInfo: Record<Tab, string> = {
               expression: 'Choose an expression to wrap the selected nodes.',
               bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
@@ -1817,7 +2042,7 @@ export function InspectorPanel({
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 wordWrap: 'on',
-                readOnly: !isRootComponent && inspectingComponent && isFromComponentsFolder,
+                readOnly: !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage',
                 lineNumbers: (n: number) =>
                   String((blockRangeRef.current?.startLine ?? 0) + n),
               }}
@@ -1902,7 +2127,7 @@ export function InspectorPanel({
                       </div>
                     ) : (
                       ownerProps.map((prop) => {
-                        const rowOpen = !expandedRows.has(prop.name)
+                        const rowOpen = expandedRows.has(prop.name)
                         const defaultsReadOnly = !isRootComponent && isFromComponentsFolder
                         const defMode = propDefaultMode[prop.name] ?? (prop.defaultValue && /^[a-zA-Z_$]/.test(prop.defaultValue) && !/^(true|false|null|undefined|'|"|`|\d)/.test(prop.defaultValue) ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                         return (
@@ -2079,9 +2304,11 @@ export function InspectorPanel({
                       </div>
                     </div>
                   ) : (
-                    <button style={styles.addAttrBtn} onClick={() => setShowAddProp(true)}>
-                      + Add prop
-                    </button>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button style={styles.addAttrBtn} onClick={() => { setShowListenerDropdown(false); setShowAddProp(true) }}>
+                        + Add prop
+                      </button>
+                    </div>
                   ))}
                 </div>
 
@@ -2135,7 +2362,8 @@ export function InspectorPanel({
                       </div>
                     ) : (
                       ownerProps.map((prop) => {
-                        const rowOpen = !expandedRows.has(prop.name)
+                        const rowOpen = expandedRows.has(prop.name)
+                        const hasBinding = usageAttrs.some(a => a.name === prop.name)
                         return (
                           <div key={prop.name} style={styles.attrRowWrap}>
                             {/* Header */}
@@ -2146,14 +2374,14 @@ export function InspectorPanel({
                               <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
                               <span style={{ ...styles.attrName, flex: 1 }}>{prop.name}</span>
                               <span style={styles.badgeOwner}>prop</span>
-                              {!isReadOnly && (
+                              {!isReadOnly && hasBinding && usageInfo && (
                                 <button
                                   style={styles.deleteBtn}
-                                  title={`Remove prop ${prop.name}`}
+                                  title={`Clear binding for ${prop.name}`}
                                   disabled={deletingProp === prop.name}
-                                  onClick={(e) => { e.stopPropagation(); void handleDeleteProp(prop.name) }}
+                                  onClick={(e) => { e.stopPropagation(); void handleClearPropValue(prop.name) }}
                                 >
-                                  {deletingProp === prop.name ? '…' : '✕'}
+                                  {deletingProp === prop.name ? '…' : '⌫'}
                                 </button>
                               )}
                             </div>
@@ -2255,13 +2483,147 @@ export function InspectorPanel({
                     )
                   )}
 
+                  {/* ── Component mode: extra usage attrs not in ownerProps ── */}
+                  {inspectingComponent && (() => {
+                    const extraAttrs = usageAttrs.filter(a => !a.isSpread && !ownerProps.some(p => p.name === a.name))
+                    if (extraAttrs.length === 0) return null
+                    return (
+                      <>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#6c7086', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '8px 10px 4px', flexShrink: 0 }}>Attributes</div>
+                        {extraAttrs.map((attr) => {
+                          const rowKey = `__ua__${attr.name}`
+                          const rowOpen = expandedRows.has(rowKey)
+                          const mode = attrModes[attr.name] ?? (attr.isExpression ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
+                          return (
+                            <div key={attr.name} style={styles.attrRowWrap}>
+                              <div
+                                style={styles.attrRowHeader}
+                                onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(rowKey) ? n.delete(rowKey) : n.add(rowKey); return n })}
+                              >
+                                <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
+                                <span style={{ ...styles.attrName, flex: 1 }}>{attr.name}</span>
+                                <span style={styles.badgeElement}>attr</span>
+                                {!isReadOnly && (
+                                  <button
+                                    style={styles.deleteBtn}
+                                    title={`Remove attribute ${attr.name}`}
+                                    disabled={deletingProp === attr.name}
+                                    onClick={(e) => { e.stopPropagation(); void handleClearPropValue(attr.name) }}
+                                  >
+                                    {deletingProp === attr.name ? '…' : '✕'}
+                                  </button>
+                                )}
+                              </div>
+                              {rowOpen && (
+                                <div style={styles.attrRowBody}>
+                                  <div style={styles.attrBodyRow}>
+                                    <span style={styles.attrBodyLabel}>value</span>
+                                    {!isReadOnly && (
+                                      <div style={styles.modeToggle}>
+                                        <button style={{ ...styles.modeBtn, ...(mode === 'expression' ? styles.modeBtnActive : {}) }} onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'expression' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}>expression</button>
+                                        <button style={{ ...styles.modeBtn, ...(mode === 'scope' ? styles.modeBtnActive : {}) }} onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'scope' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}>scope</button>
+                                        <button style={{ ...styles.modeBtn, ...(mode === 'value' ? styles.modeBtnActive : {}) }} onClick={() => { setAttrModes(prev => ({ ...prev, [attr.name]: 'value' })); setAttrEdits(prev => { const n = { ...prev }; delete n[attr.name]; return n }) }}>value</button>
+                                      </div>
+                                    )}
+                                    {mode === 'scope' ? (
+                                      <select
+                                        style={styles.attrInput}
+                                        disabled={isReadOnly}
+                                        value={attrEdits[attr.name] ?? (attr.isExpression ? attr.rawValue : '')}
+                                        onChange={(e) => { if (!isReadOnly) setAttrEdits(prev => ({ ...prev, [attr.name]: e.target.value })) }}
+                                      >
+                                        <option value="">— pick variable —</option>
+                                        {scopeLayers.length > 0
+                                          ? scopeLayers.map(layer => [
+                                              layer.props.length > 0 && (
+                                                <optgroup key={layer.componentName + '-props'} label={layer.componentName + ' props'}>
+                                                  {layer.props.map(p => <option key={p.name} value={p.name}>{p.name}{p.typeStr ? ': ' + p.typeStr : ''}</option>)}
+                                                </optgroup>
+                                              ),
+                                              layer.state.length > 0 && (
+                                                <optgroup key={layer.componentName + '-state'} label={layer.componentName + ' state'}>
+                                                  {layer.state.map(s => <option key={s.name} value={s.name}>{s.name}{s.typeStr ? ': ' + s.typeStr : ''}</option>)}
+                                                </optgroup>
+                                              ),
+                                            ])
+                                          : parentLocals.map(v => <option key={v} value={v}>{v}</option>)
+                                        }
+                                      </select>
+                                    ) : (
+                                      <InlineMonaco
+                                        value={attrEdits[attr.name] ?? (() => {
+                                          if (mode === 'expression' && attr.isExpression) return attr.rawValue
+                                          if (mode === 'value' && !attr.isExpression) return attr.rawValue
+                                          return ''
+                                        })()}
+                                        onChange={(v) => { if (!isReadOnly) setAttrEdits(prev => ({ ...prev, [attr.name]: v })) }}
+                                        readOnly={isReadOnly}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </>
+                    )
+                  })()}
+
+                  {/* ── Component mode: add attribute button/form ──── */}
+                  {inspectingComponent && !isReadOnly && usageInfo && (
+                    showAddAttr ? (
+                      <div style={styles.addPropForm}>
+                        <div style={styles.addPropRow}>
+                          <input
+                            autoFocus
+                            style={{ ...styles.attrInput, flex: 1 }}
+                            placeholder="attr name"
+                            value={newAttrName}
+                            onChange={(e) => setNewAttrName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void handleAddAttr(); if (e.key === 'Escape') setShowAddAttr(false) }}
+                          />
+                          <div style={styles.modeToggle}>
+                            <button
+                              style={{ ...styles.modeBtn, ...(!newAttrIsExpr ? styles.modeBtnActive : {}) }}
+                              onClick={() => setNewAttrIsExpr(false)}
+                            >value</button>
+                            <button
+                              style={{ ...styles.modeBtn, ...(newAttrIsExpr ? styles.modeBtnActive : {}) }}
+                              onClick={() => setNewAttrIsExpr(true)}
+                            >expr</button>
+                          </div>
+                        </div>
+                        <div style={styles.addPropRow}>
+                          <input
+                            style={{ ...styles.attrInput, flex: 1 }}
+                            placeholder={newAttrIsExpr ? 'expression (without {})' : 'value'}
+                            value={newAttrValue}
+                            onChange={(e) => setNewAttrValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void handleAddAttr(); if (e.key === 'Escape') setShowAddAttr(false) }}
+                          />
+                        </div>
+                        <div style={styles.addPropActions}>
+                          <button style={styles.cancelBtn} onClick={() => { setShowAddAttr(false); setNewAttrName(''); setNewAttrValue('') }}>Cancel</button>
+                          <button
+                            style={{ ...styles.confirmBtn, ...(!newAttrName.trim() ? { opacity: 0.45, cursor: 'not-allowed' } : {}) }}
+                            disabled={!newAttrName.trim()}
+                            onClick={() => void handleAddAttr()}
+                          >Add</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button style={styles.addAttrBtn} onClick={() => setShowAddAttr(true)}>+ Add attribute</button>
+                    )
+                  )}
+
                   {/* ── DOM mode: text content children ───────────────── */}
                   {!inspectingComponent && textChildren.length > 0 && (
                     <>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#6c7086', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '8px 10px 4px', flexShrink: 0 }}>Text content</div>
                       {textChildren.map((child) => {
                         const tKey = `__text__${child.index}`
-                        const rowOpen = !expandedRows.has(tKey)
+                        const rowOpen = expandedRows.has(tKey)
                         const textMode = textChildModes[child.index] ?? (child.kind === 'expr' ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                         return (
                           <div key={child.index} style={styles.attrRowWrap}>
@@ -2351,7 +2713,7 @@ export function InspectorPanel({
                   )}
 
                   {!inspectingComponent && jsxAttrs.map((attr) => {
-                    const rowOpen = !expandedRows.has(attr.name)
+                    const rowOpen = expandedRows.has(attr.name)
                     const match = ownerProps.find((p) => p.name === attr.name)
                     const mode = attrModes[attr.name] ?? (attr.isExpression ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                     return (
@@ -2447,8 +2809,8 @@ export function InspectorPanel({
                     )
                   })}
 
-                  {/* Add prop inline form */}
-                  {!isReadOnly && (showAddProp ? (
+                  {/* Add prop inline form — hidden, adding not allowed in bindings */}
+                  {false && !isReadOnly && (showAddProp ? (
                     <div style={styles.addPropForm}>
                       <div style={styles.addPropRow}>
                         <input
@@ -2540,9 +2902,34 @@ export function InspectorPanel({
                       </div>
                     </div>
                   ) : (
-                    <button style={styles.addAttrBtn} onClick={() => setShowAddProp(true)}>
-                      + Add prop
-                    </button>
+                    <div style={{ display: 'flex', gap: 4, position: 'relative' }}>
+                      <button style={styles.addAttrBtn} onClick={() => { setShowListenerDropdown(false); setShowAddProp(true) }}>
+                        + Add prop
+                      </button>
+                      {!isReadOnly && availableListeners.length > 0 && (
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            style={styles.addAttrBtn}
+                            onClick={() => setShowListenerDropdown(v => !v)}
+                          >
+                            + Add listener
+                          </button>
+                          {showListenerDropdown && (
+                            <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, background: '#1e1e2e', border: '1px solid #313244', borderRadius: 6, zIndex: 50, minWidth: 180, maxHeight: 240, overflowY: 'auto', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+                              {availableListeners.map(ev => (
+                                <div
+                                  key={ev}
+                                  style={{ padding: '5px 12px', fontSize: 11, fontFamily: 'monospace', color: '#cdd6f4', cursor: 'pointer' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#313244')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                  onClick={() => void handleAddListener(ev)}
+                                >{ev}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ))}
 
                   {isReadOnly && (
@@ -2654,7 +3041,7 @@ export function InspectorPanel({
       )}
 
       {/* Save bar — source tab */}
-      {!wrapMode && activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder) && (
+      {!wrapMode && activeTab === 'source' && (isRootComponent || !inspectingComponent || !isFromComponentsFolder || inspectMode === 'component-usage') && (
         <div style={styles.saveBar}>
           {saveStatus === 'saved' && <span style={styles.savedMsg}>✓ Saved — HMR will reload</span>}
           {saveStatus === 'error' && <span style={styles.errorMsg}>✗ Save failed</span>}

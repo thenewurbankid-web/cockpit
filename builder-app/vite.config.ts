@@ -121,12 +121,16 @@ function projectHmrNotify(): Plugin {
  * the builder preview. Files are listed in cockpit.settings.json under
  * `cssFiles`.
  *
- * Returns a CSS virtual module (RESOLVED_ID ends in .css) so that Vite and
- * @tailwindcss/vite process the content through the full CSS pipeline.
- * Relative @import statements inside the CSS files are inlined so they
- * resolve correctly from the virtual module context. @source directives are
- * prepended so Tailwind v4 scans the external project's source files and
- * generates all required utility classes.
+ * Strategy: inline CSS file content recursively into a virtual CSS module.
+ * - Relative @import paths (./foo, ../bar) are inlined recursively so that
+ *   all sub-files end up in the virtual module without requiring disk-location
+ *   resolution at serve time.
+ * - Package @import paths (e.g. @import 'tailwindcss') are left as-is; Tailwind
+ *   resolves them from node_modules via cwd, which works from a virtual module.
+ * - Relative @source paths are rewritten to absolute so Tailwind scans the
+ *   right directories even though the virtual module has no real disk location.
+ * - Extra @source directives tell Tailwind to scan the project's src/ and any
+ *   @subframe/core package so all utility class names are emitted.
  */
 function cockpitCssInjector(): Plugin {
   const VIRTUAL_ID = 'virtual:cockpit-css'
@@ -146,17 +150,26 @@ function cockpitCssInjector(): Plugin {
     } catch { return { cssFiles: [], projectDirs: {} } }
   }
 
-  // Read a CSS file and inline its relative @import './...' references one
-  // level deep, so the content works in a virtual module that has no real
-  // location on disk and therefore cannot resolve relative paths.
-  function inlineRelativeImports(filePath: string): string {
+  /**
+   * Recursively inline a CSS file's content:
+   * - Relative @import paths (./x or ../x) are replaced with the content of
+   *   the referenced file, recursed to arbitrary depth.
+   * - Package @import paths (no leading ./ or ../) are preserved so Tailwind
+   *   can resolve them from node_modules.
+   * - Relative @source globs are rewritten to absolute paths.
+   */
+  function inlineFile(filePath: string, depth = 0): string {
+    if (depth > 12) return `/* max inline depth reached: ${filePath} */`
     if (!fs.existsSync(filePath)) return `/* css file not found: ${filePath} */`
     let content = fs.readFileSync(filePath, 'utf-8')
     const basedir = path.dirname(filePath)
-    content = content.replace(/@import\s+(['"])(\.\/[^'"]+)\1\s*;?/g, (_match, _q, rel) => {
-      const absPath = path.resolve(basedir, rel)
-      if (!fs.existsSync(absPath)) return `/* @import not resolved: ${rel} */`
-      return fs.readFileSync(absPath, 'utf-8')
+    // Rewrite relative @source globs to absolute so Tailwind scans the right dirs.
+    content = content.replace(/@source\s+(['"])(\.\.?\/[^'"]+)\1/g, (_m, _q, rel) =>
+      `@source "${path.resolve(basedir, rel).replace(/\\/g, '/')}"`)
+    // Inline relative @import (./x or ../x); leave package imports alone.
+    content = content.replace(/@import\s+(['"])(\.\.?\/[^'"]+)\1\s*;?/g, (_m, _q, rel) => {
+      const abs = path.resolve(basedir, rel)
+      return inlineFile(abs, depth + 1)
     })
     return content
   }
@@ -174,22 +187,88 @@ function cockpitCssInjector(): Plugin {
 
       // @source directives tell Tailwind v4 to scan the external project's
       // source files for utility class detection. Without these, classes used
-      // in dynamically-loaded pages (e.g. bg-success-600, container) won't be
+      // in loaded pages (e.g. text-heading-6, rounded-rounded-lg) won't be
       // emitted because Tailwind only sees builder-app files by default.
-      const sourceDirs = Object.keys(projectDirs).map(root =>
-        `@source "${path.join(root, 'src').replace(/\\/g, '/')}/**/*.{tsx,ts,jsx,js,html}";`
-      )
+      // Also scan node_modules/@subframe/core so Subframe component classes
+      // are included even when not directly referenced from src/.
+      const sourceDirs: string[] = []
+      for (const root of Object.keys(projectDirs)) {
+        sourceDirs.push(`@source "${path.join(root, 'src').replace(/\\/g, '/')}/**/*.{tsx,ts,jsx,js,html}";`)
+        const subframeCoreDir = path.join(root, 'node_modules', '@subframe', 'core')
+        if (fs.existsSync(subframeCoreDir)) {
+          sourceDirs.push(`@source "${subframeCoreDir.replace(/\\/g, '/')}/**/*.{tsx,ts,jsx,js}";`)
+        }
+      }
 
       if (cssFiles.length === 0) {
         return sourceDirs.join('\n') || '/* no css configured */'
       }
 
-      // Inline relative @import statements so CSS works in virtual module context.
-      const cssContents = cssFiles.map(f => inlineRelativeImports(f))
+      const inlined = cssFiles.map(f => inlineFile(f))
+      // @source directives go after the inlined CSS so they appear after any
+      // @import 'tailwindcss' directive contained in the project's CSS files.
+      return [...inlined, ...sourceDirs].join('\n\n')
+    },
 
-      // Put @source directives after the css content so they appear after
-      // the @import 'tailwindcss' line that globalcss includes.
-      return [...cssContents, ...sourceDirs].join('\n\n')
+
+    configureServer(server) {
+      // Watch cockpit.settings.json with Node's fs.watch (bypassing Vite's
+      // deliberate ignore of this file) so we can invalidate the virtual CSS
+      // module and reload the preview iframe when the active project changes.
+      // Also watch the actual CSS files listed in cssFiles so that changes to
+      // e.g. src/ui/theme.css (regenerated by Subframe CLI) are picked up.
+      let settingsWatcher: ReturnType<typeof fs.watch> | null = null
+      const cssFileWatchers: Map<string, ReturnType<typeof fs.watch>> = new Map()
+      let debounce: ReturnType<typeof setTimeout> | null = null
+
+      function invalidateAndReload() {
+        if (debounce) clearTimeout(debounce)
+        debounce = setTimeout(() => {
+          // Invalidate the cached virtual CSS module so the next request
+          // re-runs load() and picks up the fresh settings from disk.
+          const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+          if (mod) server.moduleGraph.invalidateModule(mod)
+          // Signal preview iframes to reload so the new CSS is applied.
+          server.ws.send({ type: 'custom', event: 'cockpit:css-changed', data: {} })
+          // Re-sync CSS file watchers in case cssFiles changed.
+          syncCssFileWatchers()
+        }, 150)
+      }
+
+      function watchCssFile(filePath: string) {
+        if (cssFileWatchers.has(filePath)) return
+        if (!fs.existsSync(filePath)) return
+        try {
+          const w = fs.watch(filePath, { persistent: false }, () => invalidateAndReload())
+          cssFileWatchers.set(filePath, w)
+        } catch { /* file may be transient */ }
+      }
+
+      function syncCssFileWatchers() {
+        const { cssFiles } = readSettings()
+        // Add watchers for newly-configured CSS files.
+        for (const f of cssFiles) watchCssFile(f)
+        // Remove watchers for files no longer in cssFiles.
+        for (const [f, w] of cssFileWatchers) {
+          if (!cssFiles.includes(f)) { w.close(); cssFileWatchers.delete(f) }
+        }
+      }
+
+      function startWatch() {
+        if (!fs.existsSync(SETTINGS_FILE)) return
+        try {
+          settingsWatcher = fs.watch(SETTINGS_FILE, { persistent: false }, () => invalidateAndReload())
+        } catch { /* settings file may not exist yet */ }
+      }
+
+      startWatch()
+      syncCssFileWatchers()
+      server.httpServer?.on('close', () => {
+        if (debounce) clearTimeout(debounce)
+        settingsWatcher?.close()
+        for (const w of cssFileWatchers.values()) w.close()
+        cssFileWatchers.clear()
+      })
     },
   }
 }
