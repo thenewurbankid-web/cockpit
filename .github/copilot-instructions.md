@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Cockpit is a visual dev tool for inspecting and editing React component source code in real time — built for agentic development workflows. An AI agent modifies **login-app** source files and a human reviews the live result in **builder-app**.
+Cockpit is a visual dev tool for inspecting and editing React component source code in real time — built for agentic development workflows. An AI agent modifies **target project** source files and a human reviews the live result in **builder-app**.
 
 ## Monorepo Layout
 
@@ -115,7 +115,7 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 
 4. **Scope hierarchy** — The scope panel builds `ScopeLayer[]` with parent→child binding links by: fetching the parent file via `ownerFile`/`ownerLine` from fiber data, parsing JSX attrs at the usage site with `extractJsxAttrs()`, and computing `links: Array<{parentVar, childProp}>`.
 
-5. **HMR propagation** — `loginAppHmrNotify()` Vite plugin watches login-app files and sends custom HMR events. `ComponentLoader.tsx` clears its lazy-import cache on HMR.
+5. **HMR propagation** — `projectHmrNotify()` Vite plugin watches target project files and sends custom HMR events. `ComponentLoader.tsx` clears its lazy-import cache on HMR.
 
 ## Coding Conventions
 
@@ -129,11 +129,11 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 
 ## Common Patterns
 
-### Adding a new login-app page
-Create `login-app/src/pages/MyPage.tsx` with named export `MyPage` and `MyPageProps` interface. The builder auto-discovers it via `list-pages`.
+### Adding a new page
+Create a `*Page.tsx` file in the active project's pages directory with a named export `MyPage` and `MyPageProps` interface. The builder auto-discovers it via `list-pages`.
 
 ### Adding a new component
-Create `login-app/src/components/MyComponent.tsx` with named export and props interface. Auto-discovered via `list-components`.
+Create a `*.tsx` file in the active project's components directory with a named export and props interface. Auto-discovered via `list-components`.
 
 ### Modifying InspectorPanel
 The inspector is modular — find the right file in `src/inspector/`:

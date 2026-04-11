@@ -154,6 +154,7 @@ export function InspectorPanel({
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
   const [codeExpanded, setCodeExpanded] = useState(false)
+  const [editorFullscreen, setEditorFullscreen] = useState(false)
 
   function startResize(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault()
@@ -175,11 +176,11 @@ export function InspectorPanel({
     if (wrapMode) return 'expression'
     if (expressionMode || inspectMode === 'expression') return 'source'
     const saved = sessionStorage.getItem('cockpit:activeTab')
-    return (saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings'
+    return (saved === 'props' || saved === 'bindings') ? saved : 'bindings'
   })
 
   useEffect(() => {
-    if (!expressionMode && !wrapMode && inspectMode !== 'expression' && activeTab !== 'changes') sessionStorage.setItem('cockpit:activeTab', activeTab)
+    if (!expressionMode && !wrapMode && inspectMode !== 'expression' && activeTab !== 'changes' && activeTab !== 'source') sessionStorage.setItem('cockpit:activeTab', activeTab)
   }, [activeTab])
   useEffect(() => {
     if (expressionMode || inspectMode === 'expression') setActiveTab('source')
@@ -222,9 +223,6 @@ export function InspectorPanel({
   const [displayCode, setDisplayCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [bindingsLoading, setBindingsLoading] = useState(true)
-  useEffect(() => {
-    if (loading) setActiveTab('source')
-  }, [loading])
   const [saving, setSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [saveErrorMsg, setSaveErrorMsg] = useState<string>('')
@@ -1133,11 +1131,11 @@ export function InspectorPanel({
 
   // ── Scope panel: add/remove prop ───────────────────────────────────────────
   function handleScopeAddProp(_componentName: string) {
-    // Open the existing "Add prop" form (in the defaults or bindings tab).
+    // Open the existing "Add prop" form (in the props or bindings tab).
     setShowAddProp(true)
     // Switch to a tab that shows the add-prop form.
     if (isRootComponent) {
-      setActiveTab('defaults')
+      setActiveTab('props')
     } else {
       setActiveTab('bindings')
     }
@@ -1624,7 +1622,7 @@ export function InspectorPanel({
     setPropDefaultMode({})
     if (activeTab === 'changes') {
       const saved = sessionStorage.getItem('cockpit:activeTab')
-      setActiveTab((saved === 'source' || saved === 'defaults' || saved === 'bindings') ? saved : 'bindings')
+      setActiveTab((saved === 'source' || saved === 'props' || saved === 'bindings') ? saved : 'bindings')
     }
   }
 
@@ -2132,7 +2130,7 @@ export function InspectorPanel({
       <button style={{ ...scopeStyles.header, cursor: 'pointer', background: '#13131f' }} onClick={() => setCodeExpanded(v => {
         if (!v) {
           // Selecting the first tab of the computed list when opening
-          const firstTab: Tab = wrapMode ? 'expression' : (expressionMode || inspectMode === 'expression') ? 'source' : isRootComponent ? 'defaults' : 'bindings'
+          const firstTab: Tab = wrapMode ? 'expression' : (expressionMode || inspectMode === 'expression') ? 'source' : isRootComponent ? 'props' : 'bindings'
           setActiveTab(firstTab)
         }
         return !v
@@ -2163,18 +2161,18 @@ export function InspectorPanel({
             const base: Tab[] = expressionMode || inspectMode === 'expression'
               ? ['source']
               : isRootComponent
-                ? ['defaults', 'source']
+                ? ['props', 'source']
                 : inspectingComponent
-                  ? ['bindings', 'defaults', 'source']
+                  ? ['bindings', 'props', 'source']
                   : ['bindings', 'source']
             if (hasEdits || pendingDiff) base.push('changes')
             return base
           })().map((tab) => {
-            const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage' && (tab === 'defaults' || tab === 'source')
+            const tabReadOnly = !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage' && (tab === 'props' || tab === 'source')
             const tabInfo: Record<Tab, string> = {
               expression: 'Choose an expression to wrap the selected nodes.',
               bindings: 'Bind component props to parent variables or literal values. Add, edit, or remove prop bindings and their types.',
-              defaults: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
+              props: 'View and edit default values for the component\u2019s props. Changes are written back to the component source.',
               source: 'Full source code of the selected component or element. Edits here are saved directly to disk.',
               changes: 'Review pending code changes before applying. Shows a git-style diff for each affected file.',
             }
@@ -2203,6 +2201,21 @@ export function InspectorPanel({
             </button>
             )
           })
+        )}
+        {/* Fullscreen button — shown in the tab bar when source tab is active */}
+        {!wrapMode && activeTab === 'source' && !loading && (
+          <button
+            title="Expand to full screen"
+            onClick={() => setEditorFullscreen(true)}
+            style={{
+              marginLeft: 'auto',
+              background: 'none', border: '1px solid #45475a',
+              borderRadius: 4, color: '#6c7086', fontSize: 11, lineHeight: 1,
+              padding: '2px 6px', cursor: 'pointer', alignSelf: 'center', flexShrink: 0,
+            }}
+          >
+            ⛶
+          </button>
         )}
       </div>
 
@@ -2303,8 +2316,8 @@ export function InspectorPanel({
           )}
         </div>
 
-        {/* ── Defaults tab ─────────────────────────────────────────── */}
-        {activeTab === 'defaults' && (
+        {/* ── Props tab ─────────────────────────────────────────── */}
+        {activeTab === 'props' && (
           <div style={styles.bindingsPanel}>
             {!selectedNode || bindingsLoading ? (
               <div style={styles.loading}>Loading…</div>
@@ -2366,13 +2379,13 @@ export function InspectorPanel({
                               {!defaultsReadOnly && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: 2 }} onClick={e => e.stopPropagation()}>
                                   <button
-                                    style={{ ...styles.deleteBtn, fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === 0 ? 0.3 : 1 }}
+                                    style={{ ...styles.deleteBtn, color: '#89b4fa', fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === 0 ? 0.3 : 1 }}
                                     title="Move up"
                                     disabled={idx === 0}
                                     onClick={() => setPropOrder(prev => { const n = [...prev]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; return n })}
                                   >▲</button>
                                   <button
-                                    style={{ ...styles.deleteBtn, fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === orderedProps.length - 1 ? 0.3 : 1 }}
+                                    style={{ ...styles.deleteBtn, color: '#89b4fa', fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === orderedProps.length - 1 ? 0.3 : 1 }}
                                     title="Move down"
                                     disabled={idx === orderedProps.length - 1}
                                     onClick={() => setPropOrder(prev => { const n = [...prev]; [n[idx], n[idx+1]] = [n[idx+1], n[idx]]; return n })}
@@ -3312,6 +3325,94 @@ export function InspectorPanel({
         </div>
       )}
       </>
+      )}
+
+      {/* ── Fullscreen source editor modal ───────────────────────────────── */}
+      {editorFullscreen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 5000,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'stretch', justifyContent: 'stretch',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setEditorFullscreen(false) }}
+        >
+          <div style={{
+            flex: 1,
+            margin: 24,
+            background: '#1e1e2e',
+            border: '1px solid #313244',
+            borderRadius: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+          }}>
+            {/* Fullscreen header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '0 14px', height: 40,
+              background: '#181825', borderBottom: '1px solid #313244', flexShrink: 0,
+            }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#6c7086', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {file ? file.replace(/\\/g, '/').split('/').slice(-3).join('/') : 'Source'}
+              </span>
+              <button
+                title="Save (Ctrl+S)"
+                onClick={() => void handleSave()}
+                style={{
+                  background: '#a6e3a1', border: 'none', borderRadius: 5,
+                  color: '#1e1e2e', fontSize: 11, fontWeight: 700,
+                  padding: '3px 14px', cursor: 'pointer', fontFamily: 'system-ui, sans-serif',
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditorFullscreen(false)}
+                style={{ background: 'none', border: 'none', color: '#6c7086', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Full-height Monaco editor */}
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <Editor
+                height="100%"
+                language="typescript"
+                path={file ? `file:///fullscreen/${file.replace(/\\/g, '/')}` : undefined}
+                theme="vs-dark"
+                value={displayCode}
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: true },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  readOnly: !isRootComponent && inspectingComponent && isFromComponentsFolder && inspectMode !== 'component-usage',
+                  lineNumbers: (n: number) => String((blockRangeRef.current?.startLine ?? 0) + n),
+                  padding: { top: 12, bottom: 12 },
+                }}
+                onMount={(ed, monaco) => {
+                  configureMonacoForInspector(monaco)
+                  // Sync edits back to the inline editor's model so Save works
+                  const model = ed.getModel()
+                  if (model) {
+                    model.onDidChangeContent(() => {
+                      const latest = model.getValue()
+                      editorRef.current?.getModel()?.setValue(latest)
+                      lastValidSourceRef.current = latest
+                    })
+                  }
+                  // Ctrl+S saves from fullscreen
+                  ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+                    void handleSave()
+                  })
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

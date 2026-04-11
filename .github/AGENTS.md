@@ -14,11 +14,11 @@ Expert in builder-app internals — InspectorPanel AST parsing, DOMTreePanel fib
 - React fiber `_debugSource` is the source-of-truth for element → file mapping
 - `useLocator.ts` captures click events globally — canvas handlers must use `mousedown`
 
-## login-app-dev
+## target-app-dev
 
-Expert in creating and modifying login-app pages, components, and expression components.
+Expert in creating and modifying pages, components, and expression components in the active target project.
 
-**When to invoke**: Adding new pages/components, editing existing login-app UI, or creating expression wrappers.
+**When to invoke**: Adding new pages/components, editing existing UI, or creating expression wrappers in the active project.
 
 **Key context**:
 - Named exports only, always declare `*Props` interface

@@ -14,9 +14,7 @@
     "strict": true,
     "baseUrl": ".",
     "types": ["vite/client"],
-    "paths": {
-      "@login-app/*": ["../login-app/src/*"]
-    }
+    "paths": {}
   },
   "include": ["src"]
 }

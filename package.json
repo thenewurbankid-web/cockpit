@@ -8,9 +8,9 @@
     "builder-app"
   ],
   "scripts": {
-    "dev:login": "npm run dev --workspace=login-app",
+    "dev:example": "npm run dev --workspace=login-app",
     "dev:builder": "npm run dev --workspace=builder-app",
-    "build:login": "npm run build --workspace=login-app",
+    "build:example": "npm run build --workspace=login-app",
     "build:builder": "npm run build --workspace=builder-app"
   },
   "keywords": [],

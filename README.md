@@ -6,7 +6,7 @@ A visual dev tool for inspecting and editing React component source code in real
 
 ## What It Does
 
-The builder runs alongside a target React app (`login-app`) and provides:
+The builder runs alongside any target React app and provides:
 
 - **Live preview** — renders the target app inside a sandboxed canvas via Vite HMR; changes to source files are reflected instantly
 - **DOM + component tree** — shows a mixed React component / DOM element tree built from live React fiber data; click any node to inspect it
@@ -59,14 +59,14 @@ cockpit/                         ← monorepo root (npm workspaces)
 │   │   │   ├── styles.ts            ← CSS-in-JS styles
 │   │   │   └── expressionRewriter.ts ← expression wrapping AST transforms
 │   │   ├── preview/
-│   │   │   ├── ComponentLoader.tsx       ← lazy-loads login-app via /@fs/ imports
+│   │   │   ├── ComponentLoader.tsx       ← lazy-loads target app via /@fs/ imports
 │   │   │   ├── ExpressionAssignPanel.tsx ← expression assignment UI
 │   │   │   └── ExpressionTester.tsx      ← expression testing sandbox
 │   │   └── locator/
 │   │       └── useLocator.ts            ← Alt+Click → source location
 │   └── vite.config.ts           ← Vite config (HMR plugins, /@fs/ setup, proxy)
 │
-├── login-app/                   ← target app being edited (Vite 5 + React 18, port 5173)
+├── login-app/                   ← example target app (Vite 5 + React 18, port 5173, not required)
 │   └── src/
 │       ├── pages/               ← full-page components (*Page.tsx)
 │       ├── components/          ← shared UI components (Button, Input)
@@ -80,7 +80,7 @@ cockpit/                         ← monorepo root (npm workspaces)
 │       ├── dom-tree-panel.instructions.md
 │       ├── fiber-source.instructions.md
 │       ├── dev-server.instructions.md
-│       ├── login-app.instructions.md
+│       ├── target-app.instructions.md
 │       └── vite-config.instructions.md
 │
 └── package.json                 ← npm workspaces root
@@ -121,7 +121,7 @@ This is built by fetching the parent's source file using fiber `ownerFile`/`owne
 
 ### Live Preview & HMR
 
-`ComponentLoader.tsx` uses `React.lazy` with `/@fs/` dynamic imports to load login-app components. A custom Vite plugin (`loginAppHmrNotify`) watches login-app source files and sends HMR events that clear the lazy-import cache, enabling instant live preview of changes.
+`ComponentLoader.tsx` uses `React.lazy` with `/@fs/` dynamic imports to load target project components. A custom Vite plugin (`projectHmrNotify`) watches target project source files and sends HMR events that clear the lazy-import cache, enabling instant live preview of changes.
 
 ---
 
@@ -165,8 +165,8 @@ npm install
 Open **two terminals**:
 
 ```bash
-# Terminal 1 — target app on port 5173
-npm run dev:login
+# Terminal 1 — example target app on port 5173
+npm run dev:example
 
 # Terminal 2 — builder UI + source API on ports 5174 / 3001
 npm run dev:builder
@@ -174,12 +174,12 @@ npm run dev:builder
 
 Then open **http://localhost:5174** in your browser.
 
-> Both dev servers must be running — the builder imports login-app source directly.
+> Start the target app on its configured port — the builder imports its source directly via `/@fs/` imports.
 
 ### Build
 
 ```bash
-npm run build:login
+npm run build:example
 npm run build:builder
 ```
 
@@ -189,7 +189,7 @@ npm run build:builder
 
 Cockpit is designed as a **human-in-the-loop** tool for AI-assisted React development:
 
-1. **Agent writes source files** — AI agents edit `login-app/src/**` files directly, or via `POST /__source`
+1. **Agent writes source files** — AI agents edit the active project's source files directly, or via `POST /__source`
 2. **Builder shows live result** — the preview canvas reflects every file change via HMR
 3. **Human inspects and corrects** — click any element to see its props, types, scope bindings; adjust values without touching source directly
 4. **Agent reads current state** — `GET /__source?file=<path>` reads back current source before further edits
@@ -231,12 +231,12 @@ The `.github/` directory contains instruction files that help AI coding agents u
 | File | Scope |
 |------|-------|
 | `copilot-instructions.md` | Workspace-wide: architecture, conventions, patterns |
-| `AGENTS.md` | Agent role definitions (builder-dev, login-app-dev, api-dev) |
+| `AGENTS.md` | Agent role definitions (builder-dev, target-app-dev, api-dev) |
 | `instructions/inspector-panel.instructions.md` | InspectorPanel AST parsing, scope hierarchy |
 | `instructions/dom-tree-panel.instructions.md` | DOMTreePanel fiber tree, picker mode |
 | `instructions/fiber-source.instructions.md` | Fiber source resolution, line offsets |
 | `instructions/dev-server.instructions.md` | Express API endpoints, path safety |
-| `instructions/login-app.instructions.md` | Target app conventions, templates |
+| `instructions/target-app.instructions.md` | Target app conventions, templates |
 | `instructions/vite-config.instructions.md` | Vite plugins, HMR, build config |
 
 ---

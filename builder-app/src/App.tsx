@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { setPreviewIframeWindow } from './preview/ComponentLoader'
+import { setPreviewIframeWindow, notifyPropsChange } from './preview/ComponentLoader'
 import { ExpressionTester } from './preview/ExpressionTester'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import type { SelectedNodeContext } from './inspector/InspectorPanel'
@@ -11,6 +11,8 @@ import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
 import { AddPageModal, AddComponentModal, AddExpressionModal } from './modals'
 import { ProjectPickerModal } from './ProjectPickerModal'
 import { SettingsPanel } from './SettingsPanel'
+import { DocsPanel } from './DocsPanel'
+import { TerminalPanel } from './TerminalPanel'
 import { appStyles as styles } from './appStyles'
 // Side-effect: imports CSS/Tailwind files listed in cockpit.settings.json cssFiles.
 // Still needed for the expressions section which renders components inline.
@@ -145,6 +147,83 @@ function SectionEmptyState({ icon, title, message, action }: {
   )
 }
 
+function coerceStateData(data: Record<string, string>): Record<string, unknown> {
+  const coerced: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(data)) {
+    if (v === 'true') coerced[k] = true
+    else if (v === 'false') coerced[k] = false
+    else if (v !== '' && !isNaN(Number(v))) coerced[k] = Number(v)
+    else { try { coerced[k] = JSON.parse(v) } catch { coerced[k] = v } }
+  }
+  return coerced
+}
+
+interface BreadcrumbStateMeta { key: string; label: string }
+
+function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string; projectRoot: string }) {
+  const [states, setStates] = useState<BreadcrumbStateMeta[]>([])
+  const [activeKey, setActiveKey] = useState('')
+
+  useEffect(() => {
+    if (!pageName || !projectRoot) return
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(pageName)}`
+    let cancelled = false
+    fetch(`/__source/list-states?${qs}`)
+      .then(r => r.json())
+      .then(async (json) => {
+        if (cancelled) return
+        const list: BreadcrumbStateMeta[] = json.states ?? []
+        setStates(list)
+        if (list.length > 0) {
+          const first = list[0].key
+          setActiveKey(first)
+          const dr = await fetch(`/__source/state-data?${qs}&state=${encodeURIComponent(first)}`)
+          if (cancelled) return
+          const dj = await dr.json()
+          notifyPropsChange(coerceStateData(dj.data ?? {}), true)
+        }
+      })
+      .catch(() => { if (!cancelled) setStates([]) })
+    return () => { cancelled = true }
+  }, [pageName, projectRoot])
+
+  if (states.length === 0) return null
+
+  async function handleChange(key: string) {
+    setActiveKey(key)
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(pageName)}`
+    try {
+      const r = await fetch(`/__source/state-data?${qs}&state=${encodeURIComponent(key)}`)
+      const j = await r.json()
+      notifyPropsChange(coerceStateData(j.data ?? {}), true)
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ color: '#6c7086', fontSize: '0.7rem' }}>State:</span>
+      <select
+        value={activeKey}
+        onChange={e => void handleChange(e.target.value)}
+        style={{
+          background: '#1e1e2e',
+          color: '#cdd6f4',
+          border: '1px solid #313244',
+          borderRadius: 4,
+          fontSize: '0.7rem',
+          padding: '2px 6px',
+          cursor: 'pointer',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        {states.map(s => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 export default function App() {
   const initial = readUrlState()
   const [location, setLocation] = useState<SourceLocation | null>(null)
@@ -174,6 +253,8 @@ export default function App() {
   const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showDocs, setShowDocs] = useState(false)
+  const [showTerminal, setShowTerminal] = useState(false)
   const [pendingInstallPackages, setPendingInstallPackages] = useState<string[]>([])
   const [aliasesNeedReload, setAliasesNeedReload] = useState(false)
   const [aliasesWereNew, setAliasesWereNew] = useState(false)
@@ -537,6 +618,29 @@ export default function App() {
           </button>
           <button
             style={{
+              padding: '3px 10px', fontSize: 11, borderRadius: 5,
+              background: 'rgba(203,214,244,0.08)', border: '1px solid rgba(203,214,244,0.14)',
+              color: '#a6adc8', cursor: 'pointer', fontFamily: 'system-ui, sans-serif',
+            }}
+            title="Open documentation"
+            onClick={() => setShowDocs(true)}
+          >
+            Docs
+          </button>
+          <button
+            style={{
+              padding: '3px 10px', fontSize: 11, borderRadius: 5,
+              background: showTerminal ? 'rgba(166,227,161,0.15)' : 'rgba(203,214,244,0.08)',
+              border: showTerminal ? '1px solid rgba(166,227,161,0.3)' : '1px solid rgba(203,214,244,0.14)',
+              color: showTerminal ? '#a6e3a1' : '#a6adc8', cursor: 'pointer', fontFamily: 'system-ui, sans-serif',
+            }}
+            title="Open integrated terminal in project root"
+            onClick={() => setShowTerminal(v => !v)}
+          >
+            &gt;_
+          </button>
+          <button
+            style={{
               padding: '3px 8px', fontSize: 13, borderRadius: 5,
               background: 'rgba(203,214,244,0.08)', border: '1px solid rgba(203,214,244,0.14)',
               color: '#a6adc8', cursor: 'pointer', lineHeight: 1,
@@ -692,6 +796,9 @@ export default function App() {
                 <span style={styles.breadcrumbSep}>›</span>
                 <span style={{ ...styles.breadcrumbCurrent, color: '#94e2d5' }}>{activeExpression}</span>
               </>
+            )}
+            {!panelOpen && activeSection === 'pages' && activePage && projectRoot && (
+              <BreadcrumbStatesDropdown pageName={activePage.root} projectRoot={projectRoot} />
             )}
           </div>
 
@@ -903,6 +1010,14 @@ export default function App() {
           onChangeProject={() => { setShowSettings(false); setShowPicker(true) }}
           onProjectDirsChanged={() => { if (projectRoot) void loadProject(projectRoot) }}
         />
+      )}
+
+      {showDocs && (
+        <DocsPanel onClose={() => setShowDocs(false)} />
+      )}
+
+      {showTerminal && projectRoot && (
+        <TerminalPanel projectRoot={projectRoot} onClose={() => setShowTerminal(false)} />
       )}
     </div>
   )

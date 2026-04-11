@@ -1,13 +1,13 @@
 ---
-applyTo: "login-app/**"
-description: "Use when editing login-app pages, components, or expressions. Covers naming conventions, file templates, and how the builder auto-discovers new files."
+applyTo: "**"
+description: "Use when editing pages, components, or expressions in the active target project. Covers naming conventions, file templates, and how the builder auto-discovers new files."
 ---
 
-# login-app Development Guide
+# Target App Development Guide
 
-## This Is the Target App
+## What Is the Target App
 
-`login-app` is the React application being inspected and edited by `builder-app`. Changes to files in `login-app/src/` are reflected live in the builder's preview canvas via Vite HMR.
+The target app is the React application currently active in Cockpit — whatever project root has been set via the project picker. Changes to its source files are reflected live in the builder's preview canvas via Vite HMR.
 
 ## File Organization
 

@@ -202,7 +202,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode; onOpenSource?
 }
 
 // Render children directly so the canvasRef in App.tsx contains the
-// login-app DOM nodes at the top level (needed for DOMTreePanel).
+// target app DOM nodes at the top level (needed for DOMTreePanel).
 function PreviewCanvas({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }

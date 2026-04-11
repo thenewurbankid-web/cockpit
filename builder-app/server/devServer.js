@@ -10,9 +10,12 @@
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
+import http from 'http'
 import { execSync, spawn } from 'child_process'
+import { WebSocketServer } from 'ws'
+import pty from 'node-pty'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, setActiveProjectRoot, warmDiagnosticsCache, readProjectConfig, writeProjectConfig } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, readProjectConfig, writeProjectConfig } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
 import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS } from './templates.js'
 
@@ -136,12 +139,12 @@ app.delete('/__source/diff', (req, res) => {
 /**
  * Resolve the target project root from a request.
  * Accepts ?projectRoot= (GET/DELETE) or body.projectRoot (POST).
- * Falls back to login-app inside the monorepo to preserve backwards compatibility.
+ * Falls back to the active project root set via set-active-project, or null if none.
  */
 function getProjectRoot(req) {
   const raw = req.query.projectRoot || req.body?.projectRoot
   if (raw) return path.resolve(raw)
-  return path.resolve(REPO_ROOT, 'login-app')
+  return activeProjectRoot ?? null
 }
 
 /** Browse directory contents (directories only). No isSafeFile restriction — this is for navigation. */
@@ -381,8 +384,8 @@ function walkTsx(baseDir) {
 app.get('/__source/list-pages', (req, res) => {
   const projectRoot = getProjectRoot(req)
   const loginAppPages = getProjectDirs(projectRoot).pagesDir
-  console.log(`[list-pages] projectRoot=${projectRoot} pagesDir=${loginAppPages} exists=${fs.existsSync(loginAppPages)}`)
-  if (!fs.existsSync(loginAppPages)) {
+  console.log(`[list-pages] projectRoot=${projectRoot} pagesDir=${loginAppPages} exists=${loginAppPages ? fs.existsSync(loginAppPages) : false}`)
+  if (!loginAppPages || !fs.existsSync(loginAppPages)) {
     console.log(`[list-pages] pagesDir not found, returning empty`)
     return res.json({ pages: [] })
   }
@@ -419,6 +422,7 @@ app.post('/__source/create-page', (req, res) => {
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
 
   const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
+  if (!loginAppPages) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -443,6 +447,7 @@ app.delete('/__source/page/:componentName', (req, res) => {
   }
 
   const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
+  if (!loginAppPages) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(loginAppPages, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) {
@@ -461,7 +466,7 @@ app.delete('/__source/page/:componentName', (req, res) => {
 
 app.get('/__source/list-components', (req, res) => {
   const dir = getProjectDirs(getProjectRoot(req)).componentsDir
-  if (!fs.existsSync(dir)) return res.json({ components: [] })
+  if (!dir || !fs.existsSync(dir)) return res.json({ components: [] })
 
   const files = walkTsx(dir)
   const components = files
@@ -487,6 +492,7 @@ app.post('/__source/create-component', (req, res) => {
     trimmed.replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase()).replace(/\s+/g, '')
   const id = trimmed.toLowerCase().replace(/\s+/g, '-')
   const dir = getProjectDirs(getProjectRoot(req)).componentsDir
+  if (!dir) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -508,6 +514,7 @@ app.delete('/__source/component/:componentName', (req, res) => {
     return res.status(400).json({ error: 'Invalid component name' })
   }
   const dir = getProjectDirs(getProjectRoot(req)).componentsDir
+  if (!dir) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(dir, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -568,7 +575,7 @@ app.get('/__source/ast-info', (req, res) => {
 
 app.get('/__source/list-expressions', (req, res) => {
   const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
-  if (!fs.existsSync(EXPRESSIONS_DIR)) return res.json({ expressions: [] })
+  if (!EXPRESSIONS_DIR || !fs.existsSync(EXPRESSIONS_DIR)) return res.json({ expressions: [] })
 
   const files = walkTsx(EXPRESSIONS_DIR)
   const expressions = files.map(({ name, filePath }) => {
@@ -596,6 +603,7 @@ app.post('/__source/create-expression', (req, res) => {
   }
 
   const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
+  if (!EXPRESSIONS_DIR) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(EXPRESSIONS_DIR, `${componentName}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -618,6 +626,7 @@ app.post('/__source/create-expression', (req, res) => {
 
 app.post('/__source/add-default-expressions', (req, res) => {
   const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
+  if (!EXPRESSIONS_DIR) return res.status(400).json({ error: 'No active project set' })
   if (!isSafeFile(EXPRESSIONS_DIR)) return res.status(403).json({ error: 'Access denied' })
   fs.mkdirSync(EXPRESSIONS_DIR, { recursive: true })
   const results = {}
@@ -639,6 +648,7 @@ app.delete('/__source/expression/:name', (req, res) => {
   }
 
   const EXPRESSIONS_DIR = getProjectDirs(getProjectRoot(req)).expressionsDir
+  if (!EXPRESSIONS_DIR) return res.status(400).json({ error: 'No active project set' })
   const filePath = path.join(EXPRESSIONS_DIR, `${name}.tsx`)
 
   if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
@@ -659,6 +669,7 @@ app.delete('/__source/expression/:name', (req, res) => {
  * Absolute override paths are used as-is.
  */
 function getProjectDirs(projectRootArg) {
+  if (!projectRootArg) return { pagesDir: null, componentsDir: null, expressionsDir: null }
   const resolved = path.resolve(projectRootArg)
   const cfg = readProjectConfig(resolved)
   return {
@@ -1126,6 +1137,7 @@ function generateModelTs(pageName, stateName, data) {
 }
 
 function getStatesDir(projectRoot) {
+  if (!projectRoot) return null
   return path.join(path.resolve(projectRoot), 'src', 'states', 'pages')
 }
 
@@ -1137,6 +1149,7 @@ function stateKeyToLabel(key) {
 // GET /__source/list-states?projectRoot=<abs>&page=<pageName>
 app.get('/__source/list-states', (req, res) => {
   const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ states: [] })
   const page = req.query.page
   if (!page || typeof page !== 'string') {
     return res.status(400).json({ error: 'Missing ?page= query parameter' })
@@ -1161,6 +1174,7 @@ app.get('/__source/list-states', (req, res) => {
 // GET /__source/state-data?projectRoot=<abs>&page=<pageName>&state=<key>
 app.get('/__source/state-data', (req, res) => {
   const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ data: {} })
   const { page, state } = req.query
   if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
   const dataFile = path.join(getStatesDir(projectRoot), page, state, 'data.json')
@@ -1213,6 +1227,7 @@ app.post('/__source/create-state', (req, res) => {
 // DELETE /__source/state?projectRoot=<abs>&page=<pageName>&state=<key>
 app.delete('/__source/state', (req, res) => {
   const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.status(400).json({ error: 'No active project set' })
   const { page, state } = req.query
   if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
   const stateDir = path.join(getStatesDir(projectRoot), page, state)
@@ -1223,9 +1238,82 @@ app.delete('/__source/state', (req, res) => {
   res.json({ ok: true })
 })
 
+// ── Terminal WebSocket ────────────────────────────────────────────────────────
+
+const wss = new WebSocketServer({ noServer: true })
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, 'http://localhost:3001')
+  const root = url.searchParams.get('root')
+
+  if (!root || !isSafeFile(root)) {
+    ws.close(1008, 'Invalid or disallowed root')
+    return
+  }
+
+  const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
+  const shellArgs = process.platform === 'win32' ? ['-NoLogo'] : []
+
+  let ptyProc
+  try {
+    ptyProc = pty.spawn(shell, shellArgs, {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 24,
+      cwd: root,
+      env: process.env,
+    })
+  } catch (err) {
+    ws.send(`\r\n[cockpit] Failed to start shell: ${err.message}\r\n`)
+    ws.close()
+    return
+  }
+
+  console.log(`[terminal] Spawned PID ${ptyProc.pid} in ${root}`)
+
+  ptyProc.onData(data => {
+    if (ws.readyState === ws.OPEN) ws.send(data)
+  })
+
+  ptyProc.onExit(() => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send('\r\n[process exited]\r\n')
+      ws.close()
+    }
+  })
+
+  ws.on('message', (data) => {
+    const str = data.toString()
+    try {
+      const msg = JSON.parse(str)
+      if (msg.type === 'resize' && typeof msg.cols === 'number' && typeof msg.rows === 'number') {
+        ptyProc.resize(Math.max(1, msg.cols), Math.max(1, msg.rows))
+        return
+      }
+    } catch { /* not JSON — treat as terminal input */ }
+    ptyProc.write(str)
+  })
+
+  ws.on('close', () => {
+    try { ptyProc.kill() } catch { /* already dead */ }
+    console.log(`[terminal] Closed PID ${ptyProc.pid}`)
+  })
+})
+
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const PORT = 3001
-app.listen(PORT, () => {
+const server = http.createServer(app)
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url && req.url.startsWith('/__terminal')) {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
+  } else {
+    socket.destroy()
+  }
+})
+
+server.listen(PORT, () => {
   console.log(`[builder-server] Source API ready → http://localhost:${PORT}/__source`)
+  console.log(`[builder-server] Terminal WS ready → ws://localhost:${PORT}/__terminal`)
 })

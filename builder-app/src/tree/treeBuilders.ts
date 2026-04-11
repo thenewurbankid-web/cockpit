@@ -83,7 +83,7 @@ export function inferPageRoot(
 
   // Build a predicate that matches files inside any of the configured project
   // source dirs (e.g. 'src/subframe-pages') or falls back to the generic
-  // '/pages/' / '/components/' heuristic for login-app style projects.
+  // '/pages/' / '/components/' heuristic for Cockpit-structured projects.
   function isProjectFile(filePath: string): boolean {
     const f = normalizeSlashes(filePath)
     if (projectDirs && projectDirs.length > 0) {

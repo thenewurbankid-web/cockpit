@@ -112,7 +112,7 @@ export interface InspectorPanelProps {
   projectRoot?: string
 }
 
-export type Tab = 'source' | 'defaults' | 'bindings' | 'expression' | 'changes'
+export type Tab = 'source' | 'props' | 'bindings' | 'expression' | 'changes'
 
 // ── block extraction ──────────────────────────────────────────────────────────
 

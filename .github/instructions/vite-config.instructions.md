@@ -1,6 +1,6 @@
 ---
 applyTo: "builder-app/vite.config.ts"
-description: "Use when editing Vite configuration, HMR plugins, or build settings. Covers fixSourceLineNumbers, loginAppHmrNotify, and /@fs/ import setup."
+description: "Use when editing Vite configuration, HMR plugins, or build settings. Covers fixSourceLineNumbers, projectHmrNotify, and /@fs/ import setup."
 ---
 
 # Vite Configuration Guide
@@ -13,14 +13,13 @@ Corrects `_debugSource.lineNumber` values that are shifted by the fast-refresh w
 - Regex-replaces `lineNumber: N` → `lineNumber: N - offset` in `__source` objects
 - Must run after esbuild (enforce: 'post') to see the final transformed code
 
-### `loginAppHmrNotify()` (dev only)
-Watches `login-app/src/` for file changes and sends `login-app:update` custom HMR events.
+### `projectHmrNotify()` (dev only)
+Watches the active project's source directory for file changes and sends `project:update` custom HMR events.
 - `ComponentLoader.tsx` listens for this event and clears its lazy-import cache
-- Enables live preview of login-app changes without full page reload
+- Enables live preview of target project changes without full page reload
 
 ## Key Config
 
-- **`__LOGIN_APP_PAGES_DIR__`** / **`__LOGIN_APP_COMPONENTS_DIR__`** — define'd constants with forward-slash absolute paths for `/@fs/` dynamic imports
-- **`@login-app` alias** — resolves to `../login-app/src` for direct source imports
+- **Dynamic aliases** — resolved via `cockpit.settings.json` through the `cockpitDynamicAlias` plugin; no static alias needed
 - **`server.fs.allow: ['..']`** — allows serving files from the monorepo root (needed for `/@fs/` imports)
 - **Proxy** — `/__source*` and `/__diagnostics` proxied to Express on port 3001

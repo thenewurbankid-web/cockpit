@@ -550,12 +550,7 @@ export default defineConfig({
     // time by Next.js but are undefined in a raw Vite browser context.
     'process': '({ env: { NODE_ENV: "development" }, browser: true, version: "" })',
   },
-  resolve: {
-    alias: {
-      // Lets builder-app import login-app source files directly.
-      '@login-app': path.resolve(__dirname, '../login-app/src'),
-    },
-  },
+  resolve: {},
   server: {
     port: 5174,
     // Allow serving files from anywhere on disk (needed for /@fs/ imports of external projects).
@@ -568,6 +563,8 @@ export default defineConfig({
       // Proxy source API requests to the Express dev server.
       '/__source': 'http://localhost:3001',
       '/__diagnostics': 'http://localhost:3001',
+      // Proxy terminal WebSocket connections to the Express dev server.
+      '/__terminal': { target: 'http://localhost:3001', ws: true },
     },
   },
 })
