@@ -22,11 +22,11 @@ import type {
   JsxTextChild,
   PendingDiff,
 } from './types'
-import { extractBlock } from './astHelpers'
+import { extractBlock, extractChildBindings } from './astHelpers'
 import { extractImports, countReactComponentsInSource, collectModuleUsages, normalizePath, candidateImportFiles, filePathToModelUri, buildBareModuleDeclarations } from './importHelpers'
 import { extractJsxAttrs, extractJsxTextChildren, rewriteJsxTextChild, findLocatorUsages, collectAllJsxExpressionIdentifiers } from './jsxExtraction'
 import { enrichWithTypeDeclaration, stringifyTSType, inferTypeFromExpression, inferTypeFromValueString, inferTypeOfLocal, extractComponentLocals, inferOwnerComponentName, componentHasPropTypeDef, extractOwnerProps } from './typeInference'
-import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue, reorderPropsInSource } from './astRewriters'
+import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue, reorderPropsInSource, rewriteJsxChildrenAsExpression } from './astRewriters'
 import { ScopePanel, scopeStyles } from './ScopePanel'
 import { StatesPanel } from './StatesPanel'
 import { notifyPropsChange } from '../preview/ComponentLoader'
@@ -309,6 +309,7 @@ export function InspectorPanel({
   const extraLibDisposableRef = useRef<IDisposable | null>(null)
   const contextLoadSeqRef = useRef(0)
   const diagnosticsTimerRef = useRef<number | null>(null)
+
 
   function buildFullSourceFromEditorValue(editedValue: string): string {
     const range = blockRangeRef.current
@@ -727,13 +728,19 @@ export function InspectorPanel({
     const tagCapture = node.tag
     // Highlight props that are referenced anywhere as JSX expression values in this component's source.
     const allUsed = collectAllJsxExpressionIdentifiers(sourceCapture, tagCapture)
+    const initialChildProps = ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name), defaultValue: p.defaultValue }))
+    const initialChildState = extractComponentLocals(sourceCapture, tagCapture)
+      .filter(n => !ownerPCapture.find(p => p.name === n))
+      .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) }))
+    const isRootComp = tagCapture === rootComponentName
+    const rootVarNamesComp = new Set([...initialChildProps.map(p => p.name), ...initialChildState.map(s => s.name)])
+    const childBindingsComp = isRootComp ? extractChildBindings(sourceCapture, tagCapture, rootVarNamesComp) : undefined
     setScopeLayers([{
       componentName: tagCapture,
       isCurrent: true,
-      props: ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name), defaultValue: p.defaultValue })),
-      state: extractComponentLocals(sourceCapture, tagCapture)
-        .filter(n => !ownerPCapture.find(p => p.name === n))
-        .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) })),
+      props: initialChildProps,
+      state: initialChildState,
+      childBindings: childBindingsComp,
     }])
       // Asynchronously find the usage site of this component to:
       // 1. populate the "currently passed" value column
@@ -789,8 +796,8 @@ export function InspectorPanel({
                 const passedValues = new Set(
                   attrs.filter(a => !a.isSpread).flatMap(a => {
                     const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
-                    const base = stripped.split(/[.\[(]/)[0].trim()
-                    return base && base !== stripped ? [stripped, base] : [stripped]
+                    // Extract all identifier-like tokens so ternaries like `loading?'A':'B'` register `loading`
+                    return [...stripped.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g)].map(m => m[1])
                   })
                 )
                 const childProps = ownerPCapture.filter(p => p.source === 'owner')
@@ -806,7 +813,10 @@ export function InspectorPanel({
                   .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
                 // Build binding links: parentVar → childProp
                 const links = attrs.filter(a => !a.isSpread && a.isExpression)
-                  .map(a => ({ parentVar: a.rawValue.replace(/^\{|\}$/g, '').trim().split(/[.\[(]/)[0], childProp: a.name }))
+                  .map(a => ({
+                    parentVar: /^([a-zA-Z_$][a-zA-Z0-9_$]*)/.exec(a.rawValue.replace(/^\{|\}$/g, '').trim())?.[1] ?? '',
+                    childProp: a.name,
+                  }))
                   .filter(l => l.parentVar)
                 setScopeLayers([
                   { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
@@ -876,7 +886,11 @@ export function InspectorPanel({
     }
     const ownerLocals = ownerName ? extractComponentLocals(source, ownerName) : []
     const { props: op, state: os } = makeItems(ownerP, ownerLocals, source, ownerName)
-    setScopeLayers([{ componentName: ownerName || node.tag, isCurrent: true, props: op, state: os }])
+    // For the root component, compute downstream child bindings synchronously.
+    const isRoot = !ownerName || ownerName === rootComponentName
+    const rootVarNames = new Set([...op.map(p => p.name), ...os.map(s => s.name)])
+    const childBindings = isRoot && ownerName ? extractChildBindings(source, ownerName, rootVarNames) : undefined
+    setScopeLayers([{ componentName: ownerName || node.tag, isCurrent: true, props: op, state: os, childBindings }])
     setHasPropTypeDef(true) // DOM nodes don't need prop type defs
     setBindingsLoading(false)
 
@@ -909,8 +923,7 @@ export function InspectorPanel({
             const passedValues = new Set(
               passedToOwner.filter(a => !a.isSpread).flatMap(a => {
                 const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
-                const base = stripped.split(/[.\[(]/)[0].trim()
-                return base && base !== stripped ? [stripped, base] : [stripped]
+                return [...stripped.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g)].map(m => m[1])
               })
             )
             const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
@@ -920,7 +933,10 @@ export function InspectorPanel({
               .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
             // Build binding links: parentVar → childProp
             const links = passedToOwner.filter(a => !a.isSpread && a.isExpression)
-              .map(a => ({ parentVar: a.rawValue.replace(/^\{|\}$/g, '').trim().split(/[.\[(]/)[0], childProp: a.name }))
+              .map(a => ({
+                parentVar: /^([a-zA-Z_$][a-zA-Z0-9_$]*)/.exec(a.rawValue.replace(/^\{|\}$/g, '').trim())?.[1] ?? '',
+                childProp: a.name,
+              }))
               .filter(l => l.parentVar)
             setParentSource(usageSource)
             setParentLocals(parentLocalsArr)
@@ -1196,8 +1212,11 @@ export function InspectorPanel({
           const original = usageAttrs.find((a) => a.name === propName)
           // Skip if unchanged from what the parent is already passing.
           if (original && newVal === original.rawValue) continue
-          // 'children' is a slot text child — rewrite the trimmed portion of the text node.
-          if (propName === 'children' && textChildren.length > 0) {
+          // Use propValueMode to determine whether to write as expression or string literal.
+          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
+          const modeIsVar = propMode === 'scope' || propMode === 'expression'
+          // 'children' as a text node — only when staying in plain-value mode.
+          if (propName === 'children' && textChildren.length > 0 && !modeIsVar) {
             for (const tc of textChildren) {
               // The JSXText node may span multiple lines (e.g. "\n  Sign in\n").
               // Search all lines in the span for the actual trimmed content.
@@ -1217,15 +1236,16 @@ export function InspectorPanel({
                 }
               }
               if (!found) {
-                // Fallback: rewrite whole text node (may change line count)
                 parentSrc = rewriteJsxTextChild(parentSrc, tc, newVal)
               }
             }
             continue
           }
-          // Use propValueMode to determine whether to write as expression or string literal.
-          const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
-          const modeIsVar = propMode === 'scope' || propMode === 'expression'
+          // 'children' switching from text-node to expression — replace content between tags with {expr}
+          if (propName === 'children' && textChildren.length > 0 && modeIsVar) {
+            parentSrc = rewriteJsxChildrenAsExpression(parentSrc, usageInfo.line, newVal)
+            continue
+          }
           if (original) {
             parentSrc = rewriteAttrValue(parentSrc, usageInfo.line, propName, newVal, modeIsVar)
           } else {
@@ -1280,28 +1300,90 @@ export function InspectorPanel({
           modified = rewriteDefaultValue(modified, ownerName, propName, newDefault)
         }
         if (propOrderChangedSnapshot) {
+          // Guard: if any prop's default value references a prop that would come after it,
+          // the destructure would cause a temporal dead zone at runtime (JS evaluates
+          // parameter defaults left-to-right; referencing a later param is a TDZ error).
+          const ownerOrdered = propOrderSnapshot.map(n => ownerProps.find(p => p.name === n)).filter(Boolean)
+          for (let i = 0; i < ownerOrdered.length; i++) {
+            const p = ownerOrdered[i]!
+            const defVal = defaultEditsSnapshot[p.name] ?? p.defaultValue ?? ''
+            if (!defVal) continue
+            for (let j = i + 1; j < ownerOrdered.length; j++) {
+              const laterName = ownerOrdered[j]!.name
+              // Simple identifier match: word boundary to avoid false positives
+              if (new RegExp(`\\b${laterName}\\b`).test(defVal)) {
+                const msg = `Reorder blocked: '${p.name}' default references '${laterName}' which would come after it — this would cause a runtime error (temporal dead zone).`
+                setSaveErrorMsg(msg)
+                setSaveStatus('error')
+                console.error('%c[Cockpit] Save blocked%c\n' + msg, 'background:#f38ba8;color:#1e1e2e;font-weight:bold;padding:2px 6px;border-radius:4px', 'color:#f38ba8')
+                setBindingsSaving(false)
+                return
+              }
+            }
+          }
           modified = reorderPropsInSource(modified, propOrderSnapshot)
         }
-        // Diagnostics check — don't save if the modified source has TS errors
-        try {
-          const diagRes = await fetch('/__diagnostics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file, content: modified }),
-          })
-          if (diagRes.ok) {
-            const diagPayload = await diagRes.json()
-            const errs = ((diagPayload.diagnostics as ServerDiagnostic[]) ?? []).filter(d => d.severity >= 8)
-            if (errs.length > 0) {
-              const msg = errs.map(e => `L${e.startLineNumber}: ${e.message}`).join('\n')
+        // Diagnostics check — don't save if the modified source has TS errors.
+        // Fast path: Monaco TS worker for syntactic errors only (no project types needed, instant).
+        const monacoInst = monacoRef.current
+        let diagBlocked = false
+        if (monacoInst) {
+          try {
+            const tempUri = monacoInst.Uri.parse(`file:///cockpit-preflight-${Date.now()}.tsx`)
+            const tempModel = monacoInst.editor.createModel(modified, 'typescript', tempUri)
+            const getWorker = await monacoInst.languages.typescript.getTypeScriptWorker()
+            const proxy = await getWorker(tempUri)
+            const syntacticDiags = await proxy.getSyntacticDiagnostics(tempUri.toString())
+            tempModel.dispose()
+            if (syntacticDiags.length > 0) {
+              const modLines = modified.split('\n')
+              const offsetToLine = (offset: number) => {
+                let rem = offset
+                for (let i = 0; i < modLines.length; i++) {
+                  if (rem <= modLines[i].length) return i + 1
+                  rem -= modLines[i].length + 1
+                }
+                return modLines.length
+              }
+              const msg = syntacticDiags.map(d => {
+                const text = typeof d.messageText === 'string' ? d.messageText : (d.messageText as { messageText: string }).messageText
+                const ln = d.start != null ? offsetToLine(d.start) : '?'
+                return `L${ln}: ${text}`
+              }).join('\n')
               setSaveErrorMsg(msg)
               setSaveStatus('error')
               console.error('%c[Cockpit] Save blocked — TypeScript errors:%c\n' + msg, 'background:#f38ba8;color:#1e1e2e;font-weight:bold;padding:2px 6px;border-radius:4px', 'color:#f38ba8')
-              setBindingsSaving(false)
-              return
+              diagBlocked = true
             }
+          } catch {
+            // Monaco worker unavailable — fall through to server check
           }
-        } catch { /* if diagnostics endpoint is unavailable, proceed with save */ }
+        }
+        if (diagBlocked) { setBindingsSaving(false); return }
+        // Slow path: server-side tsc for semantic / cross-file errors.
+        // Skip when the only change is a reorder — existing props can't introduce new type errors.
+        const hasContentEdits = Object.keys(typeEditsSnapshot).length > 0 || Object.keys(defaultEditsSnapshot).length > 0
+        if (hasContentEdits) {
+          try {
+            const diagRes = await fetch('/__diagnostics', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ file, content: modified }),
+            })
+            if (diagRes.ok) {
+              const diagPayload = await diagRes.json()
+              const errs = ((diagPayload.diagnostics as ServerDiagnostic[]) ?? []).filter(d => d.severity >= 8)
+              if (errs.length > 0) {
+                const msg = errs.map(e => `L${e.startLineNumber}: ${e.message}`).join('\n')
+                setSaveErrorMsg(msg)
+                setSaveStatus('error')
+                console.error('%c[Cockpit] Save blocked — TypeScript errors:%c\n' + msg, 'background:#f38ba8;color:#1e1e2e;font-weight:bold;padding:2px 6px;border-radius:4px', 'color:#f38ba8')
+                setBindingsSaving(false)
+                return
+              }
+            }
+          } catch { /* if diagnostics endpoint is unavailable, proceed with save */ }
+        }
         const ok = await pushToMonacoAndSave(modified)
         if (!ok) return
       }
@@ -2022,7 +2104,7 @@ export function InspectorPanel({
           pageName={activePage}
           projectRoot={projectRoot}
           scopeLayers={scopeLayers}
-          onStateChange={(props) => {
+          onStateChange={(props, switched) => {
             const coerced: Record<string, unknown> = {}
             for (const [k, v] of Object.entries(props)) {
               if (v === 'true') coerced[k] = true
@@ -2030,7 +2112,7 @@ export function InspectorPanel({
               else if (v !== '' && !isNaN(Number(v))) coerced[k] = Number(v)
               else { try { coerced[k] = JSON.parse(v) } catch { coerced[k] = v } }
             }
-            notifyPropsChange(coerced)
+            notifyPropsChange(coerced, switched)
           }}
         />
       )}

@@ -17,10 +17,23 @@ function defaultForType(typeStr: string): string {
   return ''
 }
 
+/** Return true if a default value string looks like an expression rather than a plain literal.
+ * States only hold plain values — bindings/expressions belong in source code, not state data. */
+function isExpression(val: string): boolean {
+  if (!val) return false
+  const v = val.trim()
+  // string literal — plain value
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return false
+  // numeric / boolean literal
+  if (v === 'true' || v === 'false' || /^-?\d+(\.\d+)?$/.test(v)) return false
+  // everything else: operators, function calls, ternaries, identifiers → treat as expression
+  return true
+}
+
 interface StatesPanelProps {
   pageName: string
   projectRoot: string
-  onStateChange: (props: Record<string, string>) => void
+  onStateChange: (props: Record<string, string>, switched?: boolean) => void
   scopeLayers?: ScopeLayer[]
 }
 
@@ -114,7 +127,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
       if (activeKeyRef.current !== key) return
       dataRef.current = d
       setData(d)
-      onStateChangeRef.current(d)
+      onStateChangeRef.current(d, true)
     } catch {
       if (activeKeyRef.current !== key) return
       dataRef.current = {}
@@ -136,24 +149,6 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     scheduleSave(nextData, activeKey)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, scheduleSave])
-
-  // Sync: when root props change, add missing fields and remove deleted ones — do NOT notify preview
-  // Skip while a load is in flight to avoid writing stale data to the new state.
-  useEffect(() => {
-    const rootLayer = scopeLayers[0]
-    if (!rootLayer || !activeKey || loadingRef.current) return
-    const propNames = new Set(rootLayer.props.map(p => p.name))
-    const missing = rootLayer.props.filter(p => !(p.name in dataRef.current))
-    const extra = Object.keys(dataRef.current).filter(k => !propNames.has(k))
-    if (missing.length === 0 && extra.length === 0) return
-    const next = { ...dataRef.current }
-    for (const p of missing) next[p.name] = p.defaultValue ?? defaultForType(p.typeStr)
-    for (const k of extra) delete next[k]
-    dataRef.current = next
-    setData(next)
-    scheduleSave(next, activeKey)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeLayers, activeKey, scheduleSave])
 
   const handleFieldValueChange = (fieldKey: string, value: string) => {
     updateData({ ...data, [fieldKey]: value })
@@ -195,7 +190,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
       const scopeData: Record<string, string> = rootLayer
         ? Object.fromEntries(rootLayer.props.map(item => [
             item.name,
-            item.name in dataRef.current ? dataRef.current[item.name] : (item.defaultValue ?? defaultForType(item.typeStr))
+            item.name in dataRef.current ? dataRef.current[item.name] : ((item.defaultValue && !isExpression(item.defaultValue)) ? item.defaultValue : defaultForType(item.typeStr))
           ]))
         : {}
       if (Object.keys(scopeData).length > 0) {

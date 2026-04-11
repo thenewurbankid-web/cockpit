@@ -36,9 +36,9 @@ export function notifyPreviewRefresh(): void {
   } catch { /* cross-origin safety */ }
 }
 
-export function notifyPropsChange(props: Record<string, unknown>): void {
+export function notifyPropsChange(props: Record<string, unknown>, reset?: boolean): void {
   try {
-    previewIframeWindow?.postMessage({ type: 'cockpit:set-props', props }, location.origin)
+    previewIframeWindow?.postMessage({ type: 'cockpit:set-props', props, reset }, location.origin)
   } catch { /* cross-origin safety */ }
 }
 
@@ -315,6 +315,7 @@ export function ComponentLoader({
   pagesDir,
   componentsDir,
   fixtureProps,
+  fixtureKey,
   onOpenSettings,
   onOpenSource,
   onRuntimeError,
@@ -326,6 +327,7 @@ export function ComponentLoader({
   pagesDir: string
   componentsDir: string
   fixtureProps?: Record<string, unknown> | null
+  fixtureKey?: number
   onOpenSettings?: (pkgs: string[]) => void
   onOpenSource?: (filePath: string) => void
   onRuntimeError?: () => void
@@ -408,7 +410,7 @@ export function ComponentLoader({
         />
       )}
       <Suspense fallback={<div style={styles.loading}>Loading component…</div>}>
-        <ErrorBoundary key={`${folder}-${page}-${resetKey}`} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError}>
+        <ErrorBoundary key={`${folder}-${page}-${resetKey}-${fixtureKey ?? 0}`} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError}>
           {folder === 'components'
             ? <ComponentPreviewShell Component={Loaded} filePath={filePath} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError} />
             : <Loaded {...(fixtureProps ?? {})} />}

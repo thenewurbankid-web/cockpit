@@ -22,11 +22,15 @@ if (import.meta.hot) {
 
 function PreviewApp() {
   const [fixtureProps, setFixtureProps] = useState<Record<string, unknown> | null>(null)
+  const [fixtureKey, setFixtureKey] = useState(0)
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
       if (e.data?.type === 'cockpit:refresh') notifyPreviewRefresh()
-      if (e.data?.type === 'cockpit:set-props') setFixtureProps(e.data.props as Record<string, unknown>)
+      if (e.data?.type === 'cockpit:set-props') {
+        setFixtureProps(e.data.props as Record<string, unknown>)
+        if (e.data.reset) setFixtureKey(k => k + 1)
+      }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
@@ -41,6 +45,8 @@ function PreviewApp() {
       pagesDir={pagesDir}
       componentsDir={componentsDir}
       fixtureProps={fixtureProps}
+      fixtureKey={fixtureKey}
+
     />
   )
 }

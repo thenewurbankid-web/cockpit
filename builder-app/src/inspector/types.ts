@@ -67,6 +67,12 @@ export interface ScopeLayer {
   state: ScopeItem[]
   /** Binding links: which parent variable is passed to which child prop. */
   links?: Array<{ parentVar: string; childProp: string }>
+  /**
+   * Downstream bindings: child components that receive this component's
+   * props/state as JSX expression bindings. Only populated for the root layer.
+   * Used by ScopePanel to show a color-coded "used by" downstream view.
+   */
+  childBindings?: Array<{ componentName: string; bindings: Array<{ rootVar: string; childProp: string }> }>
 }
 
 export interface InspectorPanelProps {

@@ -7,6 +7,7 @@ import { hasMultipleComponents, collectComponentFiles, buildMixedTree, firstDomE
 import { countNodes, findPathToEl, findNodeByKey, getNodeFile, getNodeLine, computeRelativeImportPath } from './helpers'
 import { TreeRow } from './TreeRow'
 import { styles } from './styles'
+import { deleteJsxNode } from '../inspector/astRewriters'
 
 export type { ExpressionMeta, WrapIntentNode, SelectedNodeSnapshot }
 
@@ -168,6 +169,7 @@ export function DOMTreePanel({
   const [multiSelected, setMultiSelected] = useState<MultiItem[]>([])
   const multiSelectedKeys = useMemo(() => new Set(multiSelected.map(s => s.key)), [multiSelected])
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenuNode, setContextMenuNode] = useState<DisplayNode | null>(null)
   const [applyExprState, setApplyExprState] = useState<{
     expr: ExpressionMeta | null
     propValues: Record<string, string>
@@ -203,7 +205,7 @@ export function DOMTreePanel({
   // Close context menu on outside click
   useEffect(() => {
     if (!contextMenuPos) return
-    function onDown() { setContextMenuPos(null) }
+    function onDown() { setContextMenuPos(null); setContextMenuNode(null) }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [contextMenuPos])
@@ -241,6 +243,7 @@ export function DOMTreePanel({
     if (file && line != null && multiSelected.length === 0) {
       setMultiSelected([{ key: node.key, file, line, tag: nodeTag(node) }])
     }
+    setContextMenuNode(node)
     setContextMenuPos({ x: e.clientX, y: e.clientY })
   }
 
@@ -1127,10 +1130,38 @@ export function DOMTreePanel({
             </div>
           )}
           <div
+            style={{ padding: '7px 12px', color: '#f38ba8', cursor: 'pointer', borderBottom: '1px solid #313244' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(243,139,168,0.10)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+            onClick={async () => {
+              const node = contextMenuNode
+              setContextMenuPos(null)
+              setContextMenuNode(null)
+              if (!node) return
+              const file = getNodeFile(node)
+              const line = getNodeLine(node)
+              if (!file || line == null) return
+              try {
+                const res = await fetch(`/__source?file=${encodeURIComponent(file)}`)
+                if (!res.ok) return
+                const source = await res.text()
+                const newSource = deleteJsxNode(source, line)
+                if (newSource === source) return
+                await fetch('/__source', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ file, content: newSource }),
+                })
+              } catch { /* ignore */ }
+            }}
+          >
+            Delete node
+          </div>
+          <div
             style={{ padding: '7px 12px', color: '#6c7086', cursor: 'pointer' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(137,180,250,0.08)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
-            onClick={() => { setMultiSelected([]); setContextMenuPos(null) }}
+            onClick={() => { setMultiSelected([]); setContextMenuPos(null); setContextMenuNode(null) }}
           >
             Clear selection
           </div>

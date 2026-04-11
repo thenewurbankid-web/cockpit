@@ -22,6 +22,19 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
     if (link.childProp) childPropColor.set(link.childProp, color)
   })
 
+  // Build a color per unique rootVar that flows down to child components
+  const allChildBindings = childLayer?.childBindings ?? []
+  const rootVarChildColor = new Map<string, string>()
+  let childColorIdx = links.length
+  for (const { bindings } of allChildBindings) {
+    for (const { rootVar } of bindings) {
+      if (!rootVarChildColor.has(rootVar)) {
+        rootVarChildColor.set(rootVar, LINK_COLORS[childColorIdx % LINK_COLORS.length])
+        childColorIdx++
+      }
+    }
+  }
+
   return (
     <div style={scopeStyles.panel}>
       <button style={scopeStyles.header} onClick={() => setExpanded(v => !v)}>
@@ -36,9 +49,12 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
         <div style={scopeStyles.body}>
           {[...layers].reverse().map((layer, ri) => {
             const depth = layers.length - 1 - ri
-            const isLast = ri === layers.length - 1
+            // Keep the connector line if there are child layers below the current
+            const isLast = ri === layers.length - 1 && allChildBindings.length === 0
             const canEdit = !readOnly && layer.isCurrent
-            const colorMap = layer.isCurrent ? childPropColor : parentVarColor
+            const colorMap = layer.isCurrent
+              ? new Map([...childPropColor, ...rootVarChildColor])
+              : parentVarColor
             return (
               <div key={layer.componentName} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12, position: 'relative' }}>
                 {!isLast && (
@@ -101,6 +117,44 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
                           onClick={() => onAddState(layer.componentName)}
                         >+</span>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Child component layers — vars from current scope flowing down */}
+          {allChildBindings.map(({ componentName, bindings }, di) => {
+            const depth = layers.length
+            const isLastChild = di === allChildBindings.length - 1
+            return (
+              <div key={`${componentName}-${di}`} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12, position: 'relative' }}>
+                {!isLastChild && (
+                  <div style={{
+                    position: 'absolute',
+                    left: 8 + depth * 12 + 5,
+                    top: 18,
+                    bottom: -6,
+                    width: 1,
+                    background: 'rgba(137,180,250,0.18)',
+                  }} />
+                )}
+                <div style={scopeStyles.layerHeader}>
+                  <span style={scopeStyles.layerNameParent}>◦ {componentName}</span>
+                  <span style={scopeStyles.parentBadge}>child</span>
+                </div>
+                {bindings.length > 0 && (
+                  <div style={scopeStyles.group}>
+                    <span style={scopeStyles.groupLabel}>{/^[a-z]/.test(componentName) ? 'attrs' : 'props'}</span>
+                    <div style={scopeStyles.items}>
+                      {bindings.map(({ childProp, rootVar }) => (
+                        <ScopeItemChip
+                          key={`${rootVar}:${childProp}`}
+                          item={{ name: childProp, typeStr: '', usedInNode: true }}
+                          linkColor={rootVarChildColor.get(rootVar)}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}

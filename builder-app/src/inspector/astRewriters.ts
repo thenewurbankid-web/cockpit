@@ -2,6 +2,85 @@ import { parse } from '@babel/parser'
 import type { AstNode, AstLocFull } from './types'
 import { findSmallestContainingNode } from './astHelpers'
 
+/**
+ * Replace JSX text children of an element with a JSX expression container.
+ * Converts <Btn>Sign In</Btn>  →  <Btn>{loading?'...':'Sign In'}</Btn>
+ * Used when the user switches the "children" binding from value → expression mode.
+ */
+/**
+ * Delete the JSX element at `targetLine` from source.
+ * Removes the entire element (opening tag, children, closing tag) plus any
+ * surrounding blank line left behind.
+ */
+export function deleteJsxNode(source: string, targetLine: number): string {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const root = ast.program as unknown as AstNode
+    const jsxNode = findSmallestContainingNode(root, targetLine, (n) => n.type === 'JSXElement' || n.type === 'JSXFragment')
+    if (!jsxNode) return source
+    const loc = jsxNode.loc as AstLocFull | undefined
+    if (!loc) return source
+    const lines = source.split('\n')
+    const startIdx = loc.start.line - 1   // 0-based
+    const endIdx = loc.end.line - 1       // 0-based inclusive
+    // Check whether the element occupies full lines (nothing else on those lines)
+    const beforeOnStartLine = lines[startIdx].slice(0, loc.start.column).trim()
+    const afterOnEndLine = lines[endIdx].slice(loc.end.column).trim()
+    if (beforeOnStartLine === '' && afterOnEndLine === '') {
+      // Remove whole lines, then clean up any empty line left behind
+      lines.splice(startIdx, endIdx - startIdx + 1)
+      if (startIdx < lines.length && lines[startIdx].trim() === '') {
+        lines.splice(startIdx, 1)
+      }
+    } else {
+      // Element is inline — remove just the element text
+      const before = lines[startIdx].slice(0, loc.start.column)
+      const after = lines[endIdx].slice(loc.end.column)
+      lines.splice(startIdx, endIdx - startIdx + 1, before + after)
+    }
+    return lines.join('\n')
+  } catch {
+    return source
+  }
+}
+
+export function rewriteJsxChildrenAsExpression(source: string, targetLine: number, expr: string): string {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const root = ast.program as unknown as AstNode
+    const jsxNode = findSmallestContainingNode(root, targetLine, (n) => n.type === 'JSXElement')
+    if (!jsxNode) return source
+
+    const opening = jsxNode.openingElement as AstNode | undefined
+    const closing = jsxNode.closingElement as AstNode | undefined
+    if (!opening || !closing) return source
+
+    const openLoc = opening.loc as AstLocFull | undefined
+    const closeLoc = closing.loc as AstLocFull | undefined
+    if (!openLoc || !closeLoc) return source
+
+    // Replace everything between end of opening tag and start of closing tag with {expr}
+    const lines = source.split('\n')
+    const startLine = openLoc.end.line - 1   // 0-based
+    const startCol  = openLoc.end.column
+    const endLine   = closeLoc.start.line - 1 // 0-based
+    const endCol    = closeLoc.start.column
+
+    if (startLine === endLine) {
+      const ln = lines[startLine]
+      lines[startLine] = ln.slice(0, startCol) + `{${expr}}` + ln.slice(endCol)
+    } else {
+      // Multi-line children: splice out intermediate lines and rebuild
+      const before = lines[startLine].slice(0, startCol)
+      const after  = lines[endLine].slice(endCol)
+      lines.splice(startLine, endLine - startLine + 1, before + `{${expr}}` + after)
+    }
+    return lines.join('\n')
+  } catch {
+    return source
+  }
+}
+
 /** Rewrite a single JSX attribute value in the full source string. */
 export function rewriteAttrValue(source: string, targetLine: number, attrName: string, newValue: string, asExpression: boolean): string {
   try {

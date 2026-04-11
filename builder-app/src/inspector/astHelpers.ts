@@ -305,3 +305,134 @@ export function extractBlock(
   if (jsx) return jsx
   return extractFunctionBlock(lines, target)
 }
+
+/**
+ * Scan a component's JSX for child component usages that receive root-scope
+ * variables (props or state) as expression bindings.
+ *
+ * Returns one entry per child component name with its list of bindings:
+ *   { componentName: 'Button', bindings: [{ rootVar: 'loading', childProp: 'disabled' }] }
+ *
+ * Walks full attribute expressions — detects ternaries, logical operators, etc.
+ * Only shows components that actually receive a rootVar as a prop value.
+ */
+export function extractChildBindings(
+  source: string,
+  ownerName: string,
+  rootVars: Set<string>,
+): Array<{ componentName: string; bindings: Array<{ rootVar: string; childProp: string }> }> {
+  try {
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const root = ast.program as unknown as AstNode
+
+    // Collect rootVar identifiers in an expression — does NOT traverse into nested JSXElements
+    // to prevent false positives like icon={<Icon color={rootVar}/>} registering as a binding.
+    function collectRootVarRefs(exprNode: AstNode): string[] {
+      const found: string[] = []
+      function walkExpr(n: AstNode) {
+        if (n.type === 'JSXElement' || n.type === 'JSXFragment') return // don't go into nested JSX
+        if (n.type === 'Identifier' && rootVars.has((n as any).name)) {
+          found.push((n as any).name as string)
+        }
+        for (const c of getChildNodes(n)) walkExpr(c)
+      }
+      walkExpr(exprNode)
+      return [...new Set(found)]
+    }
+
+    // Find the owner component body node to scope our search.
+    const ownerNode = findNamedComponentNode(root, ownerName)
+    const searchRoot = ownerNode ?? root
+
+    // Each JSX element occurrence is its own entry — don't group same-name components
+    const results: Array<{ componentName: string; bindings: Array<{ childProp: string; rootVar: string }> }> = []
+
+    function walk(node: AstNode) {
+      if (node.type === 'JSXElement') {
+        const opening = node.openingElement as AstNode | undefined
+        const nameNode = opening?.name as (AstNode & { name?: string; object?: unknown }) | undefined
+        // Resolve the component name: JSXIdentifier or JSXMemberExpression
+        let compName: string | null = null
+        if (nameNode?.type === 'JSXIdentifier' && typeof nameNode.name === 'string') {
+          compName = nameNode.name
+        } else if (nameNode?.type === 'JSXMemberExpression') {
+          // e.g. TextField.Input — use root identifier
+          const obj = nameNode.object as (AstNode & { name?: string }) | undefined
+          compName = typeof obj?.name === 'string' ? obj.name : null
+        }
+
+        if (compName && /^[A-Z]/.test(compName)) {
+          // React component: collect prop bindings, stop recursion into its children.
+          const attrs = (opening?.attributes as AstNode[] | undefined) ?? []
+          const elementBindings: Array<{ childProp: string; rootVar: string }> = []
+          for (const attr of attrs) {
+            if (attr.type !== 'JSXAttribute') continue
+            const attrName = (attr.name as AstNode & { name?: string } | undefined)?.name
+            if (!attrName) continue
+            const valueNode = attr.value as AstNode | null | undefined
+            if (!valueNode) continue
+            if (valueNode.type !== 'JSXExpressionContainer') continue
+            const expr = valueNode.expression as AstNode | undefined
+            if (!expr || expr.type === 'JSXEmptyExpression') continue
+            for (const varName of collectRootVarRefs(expr)) {
+              if (!elementBindings.some(b => b.childProp === attrName && b.rootVar === varName)) {
+                elementBindings.push({ childProp: attrName, rootVar: varName })
+              }
+            }
+          }
+          if (elementBindings.length > 0) {
+            results.push({ componentName: compName, bindings: elementBindings })
+          }
+          // Stop recursion — don't visit this component's JSX children.
+          return
+        } else if (compName) {
+          // Native DOM element (div, span, img, etc.): collect attr + text-child bindings,
+          // then continue recursing into its children.
+          const attrs = (opening?.attributes as AstNode[] | undefined) ?? []
+          const elementBindings: Array<{ childProp: string; rootVar: string }> = []
+          for (const attr of attrs) {
+            if (attr.type !== 'JSXAttribute') continue
+            const attrName = (attr.name as AstNode & { name?: string } | undefined)?.name
+            if (!attrName) continue
+            const valueNode = attr.value as AstNode | null | undefined
+            if (!valueNode) continue
+            if (valueNode.type !== 'JSXExpressionContainer') continue
+            const expr = valueNode.expression as AstNode | undefined
+            if (!expr || expr.type === 'JSXEmptyExpression') continue
+            for (const varName of collectRootVarRefs(expr)) {
+              if (!elementBindings.some(b => b.childProp === attrName && b.rootVar === varName)) {
+                elementBindings.push({ childProp: attrName, rootVar: varName })
+              }
+            }
+          }
+          // Also check direct expression children: <span>{email}</span>
+          const jsxChildren = ((node as any).children as AstNode[] | undefined) ?? []
+          for (const child of jsxChildren) {
+            if (child.type === 'JSXExpressionContainer') {
+              const expr = (child as any).expression as AstNode | undefined
+              if (expr && expr.type !== 'JSXEmptyExpression') {
+                for (const varName of collectRootVarRefs(expr)) {
+                  if (!elementBindings.some(b => b.childProp === 'children' && b.rootVar === varName)) {
+                    elementBindings.push({ childProp: 'children', rootVar: varName })
+                  }
+                }
+              }
+            }
+          }
+          if (elementBindings.length > 0) {
+            results.push({ componentName: compName, bindings: elementBindings })
+          }
+          // Fall through to recurse into this DOM element's children below.
+        }
+      }
+      for (const child of getChildNodes(node)) walk(child)
+    }
+
+    walk(searchRoot)
+
+    return results
+  } catch {
+    return []
+  }
+}
+
