@@ -1,0 +1,407 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Editor from '@monaco-editor/react'
+import { scopeStyles } from './styles'
+import type { ScopeLayer } from './types'
+
+interface StateEntry {
+  key: string
+  label: string
+}
+
+function defaultForType(typeStr: string): string {
+  const t = typeStr.trim().toLowerCase()
+  if (t === 'boolean') return 'false'
+  if (t === 'number') return '0'
+  if (t.endsWith('[]') || t.startsWith('array<')) return '[]'
+  if (t === 'object' || t.startsWith('{')) return '{}'
+  return ''
+}
+
+interface StatesPanelProps {
+  pageName: string
+  projectRoot: string
+  onStateChange: (props: Record<string, string>) => void
+  scopeLayers?: ScopeLayer[]
+}
+
+export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers = [] }: StatesPanelProps) {
+  const [states, setStates] = useState<StateEntry[]>([])
+  const [activeKey, setActiveKey] = useState<string>('')
+  const [data, setData] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+  const [addingState, setAddingState] = useState(false)
+  const [newStateName, setNewStateName] = useState('')
+  const [newKeyInput, setNewKeyInput] = useState('')
+  const [newValueInput, setNewValueInput] = useState('')
+  const [expanded, setExpanded] = useState(true)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dataRef = useRef<Record<string, string>>({})
+  const activeKeyRef = useRef<string>('')
+  const loadingRef = useRef(false)
+  const onStateChangeRef = useRef(onStateChange)
+  useEffect(() => { onStateChangeRef.current = onStateChange }, [onStateChange])
+
+  const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(pageName)}`
+
+  const loadStates = useCallback(async () => {
+    if (!projectRoot || !pageName) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/__source/list-states?${qs}`)
+      const json = await res.json()
+      const list: StateEntry[] = json.states ?? []
+      setStates(list)
+      if (list.length > 0) {
+        const current = activeKeyRef.current
+        const next = list.some(s => s.key === current) ? current : list[0].key
+        setActiveKey(next)
+        // Eagerly load data for the first state so the preview updates on mount
+        if (next !== current) {
+          void loadDataRef.current(next)
+        }
+      } else {
+        setActiveKey('')
+        setData({})
+        dataRef.current = {}
+      }
+    } catch (e) {
+      console.error('[StatesPanel] loadStates error', e)
+      setStates([])
+    } finally {
+      setLoading(false)
+    }
+  }, [projectRoot, pageName])
+
+  const scheduleSave = useCallback((nextData: Record<string, string>, key: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await fetch('/__source/state-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectRoot, page: pageName, state: key, data: nextData }),
+        })
+      } catch { /* best-effort */ }
+    }, 400)
+  }, [projectRoot, pageName])
+
+  const flushSave = useCallback((key: string) => {
+    if (!saveTimer.current) return
+    clearTimeout(saveTimer.current)
+    saveTimer.current = null
+    const snapshot = { ...dataRef.current }
+    void fetch('/__source/state-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, page: pageName, state: key, data: snapshot }),
+    }).catch(() => { /* best-effort */ })
+  }, [projectRoot, pageName])
+
+  const flushSaveRef = useRef(flushSave)
+  useEffect(() => { flushSaveRef.current = flushSave }, [flushSave])
+
+  const loadDataRef = useRef<(key: string) => Promise<void>>(async () => {})
+
+  const loadData = useCallback(async (key: string) => {
+    if (!key) return
+    flushSaveRef.current(activeKeyRef.current)
+    activeKeyRef.current = key
+    loadingRef.current = true
+    try {
+      const res = await fetch(`/__source/state-data?${qs}&state=${encodeURIComponent(key)}`)
+      const json = await res.json()
+      const d = json.data ?? {}
+      if (activeKeyRef.current !== key) return
+      dataRef.current = d
+      setData(d)
+      onStateChangeRef.current(d)
+    } catch {
+      if (activeKeyRef.current !== key) return
+      dataRef.current = {}
+      setData({})
+    } finally {
+      if (activeKeyRef.current === key) loadingRef.current = false
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qs])
+  useEffect(() => { loadDataRef.current = loadData }, [loadData])
+
+  useEffect(() => { loadStates() }, [loadStates])
+  useEffect(() => { if (activeKey) loadData(activeKey) }, [activeKey, loadData])
+
+  const updateData = useCallback((nextData: Record<string, string>) => {
+    dataRef.current = nextData
+    setData(nextData)
+    onStateChangeRef.current(nextData)
+    scheduleSave(nextData, activeKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, scheduleSave])
+
+  // Sync: when root props change, add missing fields and remove deleted ones — do NOT notify preview
+  // Skip while a load is in flight to avoid writing stale data to the new state.
+  useEffect(() => {
+    const rootLayer = scopeLayers[0]
+    if (!rootLayer || !activeKey || loadingRef.current) return
+    const propNames = new Set(rootLayer.props.map(p => p.name))
+    const missing = rootLayer.props.filter(p => !(p.name in dataRef.current))
+    const extra = Object.keys(dataRef.current).filter(k => !propNames.has(k))
+    if (missing.length === 0 && extra.length === 0) return
+    const next = { ...dataRef.current }
+    for (const p of missing) next[p.name] = p.defaultValue ?? defaultForType(p.typeStr)
+    for (const k of extra) delete next[k]
+    dataRef.current = next
+    setData(next)
+    scheduleSave(next, activeKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeLayers, activeKey, scheduleSave])
+
+  const handleFieldValueChange = (fieldKey: string, value: string) => {
+    updateData({ ...data, [fieldKey]: value })
+  }
+
+  const handleFieldKeyChange = (oldKey: string, newKey: string) => {
+    if (!newKey || newKey === oldKey) return
+    const entries = Object.entries(data).map(([k, v]) => [k === oldKey ? newKey : k, v] as [string, string])
+    updateData(Object.fromEntries(entries))
+  }
+
+  const handleDeleteField = (fieldKey: string) => {
+    const next = { ...data }
+    delete next[fieldKey]
+    updateData(next)
+  }
+
+  const handleAddField = () => {
+    const k = newKeyInput.trim()
+    if (!k) return
+    const next = { ...data, [k]: newValueInput }
+    updateData(next)
+    setNewKeyInput('')
+    setNewValueInput('')
+  }
+
+  const handleCreateState = async () => {
+    const name = newStateName.trim().replace(/\s+/g, '-').toLowerCase()
+    if (!name) return
+    try {
+      const res = await fetch('/__source/create-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectRoot, page: pageName, stateName: name }),
+      })
+      if (!res.ok) return
+      // Auto-populate: copy current state data (if any), then fill in any missing props with defaults
+      const rootLayer = scopeLayers[0]
+      const scopeData: Record<string, string> = rootLayer
+        ? Object.fromEntries(rootLayer.props.map(item => [
+            item.name,
+            item.name in dataRef.current ? dataRef.current[item.name] : (item.defaultValue ?? defaultForType(item.typeStr))
+          ]))
+        : {}
+      if (Object.keys(scopeData).length > 0) {
+        await fetch('/__source/state-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectRoot, page: pageName, state: name, data: scopeData }),
+        })
+      }
+      setNewStateName('')
+      setAddingState(false)
+      await loadStates()
+      setActiveKey(name)
+    } catch { /* best-effort */ }
+  }
+
+  const handleDeleteState = async () => {
+    if (!activeKey) return
+    try {
+      await fetch(`/__source/state?${qs}&state=${encodeURIComponent(activeKey)}`, { method: 'DELETE' })
+      await loadStates()
+    } catch { /* best-effort */ }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    background: '#181825',
+    border: '1px solid #313244',
+    borderRadius: 3,
+    color: '#cdd6f4',
+    padding: '2px 5px',
+    fontSize: 11,
+    fontFamily: 'monospace',
+    outline: 'none',
+    minWidth: 0,
+  }
+
+  const btnStyle: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    color: '#6c7086',
+    cursor: 'pointer',
+    fontSize: 13,
+    padding: '0 3px',
+    lineHeight: 1,
+    flexShrink: 0,
+  }
+
+  if (!pageName || !projectRoot) return null
+
+  return (
+    <div style={{ borderTop: '1px solid #1e1e2e', background: '#13131f' }}>
+      {/* Header */}
+      <div
+        style={{ ...scopeStyles.header, cursor: 'pointer' }}
+        onClick={() => setExpanded(v => !v)}
+      >
+        <span style={scopeStyles.chevron}>{expanded ? '▾' : '▸'}</span>
+        <span>States</span>
+        {loading && <span style={{ color: '#45475a', fontSize: '0.6rem', fontWeight: 400 }}>…</span>}
+        <button
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#89b4fa', fontSize: 14, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+          title="Add state"
+          onClick={(e) => { e.stopPropagation(); setAddingState(true); setNewStateName('') }}
+        >+</button>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '6px 10px 8px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+
+          {/* New state name input */}
+          {addingState && (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <input
+                autoFocus
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="state name (e.g. loading)"
+                value={newStateName}
+                onChange={e => setNewStateName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') void handleCreateState()
+                  if (e.key === 'Escape') setAddingState(false)
+                }}
+              />
+              <button
+                style={{ ...btnStyle, color: '#a6e3a1', fontSize: 11 }}
+                onClick={() => void handleCreateState()}
+              >✓</button>
+              <button
+                style={{ ...btnStyle, fontSize: 11 }}
+                onClick={() => setAddingState(false)}
+              >✕</button>
+            </div>
+          )}
+
+          {/* State dropdown + delete */}
+          {states.length > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <select
+                value={activeKey}
+                onChange={e => setActiveKey(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  flex: 1,
+                  cursor: 'pointer',
+                  padding: '3px 5px',
+                }}
+              >
+                {states.map(s => (
+                  <option key={s.key} value={s.key}>{s.label}</option>
+                ))}
+              </select>
+              <button
+                style={{ ...btnStyle, color: '#f38ba8' }}
+                title="Delete state"
+                onClick={() => void handleDeleteState()}
+              >×</button>
+            </div>
+          ) : !addingState && (
+            <div style={{ fontSize: 11, color: '#45475a', textAlign: 'center', padding: '4px 0' }}>
+              No states — click + to add one
+            </div>
+          )}
+
+          {/* Data field rows */}
+          {activeKey && Object.entries(data).map(([fieldKey, fieldValue]) => (
+            <div key={fieldKey} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <input
+                style={{ ...inputStyle, width: 90, flexShrink: 0 }}
+                defaultValue={fieldKey}
+                placeholder="key"
+                onBlur={e => handleFieldKeyChange(fieldKey, e.target.value)}
+              />
+              <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
+              <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
+                <Editor
+                  height={20}
+                  language="javascript"
+                  theme="vs-dark"
+                  value={fieldValue}
+                  onChange={v => handleFieldValueChange(fieldKey, v ?? '')}
+                  options={{
+                    fontSize: 11,
+                    lineNumbers: 'off',
+                    minimap: { enabled: false },
+                    scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
+                    overviewRulerLanes: 0,
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'off',
+                    renderLineHighlight: 'none',
+                    glyphMargin: false,
+                    folding: false,
+                    lineDecorationsWidth: 0,
+                    lineNumbersMinChars: 0,
+                    padding: { top: 2, bottom: 2 },
+                  }}
+                />
+              </div>
+              <button
+                style={{ ...btnStyle, color: '#585b70' }}
+                title="Remove field"
+                onClick={() => handleDeleteField(fieldKey)}
+              >×</button>
+            </div>
+          ))}
+
+          {/* Add field row */}
+          {activeKey && (
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <input
+                style={{ ...inputStyle, width: 90, flexShrink: 0 }}
+                placeholder="+ key"
+                value={newKeyInput}
+                onChange={e => setNewKeyInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddField() }}
+                onBlur={handleAddField}
+              />
+              <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
+              <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
+                <Editor
+                  height={20}
+                  language="javascript"
+                  theme="vs-dark"
+                  value={newValueInput}
+                  onChange={v => setNewValueInput(v ?? '')}
+                  options={{
+                    fontSize: 11,
+                    lineNumbers: 'off',
+                    minimap: { enabled: false },
+                    scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
+                    overviewRulerLanes: 0,
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'off',
+                    renderLineHighlight: 'none',
+                    glyphMargin: false,
+                    folding: false,
+                    lineDecorationsWidth: 0,
+                    lineNumbersMinChars: 0,
+                    padding: { top: 2, bottom: 2 },
+                  }}
+                />
+              </div>
+              <div style={{ width: 16, flexShrink: 0 }} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

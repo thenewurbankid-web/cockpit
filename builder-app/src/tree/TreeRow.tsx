@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { highlightElement, clearHighlight } from '../highlight'
+import { isInChildrenPropOf } from '../fiberSource'
 import type { DisplayNode } from './types'
 import { firstDomElement } from './treeBuilders'
 
 /** Recursively extracts non-DOM nodes from a children list, hoisting component/ghost/loop
- *  nodes out of any DOM wrappers so only the React component hierarchy is shown. */
-function flattenToComponents(nodes: DisplayNode[]): DisplayNode[] {
+ *  nodes out of any DOM wrappers so only React components explicitly passed as slot children
+ *  (between open/close tags) are shown. Named-prop components (e.g. badge2={<Badge>}) are filtered out. */
+function flattenToComponents(nodes: DisplayNode[], parentComponentName?: string): DisplayNode[] {
   const result: DisplayNode[] = []
   for (const node of nodes) {
     if (node.kind === 'dom') {
-      result.push(...flattenToComponents(node.children))
+      result.push(...flattenToComponents(node.children, parentComponentName))
     } else {
+      if (parentComponentName && node.kind === 'component') {
+        const el = firstDomElement(node)
+        if (el && !isInChildrenPropOf(el, parentComponentName)) continue
+      }
       result.push(node)
     }
   }
@@ -52,7 +58,8 @@ interface RowProps {
 export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey, filterDomNodes = false }: RowProps) {
   // Child component nodes (depth > 0) start collapsed but are expandable.
   const isChildComponent = node.kind === 'component' && node.depth > 0
-  // Once inside a child component subtree, DOM nodes are hidden.
+  // Inside a child component subtree, hide DOM nodes — only show nested React component nodes
+  // (i.e. what the page source explicitly composes, not the component's internal DOM implementation).
   const hideDOM = isChildComponent || filterDomNodes
   const [open, setOpen] = useState(!isChildComponent)
   const rowRef = useRef<HTMLDivElement>(null)
@@ -72,7 +79,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
   const isSelected = nodeElement !== null && nodeElement === selected
   const isMultiSelected = multiSelectedKeys.has(node.key)
   // Pre-processed children: when inside a child component subtree, strip DOM nodes.
-  const visibleChildren = hideDOM ? flattenToComponents(node.children) : node.children
+  const visibleChildren = hideDOM ? flattenToComponents(node.children, node.kind === 'component' ? node.name : undefined) : node.children
   const hasChildren = visibleChildren.length > 0
 
   const isDom = node.kind === 'dom'

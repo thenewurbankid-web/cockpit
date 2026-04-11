@@ -842,6 +842,9 @@ export default function App() {
             wrapChosenExpr={wrapChosenExpr}
             onWrapChooseExpr={setWrapChosenExpr}
             hasRuntimeError={previewHasError}
+            activeSection={activeSection}
+            activePage={activePage?.root ?? ''}
+            projectRoot={projectRoot ?? ''}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)
               setActiveSection('components')

@@ -820,3 +820,131 @@ export function rewriteDefaultValue(source: string, ownerName: string, propName:
     return source
   }
 }
+
+/**
+ * Reorder all props in the interface/type alias AND the component's destructure params
+ * to match `orderedNames`. Names not in the list are appended in original order.
+ * Handles both single-line and multi-line prop declarations.
+ */
+export function reorderPropsInSource(source: string, orderedNames: string[]): string {
+  if (orderedNames.length === 0) return source
+  try {
+    type ItemInfo = { name: string; startLine: number; endLine: number; startColumn: number; endColumn: number }
+
+    /** Reorder multi-line items (each item starts on its own line). Mutates srcLines. */
+    function reorderMultiLine(srcLines: string[], items: ItemInfo[], order: string[]): void {
+      const itemTexts = items.map(item => srcLines.slice(item.startLine - 1, item.endLine))
+      const nameToText = new Map(items.map((item, i) => [item.name, itemTexts[i]]))
+      const first0 = items[0].startLine - 1
+      const last0 = items[items.length - 1].endLine - 1
+      const slotIndents = items.map(item => (srcLines[item.startLine - 1].match(/^(\s*)/) ?? ['', ''])[1])
+      const newLines: string[] = []
+      for (let i = 0; i < order.length; i++) {
+        const text = nameToText.get(order[i]) ?? itemTexts[i]
+        newLines.push(slotIndents[i] + text[0].trimStart())
+        for (let j = 1; j < text.length; j++) newLines.push(text[j])
+      }
+      srcLines.splice(first0, last0 - first0 + 1, ...newLines)
+    }
+
+    /** Reorder single-line items (all on the same line). Mutates srcLines. */
+    function reorderSingleLine(srcLines: string[], items: ItemInfo[], order: string[]): void {
+      const lineIdx = items[0].startLine - 1
+      const ln = srcLines[lineIdx]
+      const texts = items.map(item => ln.slice(item.startColumn, item.endColumn))
+      const seps = items.slice(0, -1).map((item, i) => ln.slice(item.endColumn, items[i + 1].startColumn))
+      const nameToText = new Map(items.map((item, i) => [item.name, texts[i]]))
+      const newSection = order.reduce((acc, name, i) => acc + (nameToText.get(name) ?? '') + (i < seps.length ? seps[i] : ''), '')
+      srcLines[lineIdx] = ln.slice(0, items[0].startColumn) + newSection + ln.slice(items[items.length - 1].endColumn)
+    }
+
+    function buildOrder(items: ItemInfo[]): string[] {
+      const remaining = items.filter(item => !orderedNames.includes(item.name)).map(item => item.name)
+      return [...orderedNames.filter(n => items.some(item => item.name === n)), ...remaining]
+    }
+
+    // ── Step 1: Reorder interface / type alias members (always multi-line) ────
+    const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body = (ast.program as unknown as { body: AstNode[] }).body
+    let lines = source.split('\n')
+
+    for (const node of body) {
+      let members: AstNode[] | null = null
+      if (node.type === 'TSInterfaceDeclaration') {
+        members = (node as AstNode & { body?: AstNode & { body?: AstNode[] } }).body?.body ?? []
+      } else if (node.type === 'TSTypeAliasDeclaration') {
+        const ta = (node as AstNode & { typeAnnotation?: AstNode })?.typeAnnotation
+        if (ta?.type === 'TSTypeLiteral') members = (ta as AstNode & { members?: AstNode[] }).members ?? []
+      }
+      if (!members || members.length < 2) continue
+      const items = members.map(m => {
+        const loc = m.loc as AstLocFull | undefined
+        const key = (m as AstNode & { key?: AstNode & { name?: string } }).key
+        if (!loc) return null
+        return { name: key?.name ?? '', startLine: loc.start.line, endLine: loc.end.line, startColumn: loc.start.column, endColumn: loc.end.column }
+      })
+      if (items.some(i => i === null)) continue
+      reorderMultiLine(lines, items as ItemInfo[], buildOrder(items as ItemInfo[]))
+      break
+    }
+
+    // ── Step 2: Reorder destructured params ───────────────────────────────────
+    const ast2 = parse(lines.join('\n'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+    const body2 = (ast2.program as unknown as { body: AstNode[] }).body
+    let lines2 = lines
+
+    const candidates: AstNode[] = []
+    for (const node of body2) {
+      if (node.type === 'FunctionDeclaration') candidates.push(node)
+      if (node.type === 'ExportDefaultDeclaration' || node.type === 'ExportNamedDeclaration') {
+        const decl = (node as AstNode & { declaration?: AstNode }).declaration
+        if (decl?.type === 'FunctionDeclaration') candidates.push(decl)
+        if (decl?.type === 'VariableDeclaration') {
+          for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+            const fn = (d as AstNode & { init?: AstNode }).init
+            if (fn) candidates.push(fn)
+          }
+        }
+      }
+      if (node.type === 'VariableDeclaration') {
+        for (const d of ((node as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+          const fn = (d as AstNode & { init?: AstNode }).init
+          if (fn) candidates.push(fn)
+        }
+      }
+    }
+
+    for (const cand of candidates) {
+      const params = (cand as AstNode & { params?: AstNode[] })?.params ?? []
+      const firstParam = params[0]
+      if (!firstParam) continue
+      const pattern = firstParam.type === 'ObjectPattern' ? firstParam
+        : firstParam.type === 'AssignmentPattern' ? (firstParam as AstNode & { left?: AstNode }).left
+        : null
+      if (pattern?.type !== 'ObjectPattern') continue
+      const properties = (pattern as AstNode & { properties?: AstNode[] }).properties ?? []
+      const regularProps = properties.filter(p => p.type !== 'RestElement')
+      if (regularProps.length < 2) continue
+      const propItems = regularProps.map(p => {
+        const loc = p.loc as AstLocFull | undefined
+        const key = (p as AstNode & { key?: AstNode & { name?: string } }).key
+        if (!loc) return null
+        return { name: key?.name ?? '', startLine: loc.start.line, endLine: loc.end.line, startColumn: loc.start.column, endColumn: loc.end.column }
+      })
+      if (propItems.some(p => p === null)) continue
+      const validItems = propItems as ItemInfo[]
+      const fullOrder = buildOrder(validItems)
+      const isSingleLine = validItems[0].startLine === validItems[validItems.length - 1].startLine
+      if (isSingleLine) {
+        reorderSingleLine(lines2, validItems, fullOrder)
+      } else {
+        reorderMultiLine(lines2, validItems, fullOrder)
+      }
+      break
+    }
+
+    return lines2.join('\n')
+  } catch {
+    return source
+  }
+}

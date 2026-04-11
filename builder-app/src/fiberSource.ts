@@ -177,6 +177,47 @@ export function getElementSourceInfo(el: Element): ElementSourceInfo | null {
 }
 
 /**
+ * Recursively check whether a React `children` value contains an element whose
+ * type matches `type` (by reference). Returns false early once depth is exceeded.
+ */
+function containsElementType(children: any, type: any, depth = 0): boolean {
+  if (!children || !type || depth > 8) return false
+  if (Array.isArray(children)) return children.some(c => containsElementType(c, type, depth + 1))
+  if (typeof children === 'object' && children !== null && children.$$typeof) {
+    if (children.type === type) return true
+    return containsElementType(children.props?.children, type, depth + 1)
+  }
+  return false
+}
+
+/**
+ * Given a DOM element inside a component's render output, returns true if that
+ * component was passed as JSX slot children (between open/close tags) to the
+ * nearest ancestor component named `parentComponentName`, rather than as a
+ * named prop (e.g. badge2={<Badge>}). Returns true (show it) when the check
+ * cannot be performed.
+ */
+export function isInChildrenPropOf(el: Element, parentComponentName: string): boolean {
+  const fiber = getReactFiber(el)
+  if (!fiber) return true
+
+  let lastComponentType: any = null
+  let f: any = fiber
+  while (f) {
+    const name = getComponentName(f)
+    if (name === parentComponentName) {
+      if (!lastComponentType) return true // directly in parent's render
+      const children = f.memoizedProps?.children
+      if (children === undefined || children === null) return false
+      return containsElementType(children, lastComponentType)
+    }
+    if (name && f.type) lastComponentType = f.type
+    f = f.return
+  }
+  return true // parent not found in fiber chain
+}
+
+/**
  * Walk up from `el` (inclusive) and return the first element + source info
  * for which React fiber debug source is available.
  */

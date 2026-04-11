@@ -26,8 +26,10 @@ import { extractBlock } from './astHelpers'
 import { extractImports, countReactComponentsInSource, collectModuleUsages, normalizePath, candidateImportFiles, filePathToModelUri, buildBareModuleDeclarations } from './importHelpers'
 import { extractJsxAttrs, extractJsxTextChildren, rewriteJsxTextChild, findLocatorUsages, collectAllJsxExpressionIdentifiers } from './jsxExtraction'
 import { enrichWithTypeDeclaration, stringifyTSType, inferTypeFromExpression, inferTypeFromValueString, inferTypeOfLocal, extractComponentLocals, inferOwnerComponentName, componentHasPropTypeDef, extractOwnerProps } from './typeInference'
-import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue } from './astRewriters'
-import { ScopePanel } from './ScopePanel'
+import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue, reorderPropsInSource } from './astRewriters'
+import { ScopePanel, scopeStyles } from './ScopePanel'
+import { StatesPanel } from './StatesPanel'
+import { notifyPropsChange } from '../preview/ComponentLoader'
 import { WrapExpressionChooser, ExpressionPickerPanel } from './ExpressionPicker'
 import { styles } from './styles'
 
@@ -146,8 +148,12 @@ export function InspectorPanel({
   wrapChosenExpr,
   onWrapChooseExpr,
   hasRuntimeError,
+  activeSection,
+  activePage,
+  projectRoot,
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
+  const [codeExpanded, setCodeExpanded] = useState(false)
 
   function startResize(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault()
@@ -221,6 +227,7 @@ export function InspectorPanel({
   }, [loading])
   const [saving, setSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string>('')
   const [blockName, setBlockName] = useState<string>('')
   const [fileImports, setFileImports] = useState<string[]>([])
   const [importsExpanded, setImportsExpanded] = useState(true)
@@ -275,6 +282,7 @@ export function InspectorPanel({
   /** True when the inspected component has a named props interface/type registered. */
   const [hasPropTypeDef, setHasPropTypeDef] = useState(true)
   const [deletingProp, setDeletingProp] = useState<string | null>(null)
+  const [propOrder, setPropOrder] = useState<string[]>([])
   // State for the "add state variable" inline dialog in the Scope panel.
   const [addStateOpen, setAddStateOpen] = useState(false)
   const [newStateName, setNewStateName] = useState('')
@@ -632,7 +640,17 @@ export function InspectorPanel({
       if (inspectMode === 'component-usage') {
         const tag = node.tag
         const usageLineHere = line
-        const usageAttrsHere = extractJsxAttrs(source, usageLineHere)
+        const rawAttrsHere = extractJsxAttrs(source, usageLineHere)
+        const slotChildrenHere = extractJsxTextChildren(source, usageLineHere)
+        const usageAttrsHere: JsxAttr[] = rawAttrsHere.some(a => a.name === 'children') || slotChildrenHere.length === 0
+          ? rawAttrsHere
+          : [...rawAttrsHere, {
+              name: 'children',
+              rawValue: slotChildrenHere.map(c => c.value.trim()).filter(Boolean).join(' '),
+              isExpression: slotChildrenHere.length === 1 && slotChildrenHere[0].kind === 'expr',
+              isBoolean: false, isSpread: false,
+              startLine: slotChildrenHere[0].startLine,
+            }]
         const locatorFile = node.locatorFile
         void (async () => {
           let ownSource = ''
@@ -648,6 +666,8 @@ export function InspectorPanel({
           // Always set usageInfo so saves work even when the element has no attrs yet.
           setUsageAttrs(usageAttrsHere)
           setUsageInfo({ file, line: usageLineHere })
+          // Store slot children so save/clear can rewrite them correctly.
+          setTextChildren(slotChildrenHere)
           const initModes: Record<string, 'scope' | 'expression' | 'value'> = {}
           for (const a of usageAttrsHere) {
             if (!a.isSpread) initModes[a.name] = a.isExpression ? 'expression' : 'value'
@@ -656,7 +676,7 @@ export function InspectorPanel({
           // Build scope layers using page source for parent, own source for child.
           const allUsed = ownSource ? collectAllJsxExpressionIdentifiers(ownSource, tag) : new Set<string>()
           const childProps = ownerP.filter(p => p.source === 'owner')
-            .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) }))
+            .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name), defaultValue: p.defaultValue }))
           const childState = ownSource
             ? extractComponentLocals(ownSource, tag)
                 .filter(n => !ownerP.find(p => p.name === n))
@@ -677,7 +697,7 @@ export function InspectorPanel({
             setParentComponentName(parentName)
             const parentPropsArr = extractOwnerProps(source, parentName)
             const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
-              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
+              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name), defaultValue: p.defaultValue }))
             const parentStateItems = pLocals
               .filter(n => !parentPropsArr.find(p => p.name === n))
               .map(n => ({ name: n, typeStr: inferTypeOfLocal(source, parentName, n), usedInNode: passedValues.has(n) }))
@@ -710,7 +730,7 @@ export function InspectorPanel({
     setScopeLayers([{
       componentName: tagCapture,
       isCurrent: true,
-      props: ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) })),
+      props: ownerPCapture.filter(p => p.source === 'owner').map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name), defaultValue: p.defaultValue })),
       state: extractComponentLocals(sourceCapture, tagCapture)
         .filter(n => !ownerPCapture.find(p => p.name === n))
         .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) })),
@@ -736,8 +756,19 @@ export function InspectorPanel({
             console.log(`[inspector] fetch usage-file ${(performance.now() - usageFetchT0).toFixed(1)}ms  ${usageFile.replace(/.*[/\\]/, '')}`)
             if (!res.ok) continue
             const usageSource = await res.text()
-            const attrs = extractJsxAttrs(usageSource, usageLine)
-            if (attrs.length > 0) {
+            const rawAttrs = extractJsxAttrs(usageSource, usageLine)
+            // Synthesize a 'children' attr from JSX slot text/expression children when not already an explicit attr.
+            const slotChildren = extractJsxTextChildren(usageSource, usageLine)
+            const attrs: JsxAttr[] = rawAttrs.some(a => a.name === 'children') || slotChildren.length === 0
+              ? rawAttrs
+              : [...rawAttrs, {
+                  name: 'children',
+                  rawValue: slotChildren.map(c => c.value.trim()).filter(Boolean).join(' '),
+                  isExpression: slotChildren.length === 1 && slotChildren[0].kind === 'expr',
+                  isBoolean: false, isSpread: false,
+                  startLine: slotChildren[0].startLine,
+                }]
+            if (attrs.length > 0 || slotChildren.length > 0) {
               setUsageAttrs(attrs)
               setUsageInfo({ file: usageFile, line: usageLine })
               // Initialize per-prop value mode from whether the attr is currently an expression.
@@ -763,13 +794,13 @@ export function InspectorPanel({
                   })
                 )
                 const childProps = ownerPCapture.filter(p => p.source === 'owner')
-                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name) }))
+                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: allUsed.has(p.name), defaultValue: p.defaultValue }))
                 const childState = extractComponentLocals(sourceCapture, tagCapture)
                   .filter(n => !ownerPCapture.find(p => p.name === n))
                   .map(n => ({ name: n, typeStr: inferTypeOfLocal(sourceCapture, tagCapture, n), usedInNode: allUsed.has(n) }))
                 const parentPropsArr = extractOwnerProps(usageSource, parentName)
                 const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
-                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
+                  .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name), defaultValue: p.defaultValue }))
                 const parentStateItems = pLocals
                   .filter(n => !parentPropsArr.find(p => p.name === n))
                   .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
@@ -837,7 +868,7 @@ export function InspectorPanel({
     const makeItems = (props: ComponentProp[], localNames: string[], src: string, compName: string): { props: ScopeItem[]; state: ScopeItem[] } => {
       const propItems: ScopeItem[] = props
         .filter(p => p.source === 'owner')
-        .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: usedNames.has(p.name) }))
+        .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: usedNames.has(p.name), defaultValue: p.defaultValue }))
       const stateItems: ScopeItem[] = localNames
         .filter(n => !props.find(p => p.name === n))
         .map(n => ({ name: n, typeStr: inferTypeOfLocal(src, compName, n), usedInNode: usedNames.has(n) }))
@@ -883,7 +914,7 @@ export function InspectorPanel({
               })
             )
             const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
-              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name) }))
+              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name), defaultValue: p.defaultValue }))
             const parentStateItems = parentLocalsArr
               .filter(n => !parentPropsArr.find(p => p.name === n))
               .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
@@ -999,6 +1030,7 @@ export function InspectorPanel({
     if (fullSourceRef.current) refreshBindings(fullSourceRef.current, selectedNode)
     if (!selectedNode) return
     setActiveTab('bindings')
+    setCodeExpanded(true)
   }, [selectedNode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep Monaco readOnly in sync when the selected node changes
@@ -1006,6 +1038,11 @@ export function InspectorPanel({
   useEffect(() => {
     editorRef.current?.updateOptions({ readOnly: sourceReadOnly })
   }, [sourceReadOnly])
+
+  // Sync local prop display order whenever ownerProps is refreshed (e.g. after save or selection change).
+  useEffect(() => {
+    setPropOrder(ownerProps.filter(p => p.source === 'owner').map(p => p.name))
+  }, [ownerProps])
 
   useEffect(() => {
     return () => {
@@ -1027,6 +1064,8 @@ export function InspectorPanel({
       const res = await fetch(`/__source?file=${encodeURIComponent(usageInfo.file)}`)
       if (!res.ok) return
       const src = await res.text()
+      // 'children' as a slot text child cannot be safely cleared — bail out.
+      if (propName === 'children' && textChildren.length > 0) return
       const updated = removeAttr(src, usageInfo.line, propName)
       if (usageInfo.file === file) {
         await pushToMonacoAndSave(updated)
@@ -1133,11 +1172,14 @@ export function InspectorPanel({
   }
 
   async function handlePropTypeSave() {
-    if (!fullSourceRef.current || (Object.keys(propTypeEdits).length === 0 && Object.keys(propValueEdits).length === 0 && Object.keys(propDefaultEdits).length === 0)) return
+    const propOrderChanged = propOrder.length > 0 && propOrder.some((name, i) => ownerProps.filter(p => p.source === 'owner')[i]?.name !== name)
+    if (!fullSourceRef.current || (Object.keys(propTypeEdits).length === 0 && Object.keys(propValueEdits).length === 0 && Object.keys(propDefaultEdits).length === 0 && !propOrderChanged)) return
     // Snapshot edits immediately and clear state to prevent double-saves on rapid clicks.
     const valueEditsSnapshot = { ...propValueEdits }
     const typeEditsSnapshot = { ...propTypeEdits }
     const defaultEditsSnapshot = { ...propDefaultEdits }
+    const propOrderSnapshot = [...propOrder]
+    const propOrderChangedSnapshot = propOrderChanged
     setPropValueEdits({})
     setPropTypeEdits({})
     setPropDefaultEdits({})
@@ -1154,6 +1196,33 @@ export function InspectorPanel({
           const original = usageAttrs.find((a) => a.name === propName)
           // Skip if unchanged from what the parent is already passing.
           if (original && newVal === original.rawValue) continue
+          // 'children' is a slot text child — rewrite the trimmed portion of the text node.
+          if (propName === 'children' && textChildren.length > 0) {
+            for (const tc of textChildren) {
+              // The JSXText node may span multiple lines (e.g. "\n  Sign in\n").
+              // Search all lines in the span for the actual trimmed content.
+              const trimmedOld = tc.value.trim()
+              if (!trimmedOld) continue
+              const srcLines = parentSrc.split('\n')
+              let found = false
+              for (let li = tc.startLine; li <= tc.endLine; li++) {
+                const ln = srcLines[li] ?? ''
+                const col = li === tc.startLine ? tc.startCol : 0
+                const idx = ln.indexOf(trimmedOld, col)
+                if (idx !== -1) {
+                  srcLines[li] = ln.slice(0, idx) + newVal + ln.slice(idx + trimmedOld.length)
+                  parentSrc = srcLines.join('\n')
+                  found = true
+                  break
+                }
+              }
+              if (!found) {
+                // Fallback: rewrite whole text node (may change line count)
+                parentSrc = rewriteJsxTextChild(parentSrc, tc, newVal)
+              }
+            }
+            continue
+          }
           // Use propValueMode to determine whether to write as expression or string literal.
           const propMode = propValueMode[propName] ?? (original?.isExpression ? 'expression' : 'value')
           const modeIsVar = propMode === 'scope' || propMode === 'expression'
@@ -1179,12 +1248,24 @@ export function InspectorPanel({
           setSaveStatus('saved')
           void invalidateAndRefresh([usageInfo.file])
         }
-        // Refresh usageAttrs from the updated source.
-        setUsageAttrs(extractJsxAttrs(parentSrc, usageInfo.line))
+        // Refresh usageAttrs from the updated source — re-synthesize slot children entry.
+        const refreshedRawAttrs = extractJsxAttrs(parentSrc, usageInfo.line)
+        const refreshedSlotChildren = extractJsxTextChildren(parentSrc, usageInfo.line)
+        const refreshedAttrs: JsxAttr[] = refreshedRawAttrs.some(a => a.name === 'children') || refreshedSlotChildren.length === 0
+          ? refreshedRawAttrs
+          : [...refreshedRawAttrs, {
+              name: 'children',
+              rawValue: refreshedSlotChildren.map(c => c.value.trim()).filter(Boolean).join(' '),
+              isExpression: refreshedSlotChildren.length === 1 && refreshedSlotChildren[0].kind === 'expr',
+              isBoolean: false, isSpread: false,
+              startLine: refreshedSlotChildren[0].startLine,
+            }]
+        setUsageAttrs(refreshedAttrs)
+        setTextChildren(refreshedSlotChildren)
       }
 
-      // ── Type + default edits: write to the CHILD component file ────────────
-      if (Object.keys(typeEditsSnapshot).length > 0 || Object.keys(defaultEditsSnapshot).length > 0) {
+      // ── Type + default edits + reorder: write to the CHILD component file ──
+      if (Object.keys(typeEditsSnapshot).length > 0 || Object.keys(defaultEditsSnapshot).length > 0 || propOrderChangedSnapshot) {
         const freshRes = await fetch(`/__source?file=${encodeURIComponent(file)}`)
         if (!freshRes.ok) throw new Error('Fetch failed')
         let modified = await freshRes.text()
@@ -1198,6 +1279,29 @@ export function InspectorPanel({
           if (newDefault === (original?.defaultValue ?? '')) continue
           modified = rewriteDefaultValue(modified, ownerName, propName, newDefault)
         }
+        if (propOrderChangedSnapshot) {
+          modified = reorderPropsInSource(modified, propOrderSnapshot)
+        }
+        // Diagnostics check — don't save if the modified source has TS errors
+        try {
+          const diagRes = await fetch('/__diagnostics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file, content: modified }),
+          })
+          if (diagRes.ok) {
+            const diagPayload = await diagRes.json()
+            const errs = ((diagPayload.diagnostics as ServerDiagnostic[]) ?? []).filter(d => d.severity >= 8)
+            if (errs.length > 0) {
+              const msg = errs.map(e => `L${e.startLineNumber}: ${e.message}`).join('\n')
+              setSaveErrorMsg(msg)
+              setSaveStatus('error')
+              console.error('%c[Cockpit] Save blocked — TypeScript errors:%c\n' + msg, 'background:#f38ba8;color:#1e1e2e;font-weight:bold;padding:2px 6px;border-radius:4px', 'color:#f38ba8')
+              setBindingsSaving(false)
+              return
+            }
+          }
+        } catch { /* if diagnostics endpoint is unavailable, proceed with save */ }
         const ok = await pushToMonacoAndSave(modified)
         if (!ok) return
       }
@@ -1912,6 +2016,25 @@ export function InspectorPanel({
         </>
       )}
 
+      {/* States panel — visible when browsing pages */}
+      {!expressionMode && activeSection === 'pages' && activePage && projectRoot && (
+        <StatesPanel
+          pageName={activePage}
+          projectRoot={projectRoot}
+          scopeLayers={scopeLayers}
+          onStateChange={(props) => {
+            const coerced: Record<string, unknown> = {}
+            for (const [k, v] of Object.entries(props)) {
+              if (v === 'true') coerced[k] = true
+              else if (v === 'false') coerced[k] = false
+              else if (v !== '' && !isNaN(Number(v))) coerced[k] = Number(v)
+              else { try { coerced[k] = JSON.parse(v) } catch { coerced[k] = v } }
+            }
+            notifyPropsChange(coerced)
+          }}
+        />
+      )}
+
       {/* Multiple-components banner — after tabs (kept as after-tabs slot, now unused, removed) */}
 
       {/* Expression component picker section — sits between scope and tabs */}
@@ -1923,6 +2046,21 @@ export function InspectorPanel({
         />
       )}
 
+      {/* Code section header */}
+      <button style={{ ...scopeStyles.header, cursor: 'pointer', background: '#13131f' }} onClick={() => setCodeExpanded(v => {
+        if (!v) {
+          // Selecting the first tab of the computed list when opening
+          const firstTab: Tab = wrapMode ? 'expression' : (expressionMode || inspectMode === 'expression') ? 'source' : isRootComponent ? 'defaults' : 'bindings'
+          setActiveTab(firstTab)
+        }
+        return !v
+      })}>
+        <span style={scopeStyles.chevron}>{codeExpanded ? '▾' : '▸'}</span>
+        <span>Code</span>
+      </button>
+
+      {codeExpanded && (
+      <>
       {/* Tabs — wrap mode shows Expression + Source; normal mode shows existing tabs */}
       <div style={styles.tabs}>
         {wrapMode ? (
@@ -2126,9 +2264,13 @@ export function InspectorPanel({
                         </p>
                       </div>
                     ) : (
-                      ownerProps.map((prop) => {
-                        const rowOpen = expandedRows.has(prop.name)
+                      (() => {
+                        const orderedProps = propOrder
+                          .map(name => ownerProps.find(p => p.name === name))
+                          .filter(Boolean) as typeof ownerProps
                         const defaultsReadOnly = !isRootComponent && isFromComponentsFolder
+                        return orderedProps.map((prop, idx) => {
+                        const rowOpen = expandedRows.has(prop.name)
                         const defMode = propDefaultMode[prop.name] ?? (prop.defaultValue && /^[a-zA-Z_$]/.test(prop.defaultValue) && !/^(true|false|null|undefined|'|"|`|\d)/.test(prop.defaultValue) ? 'expression' : 'value') as 'expression' | 'scope' | 'value'
                         return (
                           <div key={prop.name} style={styles.attrRowWrap}>
@@ -2139,6 +2281,22 @@ export function InspectorPanel({
                             >
                               <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
                               <span style={{ ...styles.attrName, flex: 1 }}>{prop.name}</span>
+                              {!defaultsReadOnly && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: 2 }} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    style={{ ...styles.deleteBtn, fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === 0 ? 0.3 : 1 }}
+                                    title="Move up"
+                                    disabled={idx === 0}
+                                    onClick={() => setPropOrder(prev => { const n = [...prev]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; return n })}
+                                  >▲</button>
+                                  <button
+                                    style={{ ...styles.deleteBtn, fontSize: 8, padding: '0 3px', lineHeight: '10px', opacity: idx === orderedProps.length - 1 ? 0.3 : 1 }}
+                                    title="Move down"
+                                    disabled={idx === orderedProps.length - 1}
+                                    onClick={() => setPropOrder(prev => { const n = [...prev]; [n[idx], n[idx+1]] = [n[idx+1], n[idx]]; return n })}
+                                  >▼</button>
+                                </div>
+                              )}
                               <span style={styles.badgeOwner}>prop</span>
                               {!defaultsReadOnly && (
                                 <button
@@ -2235,6 +2393,7 @@ export function InspectorPanel({
                           </div>
                         )
                       })
+                        })()
                     )
                   )}
 
@@ -2313,19 +2472,27 @@ export function InspectorPanel({
                 </div>
 
                 {/* Apply-changes bar — defaults (root only) */}
-                {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && (Object.keys(propDefaultEdits).length > 0 || Object.keys(propTypeEdits).length > 0) && (
+                {(isRootComponent || !isFromComponentsFolder) && inspectingComponent && (() => {
+                  const propOrderChanged = propOrder.length > 0 && propOrder.some((name, i) => ownerProps.filter(p => p.source === 'owner')[i]?.name !== name)
+                  return (Object.keys(propDefaultEdits).length > 0 || Object.keys(propTypeEdits).length > 0 || propOrderChanged) && (
                   <div style={styles.saveBar}>
-                    {saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
-                    {saveStatus === 'error' && <span style={styles.errorMsg}>&#x2717; Save failed</span>}
+                    {!bindingsSaving && saveStatus === 'saved' && <span style={styles.savedMsg}>&#10003; Saved</span>}
+                    {!bindingsSaving && saveStatus === 'error' && (
+                      <span style={{ ...styles.errorMsg, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        &#x2717; Save failed
+                        {saveErrorMsg && <InfoIcon text={saveErrorMsg} />}
+                      </span>
+                    )}
                     <button style={styles.saveBtn}
                       onClick={() => void handlePropTypeSave()}
                       disabled={bindingsSaving}
                     >
                       {bindingsSaving ? 'Saving…' : 'Apply'}
                     </button>
-                    <button style={styles.cancelBtn} onClick={() => { setPropDefaultEdits({}); setPropTypeEdits({}) }}>Cancel</button>
+                    <button style={styles.cancelBtn} onClick={() => { setPropDefaultEdits({}); setPropTypeEdits({}); setPropOrder(ownerProps.filter(p => p.source === 'owner').map(p => p.name)) }}>Cancel</button>
                   </div>
-                )}
+                  )
+                })()}
               </>
             )}
           </div>
@@ -2374,7 +2541,7 @@ export function InspectorPanel({
                               <span style={styles.rowChevron}>{rowOpen ? '▼' : '▶'}</span>
                               <span style={{ ...styles.attrName, flex: 1 }}>{prop.name}</span>
                               <span style={styles.badgeOwner}>prop</span>
-                              {!isReadOnly && hasBinding && usageInfo && (
+                              {!isReadOnly && hasBinding && usageInfo && prop.name !== 'children' && (
                                 <button
                                   style={styles.deleteBtn}
                                   title={`Clear binding for ${prop.name}`}
@@ -3061,6 +3228,8 @@ export function InspectorPanel({
           </button>
           <button style={styles.cancelBtn} onClick={discardPendingDiff}>Discard</button>
         </div>
+      )}
+      </>
       )}
     </div>
   )

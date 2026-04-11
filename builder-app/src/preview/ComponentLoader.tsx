@@ -36,6 +36,12 @@ export function notifyPreviewRefresh(): void {
   } catch { /* cross-origin safety */ }
 }
 
+export function notifyPropsChange(props: Record<string, unknown>): void {
+  try {
+    previewIframeWindow?.postMessage({ type: 'cockpit:set-props', props }, location.origin)
+  } catch { /* cross-origin safety */ }
+}
+
 if (import.meta.hot) {
   const clearCaches = () => {
     importTimestamp = Date.now()
@@ -308,6 +314,7 @@ export function ComponentLoader({
   folder = 'pages',
   pagesDir,
   componentsDir,
+  fixtureProps,
   onOpenSettings,
   onOpenSource,
   onRuntimeError,
@@ -318,6 +325,7 @@ export function ComponentLoader({
   folder?: 'pages' | 'components'
   pagesDir: string
   componentsDir: string
+  fixtureProps?: Record<string, unknown> | null
   onOpenSettings?: (pkgs: string[]) => void
   onOpenSource?: (filePath: string) => void
   onRuntimeError?: () => void
@@ -403,7 +411,7 @@ export function ComponentLoader({
         <ErrorBoundary key={`${folder}-${page}-${resetKey}`} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError}>
           {folder === 'components'
             ? <ComponentPreviewShell Component={Loaded} filePath={filePath} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError} />
-            : <Loaded />}
+            : <Loaded {...(fixtureProps ?? {})} />}
         </ErrorBoundary>
       </Suspense>
     </PreviewCanvas>

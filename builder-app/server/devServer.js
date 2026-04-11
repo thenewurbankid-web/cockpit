@@ -1099,6 +1099,130 @@ app.post('/__source/install-package', (req, res) => {
   })
 })
 
+// ── States (page state models) ────────────────────────────────────────────────
+
+/**
+ * Infer a TypeScript type string from a JSON-value string.
+ * "true"/"false" → boolean, numeric → number, else → string.
+ */
+function inferTsType(value) {
+  if (value === 'true' || value === 'false') return 'boolean'
+  if (value !== '' && !isNaN(Number(value))) return 'number'
+  return 'string'
+}
+
+/**
+ * Generate a model.ts file content from a data object.
+ * e.g. generateModelTs('SignInPage', 'error', { error: 'bad' })
+ *   → "export interface SignInPageErrorState {\n  error?: string\n}\n"
+ */
+function generateModelTs(pageName, stateName, data) {
+  const pascal = stateName.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+  const interfaceName = `${pageName}${pascal}State`
+  const fields = Object.entries(data)
+    .map(([k, v]) => `  ${k}?: ${inferTsType(String(v))}`)
+    .join('\n')
+  return `export interface ${interfaceName} {\n${fields}\n}\n`
+}
+
+function getStatesDir(projectRoot) {
+  return path.join(path.resolve(projectRoot), 'src', 'states', 'pages')
+}
+
+/** Label from state key — e.g. "my-state" → "My State" */
+function stateKeyToLabel(key) {
+  return key.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+}
+
+// GET /__source/list-states?projectRoot=<abs>&page=<pageName>
+app.get('/__source/list-states', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const page = req.query.page
+  if (!page || typeof page !== 'string') {
+    return res.status(400).json({ error: 'Missing ?page= query parameter' })
+  }
+  const pageDir = path.join(getStatesDir(projectRoot), page)
+  console.log(`[list-states] projectRoot=${projectRoot} page=${page} pageDir=${pageDir} exists=${fs.existsSync(pageDir)}`)
+  if (!fs.existsSync(pageDir)) return res.json({ states: [] })
+
+  let entries
+  try {
+    entries = fs.readdirSync(pageDir, { withFileTypes: true })
+  } catch {
+    return res.json({ states: [] })
+  }
+  const states = entries
+    .filter(e => e.isDirectory())
+    .map(e => ({ key: e.name, label: stateKeyToLabel(e.name) }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+  res.json({ states })
+})
+
+// GET /__source/state-data?projectRoot=<abs>&page=<pageName>&state=<key>
+app.get('/__source/state-data', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { page, state } = req.query
+  if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
+  const dataFile = path.join(getStatesDir(projectRoot), page, state, 'data.json')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(dataFile)) return res.json({ data: {} })
+  try {
+    const data = JSON.parse(fs.readFileSync(dataFile, 'utf-8'))
+    res.json({ data })
+  } catch {
+    res.json({ data: {} })
+  }
+})
+
+// POST /__source/state-data  body: { projectRoot, page, state, data }
+app.post('/__source/state-data', (req, res) => {
+  const { projectRoot, page, state, data } = req.body ?? {}
+  if (!projectRoot || !page || !state || data === undefined) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, page, state, data }' })
+  }
+  const stateDir = path.join(getStatesDir(projectRoot), page, state)
+  const dataFile = path.join(stateDir, 'data.json')
+  const modelFile = path.join(stateDir, 'model.ts')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8')
+  fs.writeFileSync(modelFile, generateModelTs(page, state, data), 'utf-8')
+  res.json({ ok: true })
+})
+
+// POST /__source/create-state  body: { projectRoot, page, stateName }
+app.post('/__source/create-state', (req, res) => {
+  const { projectRoot, page, stateName } = req.body ?? {}
+  if (!projectRoot || !page || !stateName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, page, stateName }' })
+  }
+  if (!/^[a-zA-Z0-9-]+$/.test(stateName)) {
+    return res.status(400).json({ error: 'stateName must contain only letters, numbers, and hyphens' })
+  }
+  const stateDir = path.join(getStatesDir(projectRoot), page, stateName)
+  const dataFile = path.join(stateDir, 'data.json')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(stateDir)) return res.status(409).json({ error: `State "${stateName}" already exists` })
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(dataFile, '{}\n', 'utf-8')
+  fs.writeFileSync(path.join(stateDir, 'model.ts'), generateModelTs(page, stateName, {}), 'utf-8')
+  console.log(`[create-state] ${stateDir}`)
+  res.json({ ok: true, key: stateName, label: stateKeyToLabel(stateName) })
+})
+
+// DELETE /__source/state?projectRoot=<abs>&page=<pageName>&state=<key>
+app.delete('/__source/state', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { page, state } = req.query
+  if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
+  const stateDir = path.join(getStatesDir(projectRoot), page, state)
+  if (!isSafeFile(stateDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(stateDir)) return res.status(404).json({ error: 'State not found' })
+  fs.rmSync(stateDir, { recursive: true, force: true })
+  console.log(`[delete-state] ${stateDir}`)
+  res.json({ ok: true })
+})
+
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const PORT = 3001

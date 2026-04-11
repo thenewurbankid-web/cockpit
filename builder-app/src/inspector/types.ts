@@ -54,6 +54,8 @@ export interface ScopeItem {
   typeStr: string
   /** True when this item is actually used by the currently selected node's JSX. */
   usedInNode: boolean
+  /** Default value from the component's destructure signature, e.g. `"Sign In"`. */
+  defaultValue?: string
 }
 
 /** One level of the component hierarchy with its available scope. */
@@ -96,6 +98,12 @@ export interface InspectorPanelProps {
   onWrapChooseExpr?: (expr: { name: string; file: string; props: string[] }) => void
   /** When true, the preview has a runtime error — only the source tab is shown. */
   hasRuntimeError?: boolean
+  /** Which top-level section is active ('pages' | 'components' | 'expressions'). */
+  activeSection?: 'pages' | 'components' | 'expressions'
+  /** The name of the active page (used to show StatesPanel). */
+  activePage?: string
+  /** Root path of the active project. */
+  projectRoot?: string
 }
 
 export type Tab = 'source' | 'defaults' | 'bindings' | 'expression' | 'changes'
