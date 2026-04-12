@@ -41,9 +41,30 @@ All file operations use `isSafeFile(filePath)` which resolves the path and check
 - `POST /__source/settings` — write `.cockpit/config.json`
 
 ### Pages (configured pagesDir)
-- `GET /__source/list-pages` — lists `*Page.tsx` files
-- `POST /__source/create-page` — creates from template with `{ name }`
-- `DELETE /__source/page/:componentName` — deletes page file
+- `GET /__source/list-pages` — scans for directories containing `page.tsx`; `root` field = **actual exported component name** read from the AST (not the folder name); `file` = `<DirName>/page`
+- `POST /__source/create-page` — creates `<ComponentName>/page.tsx` folder+file from template `{ name }`
+- `DELETE /__source/page/:componentName` — deletes the entire `<ComponentName>/` directory
+
+> **Critical**: `root` in the pages list must equal the React component name that the fiber reports. The server reads it via `extractAstInfo()` on `page.tsx`. Always use this value (not the folder name) for `rootComponentName` comparisons in the inspector and scope hierarchy.
+
+### State Fixtures (colocated in page folder)
+State fixtures live inside each page's folder, not in a global `src/states/` directory:
+
+```
+src/pages/<PageName>/states/<stateName>/data.json   ← key→value fixture data
+src/pages/<PageName>/states/<stateName>/model.ts    ← auto-generated TypeScript interface
+src/pages/<PageName>/states/order.json              ← custom ordering (array of state keys)
+```
+
+- `GET /__source/list-states?projectRoot=<abs>&page=<pageName>` — lists state dirs, respects `order.json`
+- `GET /__source/state-data?projectRoot=<abs>&page=<pageName>&state=<key>` — reads `data.json`
+- `POST /__source/state-data` — writes `data.json` + regenerates `model.ts`; body `{ projectRoot, page, state, data }`
+- `POST /__source/create-state` — creates `data.json` + `model.ts`; body `{ projectRoot, page, stateName }`; `stateName` allows letters, numbers, hyphens, underscores
+- `POST /__source/rename-state` — renames directory, regenerates `model.ts`; body `{ projectRoot, page, oldName, newName }`
+- `POST /__source/reorder-states` — writes `order.json`; body `{ projectRoot, page, order: string[] }`
+- `DELETE /__source/state?projectRoot=<abs>&page=<pageName>&state=<key>` — removes state directory
+
+Helper: `getPageStatesDir(projectRoot, pageName)` returns `<pagesDir>/<pageName>/states` using project config.
 
 ### Components (configured componentsDir)
 - `GET /__source/list-components` — lists `*.tsx` files

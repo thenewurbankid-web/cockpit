@@ -189,6 +189,8 @@ function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string;
 
   if (states.length === 0) return null
 
+  const activeIdx = states.findIndex(s => s.key === activeKey)
+
   async function handleChange(key: string) {
     setActiveKey(key)
     const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(pageName)}`
@@ -199,8 +201,22 @@ function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string;
     } catch { /* ignore */ }
   }
 
+  const navBtnStyle: React.CSSProperties = {
+    background: '#1e1e2e',
+    border: '1px solid #313244',
+    borderRadius: 4,
+    color: '#cdd6f4',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    lineHeight: 1,
+    padding: '2px 8px',
+    fontFamily: 'system-ui, sans-serif',
+    display: 'flex',
+    alignItems: 'center',
+  }
+
   return (
-    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
       <span style={{ color: '#6c7086', fontSize: '0.7rem' }}>State:</span>
       <select
         value={activeKey}
@@ -220,6 +236,18 @@ function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string;
           <option key={s.key} value={s.key}>{s.label}</option>
         ))}
       </select>
+      <button
+        style={{ ...navBtnStyle, opacity: activeIdx <= 0 ? 0.3 : 1 }}
+        disabled={activeIdx <= 0}
+        title="Previous state"
+        onClick={() => { if (activeIdx > 0) void handleChange(states[activeIdx - 1].key) }}
+      >&#8249;</button>
+      <button
+        style={{ ...navBtnStyle, opacity: activeIdx >= states.length - 1 ? 0.3 : 1 }}
+        disabled={activeIdx >= states.length - 1}
+        title="Next state"
+        onClick={() => { if (activeIdx < states.length - 1) void handleChange(states[activeIdx + 1].key) }}
+      >&#8250;</button>
     </div>
   )
 }

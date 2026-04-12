@@ -395,11 +395,19 @@ app.get('/__source/list-pages', (req, res) => {
   const pages = pageDirEntries
     .filter(e => e.isDirectory() && fs.existsSync(path.join(loginAppPages, e.name, 'page.tsx')))
     .map(e => {
-      const dirName = e.name  // e.g. "LoginPage"
+      const dirName = e.name  // e.g. "SignInPage"
+      const filePath = path.join(loginAppPages, dirName, 'page.tsx')
+      // Extract the actual exported component name from the file AST
+      let componentName = dirName
+      try {
+        const source = fs.readFileSync(filePath, 'utf-8')
+        const info = extractAstInfo(source, filePath)
+        if (info.components.length > 0) componentName = info.components[0].name
+      } catch { /* fall back to dirName */ }
       const baseName = dirName.endsWith('Page') ? dirName.slice(0, -4) : dirName
       const label = baseName.replace(/([A-Z])/g, ' $1').trim()
       const id = dirName.toLowerCase()
-      return { id, label, root: dirName, file: `${dirName}/page` }
+      return { id, label, root: componentName, file: `${dirName}/page` }
     })
     .sort((a, b) => a.label.localeCompare(b.label))
 
@@ -1167,11 +1175,38 @@ app.get('/__source/list-states', (req, res) => {
   } catch {
     return res.json({ states: [] })
   }
-  const states = entries
+  const stateKeys = entries
     .filter(e => e.isDirectory())
-    .map(e => ({ key: e.name, label: stateKeyToLabel(e.name) }))
-    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(e => e.name)
+
+  // Read optional order.json to sort states in custom order
+  let order = []
+  try {
+    const orderFile = path.join(pageDir, 'order.json')
+    if (fs.existsSync(orderFile)) order = JSON.parse(fs.readFileSync(orderFile, 'utf-8'))
+  } catch { /* ignore */ }
+
+  const ordered = [
+    ...order.filter(k => stateKeys.includes(k)),
+    ...stateKeys.filter(k => !order.includes(k)).sort((a, b) => a.localeCompare(b)),
+  ]
+  const states = ordered.map(k => ({ key: k, label: stateKeyToLabel(k) }))
   res.json({ states })
+})
+
+// POST /__source/reorder-states  body: { projectRoot, page, order: string[] }
+app.post('/__source/reorder-states', (req, res) => {
+  const { projectRoot, page, order } = req.body ?? {}
+  if (!projectRoot || !page || !Array.isArray(order)) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, page, order: string[] }' })
+  }
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
+  const orderFile = path.join(statesDir, 'order.json')
+  if (!isSafeFile(orderFile)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(statesDir, { recursive: true })
+  fs.writeFileSync(orderFile, JSON.stringify(order, null, 2), 'utf-8')
+  res.json({ ok: true })
 })
 
 // GET /__source/state-data?projectRoot=<abs>&page=<pageName>&state=<key>
@@ -1217,8 +1252,8 @@ app.post('/__source/create-state', (req, res) => {
   if (!projectRoot || !page || !stateName) {
     return res.status(400).json({ error: 'Body must contain { projectRoot, page, stateName }' })
   }
-  if (!/^[a-zA-Z0-9-]+$/.test(stateName)) {
-    return res.status(400).json({ error: 'stateName must contain only letters, numbers, and hyphens' })
+  if (!/^[a-zA-Z0-9_-]+$/.test(stateName)) {
+    return res.status(400).json({ error: 'stateName must contain only letters, numbers, hyphens, and underscores' })
   }
   const statesDir = getPageStatesDir(projectRoot, page)
   if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
@@ -1231,6 +1266,33 @@ app.post('/__source/create-state', (req, res) => {
   fs.writeFileSync(path.join(stateDir, 'model.ts'), generateModelTs(page, stateName, {}), 'utf-8')
   console.log(`[create-state] ${stateDir}`)
   res.json({ ok: true, key: stateName, label: stateKeyToLabel(stateName) })
+})
+
+// POST /__source/rename-state  body: { projectRoot, page, oldName, newName }
+app.post('/__source/rename-state', (req, res) => {
+  const { projectRoot, page, oldName, newName } = req.body ?? {}
+  if (!projectRoot || !page || !oldName || !newName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, page, oldName, newName }' })
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+    return res.status(400).json({ error: 'newName must contain only letters, numbers, hyphens, and underscores' })
+  }
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
+  const oldDir = path.join(statesDir, oldName)
+  const newDir = path.join(statesDir, newName)
+  if (!isSafeFile(oldDir) || !isSafeFile(newDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(oldDir)) return res.status(404).json({ error: 'State not found' })
+  if (fs.existsSync(newDir)) return res.status(409).json({ error: `State "${newName}" already exists` })
+  fs.renameSync(oldDir, newDir)
+  // Regenerate model.ts with new name
+  try {
+    const dataFile = path.join(newDir, 'data.json')
+    const data = fs.existsSync(dataFile) ? JSON.parse(fs.readFileSync(dataFile, 'utf-8')) : {}
+    fs.writeFileSync(path.join(newDir, 'model.ts'), generateModelTs(page, newName, data), 'utf-8')
+  } catch { /* best-effort */ }
+  console.log(`[rename-state] ${oldDir} -> ${newDir}`)
+  res.json({ ok: true, key: newName, label: stateKeyToLabel(newName) })
 })
 
 // DELETE /__source/state?projectRoot=<abs>&page=<pageName>&state=<key>

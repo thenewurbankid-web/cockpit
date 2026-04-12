@@ -44,6 +44,8 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   const [loading, setLoading] = useState(false)
   const [addingState, setAddingState] = useState(false)
   const [newStateName, setNewStateName] = useState('')
+  const [renamingKey, setRenamingKey] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const [newKeyInput, setNewKeyInput] = useState('')
   const [newValueInput, setNewValueInput] = useState('')
   const [expanded, setExpanded] = useState(true)
@@ -176,7 +178,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   }
 
   const handleCreateState = async () => {
-    const name = newStateName.trim().replace(/\s+/g, '-').toLowerCase()
+    const name = newStateName.trim().replace(/\s+/g, '_').toLowerCase()
     if (!name) return
     try {
       const res = await fetch('/__source/create-state', {
@@ -212,6 +214,39 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     try {
       await fetch(`/__source/state?${qs}&state=${encodeURIComponent(activeKey)}`, { method: 'DELETE' })
       await loadStates()
+    } catch { /* best-effort */ }
+  }
+
+  const handleRenameState = async (oldKey: string, newKey: string) => {
+    const trimmed = newKey.trim().replace(/\s+/g, '_').toLowerCase()
+    if (!trimmed || trimmed === oldKey) { setRenamingKey(null); return }
+    try {
+      const res = await fetch('/__source/rename-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectRoot, page: pageName, oldName: oldKey, newName: trimmed }),
+      })
+      if (!res.ok) return
+      setRenamingKey(null)
+      await loadStates()
+      setActiveKey(trimmed)
+    } catch { /* best-effort */ }
+  }
+
+  const handleMoveState = async (direction: 'up' | 'down') => {
+    const idx = states.findIndex(s => s.key === activeKey)
+    if (idx < 0) return
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (newIdx < 0 || newIdx >= states.length) return
+    const next = [...states]
+    ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
+    setStates(next)
+    try {
+      await fetch('/__source/reorder-states', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectRoot, page: pageName, order: next.map(s => s.key) }),
+      })
     } catch { /* best-effort */ }
   }
 
@@ -285,23 +320,57 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
             </div>
           )}
 
-          {/* State dropdown + delete */}
+          {/* State dropdown + rename + delete */}
           {states.length > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <select
-                value={activeKey}
-                onChange={e => setActiveKey(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  flex: 1,
-                  cursor: 'pointer',
-                  padding: '3px 5px',
+              {renamingKey === activeKey ? (
+                <input
+                  autoFocus
+                  style={{ ...inputStyle, flex: 1 }}
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') void handleRenameState(activeKey, renameValue)
+                    if (e.key === 'Escape') setRenamingKey(null)
+                  }}
+                  onBlur={() => void handleRenameState(activeKey, renameValue)}
+                />
+              ) : (
+                <select
+                  value={activeKey}
+                  onChange={e => setActiveKey(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    flex: 1,
+                    cursor: 'pointer',
+                    padding: '3px 5px',
+                  }}
+                >
+                  {states.map(s => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', color: '#6c7086', opacity: states.findIndex(s => s.key === activeKey) === 0 ? 0.25 : 1 }}
+                title="Move up"
+                disabled={states.findIndex(s => s.key === activeKey) === 0}
+                onClick={() => void handleMoveState('up')}
+              >▲</button>
+              <button
+                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', color: '#6c7086', opacity: states.findIndex(s => s.key === activeKey) === states.length - 1 ? 0.25 : 1 }}
+                title="Move down"
+                disabled={states.findIndex(s => s.key === activeKey) === states.length - 1}
+                onClick={() => void handleMoveState('down')}
+              >▼</button>
+              <button
+                style={{ ...btnStyle, color: renamingKey === activeKey ? '#a6e3a1' : '#89b4fa' }}
+                title={renamingKey === activeKey ? 'Confirm rename' : 'Rename state'}
+                onClick={() => {
+                  if (renamingKey === activeKey) { void handleRenameState(activeKey, renameValue) }
+                  else { setRenamingKey(activeKey); setRenameValue(activeKey) }
                 }}
-              >
-                {states.map(s => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
-                ))}
-              </select>
+              >{renamingKey === activeKey ? '✓' : '✎'}</button>
               <button
                 style={{ ...btnStyle, color: '#f38ba8' }}
                 title="Delete state"

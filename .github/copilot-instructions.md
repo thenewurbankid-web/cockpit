@@ -85,9 +85,9 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 | `GET` | `/__source/browse?path=<dir>` | Browse directory tree (dirs only) |
 | `GET` | `/__source/project-info?root=<dir>` | Probe a directory: validity, pages/components/expressions dirs |
 | `POST` | `/__source/set-active-project` | Set active project root `{ root }`, warm TS cache |
-| `GET` | `/__source/list-pages` | List pages in configured pagesDir |
-| `POST` | `/__source/create-page` | Create new page `{ name }` |
-| `DELETE` | `/__source/page/:name` | Delete page |
+| `GET` | `/__source/list-pages` | List pages — scans for `<Name>/page.tsx` directories; `root` = AST-extracted component name |
+| `POST` | `/__source/create-page` | Create new page folder+file `{ name }` |
+| `DELETE` | `/__source/page/:name` | Delete page directory |
 | `GET` | `/__source/list-components` | List components |
 | `POST` | `/__source/create-component` | Create new component `{ name }` |
 | `DELETE` | `/__source/component/:name` | Delete component |
@@ -104,6 +104,13 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 | `GET` | `/__source/tsconfig-paths?root=<dir>` | Extract path aliases from tsconfig.json |
 | `GET` | `/__source/check-imports?file=<abs>` | Check for unresolved imports |
 | `POST` | `/__source/install-package` | Install into builder's own `node_modules` `{ packageName }` — SSE stream |
+| `GET` | `/__source/list-states?projectRoot=<abs>&page=<name>` | List state fixtures for a page (order.json respected) |
+| `GET` | `/__source/state-data?projectRoot=<abs>&page=<name>&state=<key>` | Read state fixture data |
+| `POST` | `/__source/state-data` | Write state data `{ projectRoot, page, state, data }` |
+| `POST` | `/__source/create-state` | Create state fixture `{ projectRoot, page, stateName }` |
+| `POST` | `/__source/rename-state` | Rename state `{ projectRoot, page, oldName, newName }` |
+| `POST` | `/__source/reorder-states` | Persist state order `{ projectRoot, page, order: string[] }` |
+| `DELETE` | `/__source/state?projectRoot=<abs>&page=<name>&state=<key>` | Delete state fixture |
 
 ## Architecture Principles
 
@@ -130,7 +137,9 @@ All endpoints are proxied through Vite at `/__source*`. File paths must be absol
 ## Common Patterns
 
 ### Adding a new page
-Create a `*Page.tsx` file in the active project's pages directory with a named export `MyPage` and `MyPageProps` interface. The builder auto-discovers it via `list-pages`.
+Create a folder `<ComponentName>/` in the active project's pages directory with a `page.tsx` file inside. Export a named React component (any name — it does **not** have to match the folder) and a `*Props` interface. The builder auto-discovers it via `list-pages` by scanning for directories that contain `page.tsx`.
+
+> **Important**: The `root` field returned by `list-pages` is the **actual exported component name** read from the AST — not the folder name. This value must match what React fiber reports for scope hierarchy, `rootComponentName` checks, and child binding detection to work correctly. Never assume `root === folderName`.
 
 ### Adding a new component
 Create a `*.tsx` file in the active project's components directory with a named export and props interface. Auto-discovered via `list-components`.

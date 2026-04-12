@@ -13,18 +13,38 @@ The target app is the React application currently active in Cockpit — whatever
 
 | Directory | Convention | Example |
 |-----------|-----------|---------|
-| `src/pages/` | `*Page.tsx`, named export `MyPage`, interface `MyPageProps` | `LoginPage.tsx` |
+| `src/pages/` | `<PageName>/page.tsx`, named export (any name), interface `*Props` | `SignInPage/page.tsx` |
 | `src/components/` | `*.tsx`, named export `Button`, interface `ButtonProps` | `Button.tsx` |
 | `src/expressions/` | `*Expression.tsx`, named export, interface with `children: ReactNode` | `IfExpression.tsx` |
+
+### Page structure (Next.js-style)
+
+Each page lives in its own **folder** inside `src/pages/`. The file is always named `page.tsx`:
+
+```
+src/pages/
+  SignInPage/
+    page.tsx          ← exports the component (any name, e.g. AlSignIn)
+    states/           ← state fixtures for this page
+      default/
+        data.json
+        model.ts
+      loading/
+        data.json
+        model.ts
+      order.json      ← custom state ordering (array of state keys)
+```
+
+> **Important**: The exported component name inside `page.tsx` does **not** need to match the folder name. The builder reads the first exported component name from the AST and uses it as `root` in the pages list. This is the name that must match what React fiber reports — scope hierarchy and `rootComponentName` comparisons all depend on it.
 
 ## Auto-Discovery
 
 The builder discovers files via API endpoints:
-- Pages: any `*Page.tsx` in `src/pages/` → `GET /__source/list-pages`
+- Pages: any directory containing `page.tsx` in `src/pages/` → `GET /__source/list-pages`
 - Components: any `*.tsx` in `src/components/` → `GET /__source/list-components`
 - Expressions: any `*.tsx` in `src/expressions/` → `GET /__source/list-expressions`
 
-No registration or import map is needed — just create the file with the right naming convention.
+No registration or import map is needed — just create the file/folder with the right naming convention.
 
 ## Component Template
 
