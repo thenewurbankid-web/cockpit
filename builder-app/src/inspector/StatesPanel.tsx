@@ -46,8 +46,8 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   const [newStateName, setNewStateName] = useState('')
   const [renamingKey, setRenamingKey] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
-  const [newKeyInput, setNewKeyInput] = useState('')
-  const [newValueInput, setNewValueInput] = useState('')
+  const [newFieldKey, setNewFieldKey] = useState('')
+  const [newFieldValue, setNewFieldValue] = useState('')
   const [expanded, setExpanded] = useState(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef<Record<string, string>>({})
@@ -156,12 +156,6 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     updateData({ ...data, [fieldKey]: value })
   }
 
-  const handleFieldKeyChange = (oldKey: string, newKey: string) => {
-    if (!newKey || newKey === oldKey) return
-    const entries = Object.entries(data).map(([k, v]) => [k === oldKey ? newKey : k, v] as [string, string])
-    updateData(Object.fromEntries(entries))
-  }
-
   const handleDeleteField = (fieldKey: string) => {
     const next = { ...data }
     delete next[fieldKey]
@@ -169,12 +163,12 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   }
 
   const handleAddField = () => {
-    const k = newKeyInput.trim()
-    if (!k) return
-    const next = { ...data, [k]: newValueInput }
+    const k = newFieldKey.trim()
+    if (!k || k in data) return
+    const next = { ...data, [k]: newFieldValue }
     updateData(next)
-    setNewKeyInput('')
-    setNewValueInput('')
+    setNewFieldKey('')
+    setNewFieldValue('')
   }
 
   const handleCreateState = async () => {
@@ -187,10 +181,11 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
         body: JSON.stringify({ projectRoot, page: pageName, stateName: name }),
       })
       if (!res.ok) return
-      // Auto-populate: copy current state data (if any), then fill in any missing props with defaults
+      // Auto-populate: copy current state data (if any), then fill in any missing props/state with defaults
       const rootLayer = scopeLayers[0]
+      const rootFields = rootLayer ? [...rootLayer.props, ...rootLayer.state] : []
       const scopeData: Record<string, string> = rootLayer
-        ? Object.fromEntries(rootLayer.props.map(item => [
+        ? Object.fromEntries(rootFields.map(item => [
             item.name,
             item.name in dataRef.current ? dataRef.current[item.name] : ((item.defaultValue && !isExpression(item.defaultValue)) ? item.defaultValue : defaultForType(item.typeStr))
           ]))
@@ -386,12 +381,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
           {/* Data field rows */}
           {activeKey && Object.entries(data).map(([fieldKey, fieldValue]) => (
             <div key={fieldKey} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <input
-                style={{ ...inputStyle, width: 90, flexShrink: 0 }}
-                defaultValue={fieldKey}
-                placeholder="key"
-                onBlur={e => handleFieldKeyChange(fieldKey, e.target.value)}
-              />
+              <span style={{ ...inputStyle, width: 90, flexShrink: 0, display: 'inline-flex', alignItems: 'center', color: '#a6adc8', userSelect: 'none', overflow: 'hidden' }}>{fieldKey}</span>
               <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
               <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
                 <Editor
@@ -425,45 +415,56 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
             </div>
           ))}
 
-          {/* Add field row */}
-          {activeKey && (
-            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <input
-                style={{ ...inputStyle, width: 90, flexShrink: 0 }}
-                placeholder="+ key"
-                value={newKeyInput}
-                onChange={e => setNewKeyInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddField() }}
-                onBlur={handleAddField}
-              />
-              <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
-              <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
-                <Editor
-                  height={20}
-                  language="javascript"
-                  theme="vs-dark"
-                  value={newValueInput}
-                  onChange={v => setNewValueInput(v ?? '')}
-                  options={{
-                    fontSize: 11,
-                    lineNumbers: 'off',
-                    minimap: { enabled: false },
-                    scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
-                    overviewRulerLanes: 0,
-                    scrollBeyondLastLine: false,
-                    wordWrap: 'off',
-                    renderLineHighlight: 'none',
-                    glyphMargin: false,
-                    folding: false,
-                    lineDecorationsWidth: 0,
-                    lineNumbersMinChars: 0,
-                    padding: { top: 2, bottom: 2 },
-                  }}
-                />
+          {/* Add field row — dropdown constrained to root props+state not yet in data */}
+          {activeKey && (() => {
+            const rootLayer = scopeLayers[0]
+            const rootFields = rootLayer ? [...rootLayer.props, ...rootLayer.state] : []
+            const available = rootFields.filter(f => !(f.name in data))
+            if (available.length === 0) return null
+            const effectiveKey = newFieldKey || available[0].name
+            return (
+              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <select
+                  style={{ ...inputStyle, width: 90, flexShrink: 0, cursor: 'pointer' }}
+                  value={newFieldKey}
+                  onChange={e => setNewFieldKey(e.target.value)}
+                >
+                  {available.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
+                </select>
+                <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
+                <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
+                  <Editor
+                    height={20}
+                    language="javascript"
+                    theme="vs-dark"
+                    value={newFieldValue}
+                    onChange={v => setNewFieldValue(v ?? '')}
+                    options={{
+                      fontSize: 11,
+                      lineNumbers: 'off',
+                      minimap: { enabled: false },
+                      scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
+                      overviewRulerLanes: 0,
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'off',
+                      renderLineHighlight: 'none',
+                      glyphMargin: false,
+                      folding: false,
+                      lineDecorationsWidth: 0,
+                      lineNumbersMinChars: 0,
+                      padding: { top: 2, bottom: 2 },
+                    }}
+                  />
+                </div>
+                <button
+                  style={{ ...btnStyle, color: '#a6e3a1', fontSize: 11 }}
+                  title="Add field"
+                  onClick={() => { const k = newFieldKey || available[0].name; const next = { ...data, [k]: newFieldValue }; updateData(next); setNewFieldKey(''); setNewFieldValue('') }}
+                >+</button>
               </div>
-              <div style={{ width: 16, flexShrink: 0 }} />
-            </div>
-          )}
+            )
+          })()}
+
         </div>
       )}
     </div>

@@ -826,7 +826,7 @@ export default function App() {
               </>
             )}
             {!panelOpen && activeSection === 'pages' && activePage && projectRoot && (
-              <BreadcrumbStatesDropdown pageName={activePage.root} projectRoot={projectRoot} />
+              <BreadcrumbStatesDropdown pageName={activePage.id} projectRoot={projectRoot} />
             )}
           </div>
 
@@ -978,7 +978,7 @@ export default function App() {
             onWrapChooseExpr={setWrapChosenExpr}
             hasRuntimeError={previewHasError}
             activeSection={activeSection}
-            activePage={activePage?.root ?? ''}
+            activePage={activePage?.id ?? ''}
             projectRoot={projectRoot ?? ''}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)

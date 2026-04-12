@@ -406,7 +406,7 @@ app.get('/__source/list-pages', (req, res) => {
       } catch { /* fall back to dirName */ }
       const baseName = dirName.endsWith('Page') ? dirName.slice(0, -4) : dirName
       const label = baseName.replace(/([A-Z])/g, ' $1').trim()
-      const id = dirName.toLowerCase()
+      const id = dirName
       return { id, label, root: componentName, file: `${dirName}/page` }
     })
     .sort((a, b) => a.label.localeCompare(b.label))
