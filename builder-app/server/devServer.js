@@ -390,18 +390,16 @@ app.get('/__source/list-pages', (req, res) => {
     return res.json({ pages: [] })
   }
 
-  const files = walkTsx(loginAppPages)
-  console.log(`[list-pages] walkTsx found ${files.length} file(s):`, files.map(f => f.relPath))
-  const pages = files
-    .map(({ name, relPath }) => {
-      // Derive label from the filename: strip trailing "Page", prettify camelCase
-      const baseName = name.endsWith('Page') ? name.slice(0, -4) : name
-      const label = (relPath.includes('/')
-        ? relPath.split('/').slice(0, -1).join(' / ') + ' / ' + baseName
-        : baseName
-      ).replace(/([A-Z])/g, ' $1').trim()
-      const id = relPath.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-')
-      return { id, label, root: name, file: relPath }
+  let pageDirEntries
+  try { pageDirEntries = fs.readdirSync(loginAppPages, { withFileTypes: true }) } catch { return res.json({ pages: [] }) }
+  const pages = pageDirEntries
+    .filter(e => e.isDirectory() && fs.existsSync(path.join(loginAppPages, e.name, 'page.tsx')))
+    .map(e => {
+      const dirName = e.name  // e.g. "LoginPage"
+      const baseName = dirName.endsWith('Page') ? dirName.slice(0, -4) : dirName
+      const label = baseName.replace(/([A-Z])/g, ' $1').trim()
+      const id = dirName.toLowerCase()
+      return { id, label, root: dirName, file: `${dirName}/page` }
     })
     .sort((a, b) => a.label.localeCompare(b.label))
 
@@ -423,18 +421,19 @@ app.post('/__source/create-page', (req, res) => {
 
   const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
   if (!loginAppPages) return res.status(400).json({ error: 'No active project set' })
-  const filePath = path.join(loginAppPages, `${componentName}.tsx`)
+  const pageDir = path.join(loginAppPages, componentName)
+  const filePath = path.join(pageDir, 'page.tsx')
 
   if (!isSafeFile(filePath)) {
     return res.status(403).json({ error: 'Access denied' })
   }
   if (fs.existsSync(filePath)) {
-    return res.status(409).json({ error: `File already exists: ${componentName}.tsx` })
+    return res.status(409).json({ error: `File already exists: ${componentName}/page.tsx` })
   }
 
   const template = buildPageTemplate(componentName, trimmed)
 
-  fs.mkdirSync(loginAppPages, { recursive: true })
+  fs.mkdirSync(pageDir, { recursive: true })
   fs.writeFileSync(filePath, template, 'utf-8')
   console.log(`[create-page] Created ${filePath}`)
   res.json({ ok: true, componentName, id })
@@ -448,17 +447,18 @@ app.delete('/__source/page/:componentName', (req, res) => {
 
   const loginAppPages = getProjectDirs(getProjectRoot(req)).pagesDir
   if (!loginAppPages) return res.status(400).json({ error: 'No active project set' })
-  const filePath = path.join(loginAppPages, `${componentName}.tsx`)
+  const pageDir = path.join(loginAppPages, componentName)
+  const filePath = path.join(pageDir, 'page.tsx')
 
-  if (!isSafeFile(filePath)) {
+  if (!isSafeFile(pageDir)) {
     return res.status(403).json({ error: 'Access denied' })
   }
   if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: `File not found: ${componentName}.tsx` })
+    return res.status(404).json({ error: `File not found: ${componentName}/page.tsx` })
   }
 
-  fs.unlinkSync(filePath)
-  console.log(`[delete-page] Deleted ${filePath}`)
+  fs.rmSync(pageDir, { recursive: true, force: true })
+  console.log(`[delete-page] Deleted ${pageDir}`)
   res.json({ ok: true })
 })
 
@@ -1136,9 +1136,11 @@ function generateModelTs(pageName, stateName, data) {
   return `export interface ${interfaceName} {\n${fields}\n}\n`
 }
 
-function getStatesDir(projectRoot) {
-  if (!projectRoot) return null
-  return path.join(path.resolve(projectRoot), 'src', 'states', 'pages')
+function getPageStatesDir(projectRoot, pageName) {
+  if (!projectRoot || !pageName) return null
+  const { pagesDir } = getProjectDirs(projectRoot)
+  if (!pagesDir) return null
+  return path.join(pagesDir, pageName, 'states')
 }
 
 /** Label from state key — e.g. "my-state" → "My State" */
@@ -1154,7 +1156,8 @@ app.get('/__source/list-states', (req, res) => {
   if (!page || typeof page !== 'string') {
     return res.status(400).json({ error: 'Missing ?page= query parameter' })
   }
-  const pageDir = path.join(getStatesDir(projectRoot), page)
+  const pageDir = getPageStatesDir(projectRoot, page)
+  if (!pageDir) return res.json({ states: [] })
   console.log(`[list-states] projectRoot=${projectRoot} page=${page} pageDir=${pageDir} exists=${fs.existsSync(pageDir)}`)
   if (!fs.existsSync(pageDir)) return res.json({ states: [] })
 
@@ -1177,7 +1180,9 @@ app.get('/__source/state-data', (req, res) => {
   if (!projectRoot) return res.json({ data: {} })
   const { page, state } = req.query
   if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
-  const dataFile = path.join(getStatesDir(projectRoot), page, state, 'data.json')
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.json({ data: {} })
+  const dataFile = path.join(statesDir, state, 'data.json')
   if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
   if (!fs.existsSync(dataFile)) return res.json({ data: {} })
   try {
@@ -1194,7 +1199,9 @@ app.post('/__source/state-data', (req, res) => {
   if (!projectRoot || !page || !state || data === undefined) {
     return res.status(400).json({ error: 'Body must contain { projectRoot, page, state, data }' })
   }
-  const stateDir = path.join(getStatesDir(projectRoot), page, state)
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
+  const stateDir = path.join(statesDir, state)
   const dataFile = path.join(stateDir, 'data.json')
   const modelFile = path.join(stateDir, 'model.ts')
   if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
@@ -1213,7 +1220,9 @@ app.post('/__source/create-state', (req, res) => {
   if (!/^[a-zA-Z0-9-]+$/.test(stateName)) {
     return res.status(400).json({ error: 'stateName must contain only letters, numbers, and hyphens' })
   }
-  const stateDir = path.join(getStatesDir(projectRoot), page, stateName)
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
+  const stateDir = path.join(statesDir, stateName)
   const dataFile = path.join(stateDir, 'data.json')
   if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
   if (fs.existsSync(stateDir)) return res.status(409).json({ error: `State "${stateName}" already exists` })
@@ -1230,7 +1239,9 @@ app.delete('/__source/state', (req, res) => {
   if (!projectRoot) return res.status(400).json({ error: 'No active project set' })
   const { page, state } = req.query
   if (!page || !state) return res.status(400).json({ error: 'Missing ?page= or ?state= query parameter' })
-  const stateDir = path.join(getStatesDir(projectRoot), page, state)
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or pagesDir' })
+  const stateDir = path.join(statesDir, state)
   if (!isSafeFile(stateDir)) return res.status(403).json({ error: 'Access denied' })
   if (!fs.existsSync(stateDir)) return res.status(404).json({ error: 'State not found' })
   fs.rmSync(stateDir, { recursive: true, force: true })
