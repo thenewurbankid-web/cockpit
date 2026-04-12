@@ -382,9 +382,11 @@ export function extractChildBindings(
           }
           if (elementBindings.length > 0) {
             results.push({ componentName: compName, bindings: elementBindings })
+            // Stop recursion — bindings found, don't descend into its JSX children.
+            return
           }
-          // Stop recursion — don't visit this component's JSX children.
-          return
+          // No direct bindings — fall through to recurse into JSX children.
+          // This handles compound components like <TextField><TextField.Input value={email}/></TextField>.
         } else if (compName) {
           // Native DOM element (div, span, img, etc.): collect attr + text-child bindings,
           // then continue recursing into its children.
