@@ -1,13 +1,14 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { highlightElement, clearHighlight } from '../highlight'
-import { collectExpressionInstances, isBuilderAppElement, type ExpressionInstance } from '../fiberSource'
+import { collectExpressionInstances, getElementSourceInfo, isBuilderAppElement, type ExpressionInstance } from '../fiberSource'
 import { wrapNodesWithExpression } from './expressionRewriter'
-import type { ExpressionMeta, WrapIntentNode, DisplayNode, SelectedNodeSnapshot, DOMTreePanelProps } from './types'
+import type { ExpressionMeta, WrapIntentNode, DisplayNode, SelectedNodeSnapshot, DOMTreePanelProps, LayoutEntry } from './types'
 import { hasMultipleComponents, collectComponentFiles, buildMixedTree, firstDomElement, mergeExpressionData } from './treeBuilders'
 import { countNodes, findPathToEl, findNodeByKey, getNodeFile, getNodeLine, computeRelativeImportPath } from './helpers'
 import { TreeRow } from './TreeRow'
 import { styles } from './styles'
 import { deleteJsxNode } from '../inspector/astRewriters'
+import { RoutePanel } from '../inspector/RoutePanel'
 
 export type { ExpressionMeta, WrapIntentNode, SelectedNodeSnapshot }
 
@@ -107,6 +108,15 @@ export function DOMTreePanel({
   loadErrorComponentName,
   pagesDir,
   componentsDir,
+  layouts,
+  activeLayoutId,
+  onLayoutClick,
+  onAddLayout,
+  onDeleteLayout,
+  projectRoot,
+  pageId,
+  routeLayouts,
+  onRouteChange,
 }: DOMTreePanelProps) {
   const [tree, setTree] = useState<DisplayNode[]>([])
   const [treeVersion, setTreeVersion] = useState(0)
@@ -432,7 +442,8 @@ export function DOMTreePanel({
         const html = root.innerHTML
         if (html !== lastHTML) {
           const projectDirs = [pagesDir, componentsDir].filter(Boolean) as string[]
-          const newTree = buildMixedTree(root, preferredRootComponentName, projectDirs.length > 0 ? projectDirs : undefined)
+          const activeLayout = layouts?.find(l => l.id === activeLayoutId)
+          const newTree = buildMixedTree(root, preferredRootComponentName, projectDirs.length > 0 ? projectDirs : undefined, activeLayout?.name)
           if (newTree === null) {
             // Canvas doesn't have the expected page yet (still loading / showing
             // previous page). Don't update lastHTML so we retry every frame until
@@ -506,7 +517,9 @@ export function DOMTreePanel({
           // Navigate to the usage site (page/parent file) and show the parent JSX container.
           onLocate(node.usageFile, node.usageLine, 'component-usage', node.name)
         } else {
-          onLocate(node.file, node.line, 'component', node.name)
+          // Layout/page root nodes (depth 0 or isPageRoot) should show the full file.
+          const isRootNode = node.depth === 0 || node.isPageRoot
+          onLocate(node.file, node.line, isRootNode ? 'file' : 'component', node.name)
         }
       }
       const el = firstDomElement(node)
@@ -514,6 +527,8 @@ export function DOMTreePanel({
         setSelected(el)
         el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       }
+      const compSourceInfo = el ? getElementSourceInfo(el) : null
+      console.log('[tree] comp node select: el=', !!el, 'ownerChain=', compSourceInfo?.ownerChain?.map(e => `${e.componentName}@${e.file?.replace(/.*[/\\]/, '')}:${e.line}`))
       onNodeSelect?.({
         tag: node.name,
         locatorId: null,
@@ -522,6 +537,7 @@ export function DOMTreePanel({
         ownerComponentName: node.name,
         ownerFile: node.usageFile ?? null,
         ownerLine: node.usageLine ?? null,
+        ownerChain: compSourceInfo?.ownerChain,
         domAttributes: [],
       })
       return
@@ -554,6 +570,7 @@ export function DOMTreePanel({
         ownerComponentName: !isBuilderInfo ? (info?.ownerComponentName ?? null) : null,
         ownerFile: !isBuilderInfo ? (info?.ownerFile ?? null) : null,
         ownerLine: !isBuilderInfo ? (info?.ownerLine ?? null) : null,
+        ownerChain: !isBuilderInfo ? info?.ownerChain : undefined,
         domAttributes: domAttrs,
       })
     }
@@ -564,12 +581,32 @@ export function DOMTreePanel({
     if (!needsInitialSelectRef.current || tree.length === 0 || !onAutoSelect) return
     needsInitialSelectRef.current = false
     const first = tree[0]
+    // When a layout wraps the page, the first node is the layout (e.g. BlankLayout).
+    // The REAL page root is flagged with isPageRoot and lives somewhere inside the layout subtree.
+    // We must use that node for resolvedRootName so the inspector knows AlSignIn is the root,
+    // not BlankLayout — otherwise child binding badges and scope hierarchy break.
+    function findPageRootNode(nodes: typeof tree): (typeof tree)[0] | null {
+      for (const n of nodes) {
+        if (n.kind === 'component' && n.isPageRoot) return n
+        const found = findPageRootNode(n.children)
+        if (found) return found
+      }
+      return null
+    }
+    const pageRootNode = first.kind === 'component' && !first.isPageRoot ? findPageRootNode(tree) : null
+    const autoSelectNode = pageRootNode ?? first
     if (first.kind === 'component') {
       const el = firstDomElement(first)
       if (el) setSelected(el)
+      const compSourceInfo = el ? getElementSourceInfo(el) : null
+      // If the first tree node is a layout wrapper, use the page root node name for the snapshot
+      // so the inspector parses the correct component (AlSignIn, not BlankLayout).
+      const snapshotName = autoSelectNode.kind === 'component' ? autoSelectNode.name : first.name
+      const snapshotFile = autoSelectNode.kind === 'component' ? (autoSelectNode.file || '') : (first.file || '')
+      const snapshotLine = autoSelectNode.kind === 'component' ? autoSelectNode.line : first.line
       onAutoSelect(
-        { tag: first.name, locatorId: null, locatorFile: first.file || '', locatorLine: first.line, ownerComponentName: first.name, domAttributes: [] },
-        first.file || '', first.line, first.name
+        { tag: snapshotName, locatorId: null, locatorFile: snapshotFile, locatorLine: snapshotLine, ownerComponentName: snapshotName, ownerChain: compSourceInfo?.ownerChain, domAttributes: [] },
+        snapshotFile, snapshotLine, snapshotName
       )
     } else if (first.kind === 'dom') {
       setSelected(first.el)
@@ -620,6 +657,11 @@ export function DOMTreePanel({
   const [componentSearch, setComponentSearch] = useState('')
   const [confirmDeleteCompId, setConfirmDeleteCompId] = useState<string | null>(null)
   const [hoveredCompId, setHoveredCompId] = useState<string | null>(null)
+
+  // Layout section state
+  const [layoutsOpen, setLayoutsOpen] = useState(true)
+  const [hoveredLayoutId, setHoveredLayoutId] = useState<string | null>(null)
+  const [confirmDeleteLayoutId, setConfirmDeleteLayoutId] = useState<string | null>(null)
 
   // Panel resize
   const [panelWidth, setPanelWidth] = useState(280)
@@ -774,6 +816,112 @@ export function DOMTreePanel({
                 >
                   <span style={{ fontSize: 14, lineHeight: 1, color: '#a6e3a1' }}>+</span>
                   <span>Add page</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={styles.pageSectionDivider} />
+        </>
+      )}
+
+      {activeSection === 'pages' && pageId && projectRoot && (
+        <RoutePanel
+          pageId={pageId}
+          projectRoot={projectRoot}
+          layouts={routeLayouts ?? []}
+          onRouteChange={(r, lid) => onRouteChange?.(r, lid)}
+        />
+      )}
+
+      {/* ── Layouts section (own tab) ── */}
+      {activeSection === 'layouts' && layouts !== undefined && (
+        <>
+          <div
+            style={{ ...styles.sectionHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => setLayoutsOpen(o => !o)}
+          >
+            <span style={{ fontSize: 9, color: '#6c7086', transition: 'transform 0.15s', display: 'inline-block', transform: layoutsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            Layouts
+            <InfoIcon text="Wrapper components that surround pages. Assign a layout to a page via the breadcrumb Layout dropdown." />
+            <span style={{ color: '#6c7086', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 'auto' }}>{layouts.length}</span>
+          </div>
+          {layoutsOpen && (
+            <div style={styles.pagesSection}>
+              <div style={styles.pagesScroll}>
+                {layouts.length === 0 ? (
+                  <div style={{ color: '#45475a', fontSize: 11, padding: '0.4rem 0.75rem', fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' }}>No layouts yet</div>
+                ) : layouts.map((layout: LayoutEntry) => {
+                  const isActive = activeLayoutId === layout.id
+                  const isHovered = hoveredLayoutId === layout.id
+                  const isConfirming = confirmDeleteLayoutId === layout.id
+                  return (
+                    <div
+                      key={layout.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        paddingLeft: 8,
+                        paddingTop: 3,
+                        paddingBottom: 3,
+                        paddingRight: 6,
+                        background: isActive ? '#313244' : isHovered ? 'rgba(148,228,226,0.10)' : 'transparent',
+                        borderLeft: isActive ? '2px solid #94e2d2' : isHovered ? '2px solid #94e2d2' : '2px solid transparent',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        transition: 'background 0.12s, border-left-color 0.12s',
+                      }}
+                      onMouseEnter={() => setHoveredLayoutId(layout.id)}
+                      onMouseLeave={() => { setHoveredLayoutId(null); if (confirmDeleteLayoutId === layout.id) setConfirmDeleteLayoutId(null) }}
+                      onClick={() => { if (!isConfirming) onLayoutClick?.(layout) }}
+                    >
+                      <span style={{ color: '#6c7086', fontSize: 10, width: 12, flexShrink: 0 }}>▸</span>
+                      <span style={{ color: '#94e2d2' }}>{'[]'}</span>
+                      <span style={{ color: isActive ? '#94e2d2' : '#cdd6f4', fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {layout.name}
+                      </span>
+                      <span style={{ color: '#6c7086', fontSize: 11, marginLeft: 2 }}>(layout)</span>
+                      <span style={{ marginLeft: 4, flexShrink: 0, display: 'flex', alignItems: 'center', minWidth: 20 }}>
+                        {isConfirming ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ color: '#f38ba8', fontSize: 10, fontFamily: 'system-ui', whiteSpace: 'nowrap' }}>Delete?</span>
+                            <span
+                              title="Confirm delete"
+                              style={{ fontSize: 10, color: '#f38ba8', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 700, padding: '1px 4px', borderRadius: 3, border: '1px solid #f38ba8', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteLayoutId(null); onDeleteLayout?.(layout.id, layout.name) }}
+                            >Yes</span>
+                            <span
+                              title="Cancel"
+                              style={{ fontSize: 10, color: '#6c7086', cursor: 'pointer', fontFamily: 'system-ui', padding: '1px 4px', borderRadius: 3, border: '1px solid #45475a', lineHeight: 1.4 }}
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteLayoutId(null) }}
+                            >No</span>
+                          </span>
+                        ) : (
+                          <span
+                            title="Delete layout"
+                            style={{ fontSize: 14, color: '#6c7086', cursor: 'pointer', lineHeight: 1, padding: '1px 3px', borderRadius: 3, transition: 'color 0.1s', visibility: isHovered ? 'visible' : 'hidden', opacity: isHovered ? 1 : 0 }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#f38ba8' }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.color = '#6c7086' }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteLayoutId(layout.id) }}
+                          >🗑</span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={styles.addPageOuter}>
+                <div
+                  style={styles.addPageBtn}
+                  onClick={() => onAddLayout?.()}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(148,228,226,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = '#94e2d2' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = '#45475a' }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1, color: '#94e2d2' }}>+</span>
+                  <span>Add layout</span>
                 </div>
               </div>
             </div>

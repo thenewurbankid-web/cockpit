@@ -20,6 +20,13 @@ export interface SelectedNodeContext {
   ownerFile?: string | null
   /** Line in ownerFile where the owner component's JSX tag appears. */
   ownerLine?: number | null
+  /**
+   * Full fiber ancestry chain for multi-level scope walking without locatorjs.
+   * chain[0] = immediate owner (same as ownerFile/ownerLine).
+   * chain[N] = the Nth ancestor component, each entry's file/line pointing to
+   * WHERE that component is used in its parent's JSX.
+   */
+  ownerChain?: Array<{ componentName: string; file: string | null; line: number | null }>
   domAttributes: Array<{ name: string; value: string }>
 }
 
@@ -105,11 +112,21 @@ export interface InspectorPanelProps {
   /** When true, the preview has a runtime error — only the source tab is shown. */
   hasRuntimeError?: boolean
   /** Which top-level section is active ('pages' | 'components' | 'expressions'). */
-  activeSection?: 'pages' | 'components' | 'expressions'
+  activeSection?: 'pages' | 'components' | 'expressions' | 'layouts'
   /** The name of the active page (used to show StatesPanel). */
   activePage?: string
   /** Root path of the active project. */
   projectRoot?: string
+  /** Name of the active layout component (if any). Layout-owned elements are editable. */
+  layoutComponentName?: string
+  /** Folder id of the active layout (if any). Used by LayoutStatesPanel to query state endpoints. */
+  layoutId?: string
+  /** The id of the active page folder (e.g. "SignInPage"). Used by RoutePanel. */
+  pageId?: string
+  /** Layouts available for route assignment. */
+  routeLayouts?: { id: string; name: string }[]
+  /** Called when the user saves or removes a route assignment. */
+  onRouteChange?: (route: string | null, layoutId: string | null) => void
 }
 
 export type Tab = 'source' | 'props' | 'bindings' | 'expression' | 'changes'

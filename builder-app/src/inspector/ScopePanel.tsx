@@ -6,31 +6,33 @@ import type { ScopeItem, ScopeLayer, ScopePanelProps, ComponentProp, JsxAttr } f
 const LINK_COLORS = ['#a6e3a1', '#89dceb', '#cba6f7', '#fab387', '#f9e2af', '#94e2d5', '#f38ba8', '#89b4fa']
 
 export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemoveState, readOnly }: ScopePanelProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   if (layers.length === 0) return null
 
   const totalUsed = layers.reduce((s, l) =>
     s + l.props.filter(i => i.usedInNode).length + l.state.filter(i => i.usedInNode).length, 0)
 
-  const childLayer = layers.find(l => l.isCurrent)
-  const links = childLayer?.links ?? []
-  const parentVarColor = new Map<string, string>()
-  const childPropColor = new Map<string, string>()
-  links.forEach((link, i) => {
-    const color = LINK_COLORS[i % LINK_COLORS.length]
-    if (link.parentVar) parentVarColor.set(link.parentVar, color)
-    if (link.childProp) childPropColor.set(link.childProp, color)
-  })
+  // Build per-layer color maps: links in layer[i] describe what layer[i-1] passes to layer[i].
+  // Each link gets a unique color so the parent var and the child prop share the same color.
+  const layerColorMaps: Map<string, string>[] = layers.map(() => new Map())
+  let globalColorIdx = 0
+  for (let i = 1; i < layers.length; i++) {
+    for (const link of (layers[i].links ?? [])) {
+      const color = LINK_COLORS[globalColorIdx % LINK_COLORS.length]
+      globalColorIdx++
+      if (link.parentVar) layerColorMaps[i - 1].set(link.parentVar, color)
+      if (link.childProp) layerColorMaps[i].set(link.childProp, color)
+    }
+  }
 
-  // Build a color per unique rootVar that flows down to child components
-  const allChildBindings = childLayer?.childBindings ?? []
-  const rootVarChildColor = new Map<string, string>()
-  let childColorIdx = links.length
+  // childBindings: vars in the current layer flowing down to child components
+  const currentLayerIdx = layers.findIndex(l => l.isCurrent)
+  const allChildBindings = layers[currentLayerIdx]?.childBindings ?? []
   for (const { bindings } of allChildBindings) {
     for (const { rootVar } of bindings) {
-      if (!rootVarChildColor.has(rootVar)) {
-        rootVarChildColor.set(rootVar, LINK_COLORS[childColorIdx % LINK_COLORS.length])
-        childColorIdx++
+      if (!layerColorMaps[currentLayerIdx].has(rootVar)) {
+        layerColorMaps[currentLayerIdx].set(rootVar, LINK_COLORS[globalColorIdx % LINK_COLORS.length])
+        globalColorIdx++
       }
     }
   }
@@ -52,9 +54,7 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
             // Keep the connector line if there are child layers below the current
             const isLast = ri === layers.length - 1 && allChildBindings.length === 0
             const canEdit = !readOnly && layer.isCurrent
-            const colorMap = layer.isCurrent
-              ? new Map([...childPropColor, ...rootVarChildColor])
-              : parentVarColor
+            const colorMap = layerColorMaps[depth]
             return (
               <div key={layer.componentName} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12, position: 'relative' }}>
                 {!isLast && (
@@ -73,7 +73,7 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
                   </span>
                   {layer.isCurrent
                     ? <span style={scopeStyles.currentBadge}>current</span>
-                    : <span style={scopeStyles.parentBadge}>parent</span>
+                    : <span style={scopeStyles.parentBadge}>{depth === layers.length - 2 ? 'parent' : 'ancestor'}</span>
                   }
                 </div>
                 {(layer.props.length > 0 || canEdit) && (
@@ -152,7 +152,7 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
                         <ScopeItemChip
                           key={`${rootVar}:${childProp}`}
                           item={{ name: childProp, typeStr: '', usedInNode: true }}
-                          linkColor={rootVarChildColor.get(rootVar)}
+                          linkColor={layerColorMaps[currentLayerIdx]?.get(rootVar)}
                         />
                       ))}
                     </div>

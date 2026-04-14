@@ -201,13 +201,16 @@ function cockpitCssInjector(): Plugin {
       }
 
       if (cssFiles.length === 0) {
-        return sourceDirs.join('\n') || '/* no css configured */'
+        const parts = [`@import 'tailwindcss';`, ...sourceDirs]
+        return parts.join('\n') || '/* no css configured */'
       }
 
       const inlined = cssFiles.map(f => inlineFile(f))
-      // @source directives go after the inlined CSS so they appear after any
-      // @import 'tailwindcss' directive contained in the project's CSS files.
-      return [...inlined, ...sourceDirs].join('\n\n')
+      // @import 'tailwindcss' must come first so Tailwind v4's default theme
+      // (including --breakpoint-sm etc.) is available when processing @theme
+      // overrides and @utility blocks from the target project's CSS files.
+      // @source directives go after the inlined CSS.
+      return [`@import 'tailwindcss';`, ...inlined, ...sourceDirs].join('\n\n')
     },
 
 

@@ -1,43 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import { scopeStyles } from './styles'
-import type { ScopeLayer } from './types'
 
 interface StateEntry {
   key: string
   label: string
 }
 
-function defaultForType(typeStr: string): string {
-  const t = typeStr.trim().toLowerCase()
-  if (t === 'boolean') return 'false'
-  if (t === 'number') return '0'
-  if (t.endsWith('[]') || t.startsWith('array<')) return '[]'
-  if (t === 'object' || t.startsWith('{')) return '{}'
-  return ''
-}
-
-/** Return true if a default value string looks like an expression rather than a plain literal.
- * States only hold plain values — bindings/expressions belong in source code, not state data. */
-function isExpression(val: string): boolean {
-  if (!val) return false
-  const v = val.trim()
-  // string literal — plain value
-  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return false
-  // numeric / boolean literal
-  if (v === 'true' || v === 'false' || /^-?\d+(\.\d+)?$/.test(v)) return false
-  // everything else: operators, function calls, ternaries, identifiers → treat as expression
-  return true
-}
-
-interface StatesPanelProps {
-  pageName: string
+interface LayoutStatesPanelProps {
+  layoutName: string
   projectRoot: string
   onStateChange: (props: Record<string, string>, switched?: boolean) => void
-  scopeLayers?: ScopeLayer[]
 }
 
-export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers = [] }: StatesPanelProps) {
+export function LayoutStatesPanel({ layoutName, projectRoot, onStateChange }: LayoutStatesPanelProps) {
   const [states, setStates] = useState<StateEntry[]>([])
   const [activeKey, setActiveKey] = useState<string>('')
   const [data, setData] = useState<Record<string, string>>({})
@@ -56,13 +32,13 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   const onStateChangeRef = useRef(onStateChange)
   useEffect(() => { onStateChangeRef.current = onStateChange }, [onStateChange])
 
-  const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(pageName)}`
+  const qs = `projectRoot=${encodeURIComponent(projectRoot)}&layout=${encodeURIComponent(layoutName)}`
 
   const loadStates = useCallback(async () => {
-    if (!projectRoot || !pageName) return
+    if (!projectRoot || !layoutName) return
     setLoading(true)
     try {
-      const res = await fetch(`/__source/list-states?${qs}`)
+      const res = await fetch(`/__source/list-layout-states?${qs}`)
       const json = await res.json()
       const list: StateEntry[] = json.states ?? []
       setStates(list)
@@ -70,7 +46,6 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
         const current = activeKeyRef.current
         const next = list.some(s => s.key === current) ? current : list[0].key
         setActiveKey(next)
-        // Eagerly load data for the first state so the preview updates on mount
         if (next !== current) {
           void loadDataRef.current(next)
         }
@@ -79,38 +54,37 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
         setData({})
         dataRef.current = {}
       }
-    } catch (e) {
-      console.error('[StatesPanel] loadStates error', e)
+    } catch {
       setStates([])
     } finally {
       setLoading(false)
     }
-  }, [projectRoot, pageName])
+  }, [projectRoot, layoutName]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scheduleSave = useCallback((nextData: Record<string, string>, key: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       try {
-        await fetch('/__source/state-data', {
+        await fetch('/__source/layout-state-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectRoot, page: pageName, state: key, data: nextData }),
+          body: JSON.stringify({ projectRoot, layout: layoutName, state: key, data: nextData }),
         })
       } catch { /* best-effort */ }
     }, 400)
-  }, [projectRoot, pageName])
+  }, [projectRoot, layoutName])
 
   const flushSave = useCallback((key: string) => {
     if (!saveTimer.current) return
     clearTimeout(saveTimer.current)
     saveTimer.current = null
     const snapshot = { ...dataRef.current }
-    void fetch('/__source/state-data', {
+    void fetch('/__source/layout-state-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectRoot, page: pageName, state: key, data: snapshot }),
+      body: JSON.stringify({ projectRoot, layout: layoutName, state: key, data: snapshot }),
     }).catch(() => { /* best-effort */ })
-  }, [projectRoot, pageName])
+  }, [projectRoot, layoutName])
 
   const flushSaveRef = useRef(flushSave)
   useEffect(() => { flushSaveRef.current = flushSave }, [flushSave])
@@ -123,7 +97,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     activeKeyRef.current = key
     loadingRef.current = true
     try {
-      const res = await fetch(`/__source/state-data?${qs}&state=${encodeURIComponent(key)}`)
+      const res = await fetch(`/__source/layout-state-data?${qs}&state=${encodeURIComponent(key)}`)
       const json = await res.json()
       const d = json.data ?? {}
       if (activeKeyRef.current !== key) return
@@ -175,28 +149,12 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     const name = newStateName.trim().replace(/\s+/g, '_').toLowerCase()
     if (!name) return
     try {
-      const res = await fetch('/__source/create-state', {
+      const res = await fetch('/__source/create-layout-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectRoot, page: pageName, stateName: name }),
+        body: JSON.stringify({ projectRoot, layout: layoutName, stateName: name }),
       })
       if (!res.ok) return
-      // Auto-populate: copy current state data (if any), then fill in any missing props/state with defaults
-      const rootLayer = scopeLayers[0]
-      const rootFields = rootLayer ? [...rootLayer.props, ...rootLayer.state] : []
-      const scopeData: Record<string, string> = rootLayer
-        ? Object.fromEntries(rootFields.map(item => [
-            item.name,
-            item.name in dataRef.current ? dataRef.current[item.name] : ((item.defaultValue && !isExpression(item.defaultValue)) ? item.defaultValue : defaultForType(item.typeStr))
-          ]))
-        : {}
-      if (Object.keys(scopeData).length > 0) {
-        await fetch('/__source/state-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectRoot, page: pageName, state: name, data: scopeData }),
-        })
-      }
       setNewStateName('')
       setAddingState(false)
       await loadStates()
@@ -207,7 +165,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
   const handleDeleteState = async () => {
     if (!activeKey) return
     try {
-      await fetch(`/__source/state?${qs}&state=${encodeURIComponent(activeKey)}`, { method: 'DELETE' })
+      await fetch(`/__source/layout-state?${qs}&state=${encodeURIComponent(activeKey)}`, { method: 'DELETE' })
       await loadStates()
     } catch { /* best-effort */ }
   }
@@ -216,10 +174,10 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     const trimmed = newKey.trim().replace(/\s+/g, '_').toLowerCase()
     if (!trimmed || trimmed === oldKey) { setRenamingKey(null); return }
     try {
-      const res = await fetch('/__source/rename-state', {
+      const res = await fetch('/__source/rename-layout-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectRoot, page: pageName, oldName: oldKey, newName: trimmed }),
+        body: JSON.stringify({ projectRoot, layout: layoutName, oldName: oldKey, newName: trimmed }),
       })
       if (!res.ok) return
       setRenamingKey(null)
@@ -237,10 +195,10 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
     setStates(next)
     try {
-      await fetch('/__source/reorder-states', {
+      await fetch('/__source/reorder-layout-states', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectRoot, page: pageName, order: next.map(s => s.key) }),
+        body: JSON.stringify({ projectRoot, layout: layoutName, order: next.map(s => s.key) }),
       })
     } catch { /* best-effort */ }
   }
@@ -268,7 +226,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
     flexShrink: 0,
   }
 
-  if (!pageName || !projectRoot) return null
+  if (!layoutName || !projectRoot) return null
 
   return (
     <div style={{ borderTop: '1px solid #1e1e2e', background: '#13131f' }}>
@@ -278,11 +236,11 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
         onClick={() => setExpanded(v => !v)}
       >
         <span style={scopeStyles.chevron}>{expanded ? '▾' : '▸'}</span>
-        <span>States</span>
+        <span>Layout States</span>
         {loading && <span style={{ color: '#45475a', fontSize: '0.6rem', fontWeight: 400 }}>…</span>}
         <button
           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#89b4fa', fontSize: 14, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
-          title="Add state"
+          title="Add layout state"
           onClick={(e) => { e.stopPropagation(); setAddingState(true); setNewStateName('') }}
         >+</button>
       </div>
@@ -334,12 +292,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
                 <select
                   value={activeKey}
                   onChange={e => setActiveKey(e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    flex: 1,
-                    cursor: 'pointer',
-                    padding: '3px 5px',
-                  }}
+                  style={{ ...inputStyle, flex: 1, cursor: 'pointer', padding: '3px 5px' }}
                 >
                   {states.map(s => (
                     <option key={s.key} value={s.key}>{s.label}</option>
@@ -347,13 +300,13 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
                 </select>
               )}
               <button
-                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', color: '#6c7086', opacity: states.findIndex(s => s.key === activeKey) === 0 ? 0.25 : 1 }}
+                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', opacity: states.findIndex(s => s.key === activeKey) === 0 ? 0.25 : 1 }}
                 title="Move up"
                 disabled={states.findIndex(s => s.key === activeKey) === 0}
                 onClick={() => void handleMoveState('up')}
               >▲</button>
               <button
-                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', color: '#6c7086', opacity: states.findIndex(s => s.key === activeKey) === states.length - 1 ? 0.25 : 1 }}
+                style={{ ...btnStyle, fontSize: 15, padding: '2px 4px', opacity: states.findIndex(s => s.key === activeKey) === states.length - 1 ? 0.25 : 1 }}
                 title="Move down"
                 disabled={states.findIndex(s => s.key === activeKey) === states.length - 1}
                 onClick={() => void handleMoveState('down')}
@@ -374,7 +327,7 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
             </div>
           ) : !addingState && (
             <div style={{ fontSize: 11, color: '#45475a', textAlign: 'center', padding: '4px 0' }}>
-              No states — click + to add one
+              No layout states — click + to add one
             </div>
           )}
 
@@ -415,55 +368,48 @@ export function StatesPanel({ pageName, projectRoot, onStateChange, scopeLayers 
             </div>
           ))}
 
-          {/* Add field row — dropdown constrained to root props+state not yet in data */}
-          {activeKey && (() => {
-            const rootLayer = scopeLayers[0]
-            const rootFields = rootLayer ? [...rootLayer.props, ...rootLayer.state] : []
-            const available = rootFields.filter(f => !(f.name in data))
-            if (available.length === 0) return null
-            const effectiveKey = newFieldKey || available[0].name
-            return (
-              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                <select
-                  style={{ ...inputStyle, width: 90, flexShrink: 0, cursor: 'pointer' }}
-                  value={newFieldKey}
-                  onChange={e => setNewFieldKey(e.target.value)}
-                >
-                  {available.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
-                </select>
-                <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
-                <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
-                  <Editor
-                    height={20}
-                    language="javascript"
-                    theme="vs-dark"
-                    value={newFieldValue}
-                    onChange={v => setNewFieldValue(v ?? '')}
-                    options={{
-                      fontSize: 11,
-                      lineNumbers: 'off',
-                      minimap: { enabled: false },
-                      scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
-                      overviewRulerLanes: 0,
-                      scrollBeyondLastLine: false,
-                      wordWrap: 'off',
-                      renderLineHighlight: 'none',
-                      glyphMargin: false,
-                      folding: false,
-                      lineDecorationsWidth: 0,
-                      lineNumbersMinChars: 0,
-                      padding: { top: 2, bottom: 2 },
-                    }}
-                  />
-                </div>
-                <button
-                  style={{ ...btnStyle, color: '#a6e3a1', fontSize: 11 }}
-                  title="Add field"
-                  onClick={() => { const k = newFieldKey || available[0].name; const next = { ...data, [k]: newFieldValue }; updateData(next); setNewFieldKey(''); setNewFieldValue('') }}
-                >+</button>
+          {/* Add field row */}
+          {activeKey && (
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <input
+                style={{ ...inputStyle, width: 90, flexShrink: 0 }}
+                placeholder="field"
+                value={newFieldKey}
+                onChange={e => setNewFieldKey(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddField() }}
+              />
+              <span style={{ color: '#45475a', flexShrink: 0 }}>:</span>
+              <div style={{ flex: 1, height: 20, minWidth: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #313244' }}>
+                <Editor
+                  height={20}
+                  language="javascript"
+                  theme="vs-dark"
+                  value={newFieldValue}
+                  onChange={v => setNewFieldValue(v ?? '')}
+                  options={{
+                    fontSize: 11,
+                    lineNumbers: 'off',
+                    minimap: { enabled: false },
+                    scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false },
+                    overviewRulerLanes: 0,
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'off',
+                    renderLineHighlight: 'none',
+                    glyphMargin: false,
+                    folding: false,
+                    lineDecorationsWidth: 0,
+                    lineNumbersMinChars: 0,
+                    padding: { top: 2, bottom: 2 },
+                  }}
+                />
               </div>
-            )
-          })()}
+              <button
+                style={{ ...btnStyle, color: '#a6e3a1', fontSize: 11 }}
+                title="Add field"
+                onClick={handleAddField}
+              >+</button>
+            </div>
+          )}
 
         </div>
       )}

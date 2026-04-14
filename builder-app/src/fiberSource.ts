@@ -14,6 +14,15 @@ export interface FiberDebugSource {
   columnNumber?: number
 }
 
+export interface OwnerChainEntry {
+  /** Component name at this ancestry level. */
+  componentName: string
+  /** File where THIS component is used (its parent's file). i.e. _debugSource.fileName */
+  file: string | null
+  /** Line where THIS component is used (its parent's file). i.e. _debugSource.lineNumber */
+  line: number | null
+}
+
 export interface ElementSourceInfo {
   /** Absolute path to the source file containing the JSX that created this element. */
   file: string
@@ -26,6 +35,13 @@ export interface ElementSourceInfo {
   ownerFile: string | null
   /** Line where the owner component's JSX invocation lives in its parent. */
   ownerLine: number | null
+  /**
+   * Full ancestry chain starting at the immediate owner component and walking up.
+   * ownerChain[0] = immediate owner (same file/line as ownerFile/ownerLine).
+   * ownerChain[1] = the owner's parent, etc.
+   * Each entry's file/line points to WHERE that component is used in ITS parent's JSX.
+   */
+  ownerChain: OwnerChainEntry[]
 }
 
 // ── fiber access ─────────────────────────────────────────────────────────────
@@ -154,6 +170,21 @@ export function isBuilderAppElement(el: Element): boolean {
   return false
 }
 
+/** Walk up the fiber chain from startFiber (exclusive) collecting all component ancestors. */
+function buildOwnerChain(startFiber: any | null): OwnerChainEntry[] {
+  const chain: OwnerChainEntry[] = []
+  let f = startFiber
+  while (f && chain.length < 10) {
+    const name = getComponentName(f)
+    const src: FiberDebugSource | undefined = f._debugSource
+    if (name) {
+      chain.push({ componentName: name, file: src?.fileName ?? null, line: src?.lineNumber ?? null })
+    }
+    f = f.return
+  }
+  return chain
+}
+
 /** Extract source location info from a DOM element via its React fiber. */
 export function getElementSourceInfo(el: Element): ElementSourceInfo | null {
   const fiber = getReactFiber(el)
@@ -173,6 +204,7 @@ export function getElementSourceInfo(el: Element): ElementSourceInfo | null {
     ownerComponentName: ownerName,
     ownerFile: ownerSource?.fileName ?? null,
     ownerLine: ownerSource?.lineNumber ?? null,
+    ownerChain: buildOwnerChain(ownerFiber),
   }
 }
 

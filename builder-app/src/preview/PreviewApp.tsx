@@ -10,6 +10,9 @@ const pagesDir = params.get('pagesDir') ?? ''
 const componentsDir = params.get('componentsDir') ?? ''
 const componentPath = params.get('componentPath') ?? undefined
 const section = (params.get('section') ?? 'pages') as 'pages' | 'components'
+const layoutComponent = params.get('layoutComponent') ?? undefined
+const layoutsDir = params.get('layoutsDir') ?? undefined
+const layoutComponentPath = params.get('layoutComponentPath') ?? undefined
 
 // When the active project's CSS settings change (e.g. project switch or
 // Settings panel save), the Vite cockpitCssInjector sends this HMR event.
@@ -66,6 +69,8 @@ function fillInputsFromFixture(props: Record<string, unknown>) {
 function PreviewApp() {
   const [fixtureProps, setFixtureProps] = useState<Record<string, unknown> | null>(null)
   const [fixtureKey, setFixtureKey] = useState(0)
+  const [layoutFixtureProps, setLayoutFixtureProps] = useState<Record<string, unknown> | null>(null)
+  const [layoutFixtureKey, setLayoutFixtureKey] = useState(0)
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
@@ -73,6 +78,10 @@ function PreviewApp() {
       if (e.data?.type === 'cockpit:set-props') {
         setFixtureProps(e.data.props as Record<string, unknown>)
         if (e.data.reset) setFixtureKey(k => k + 1)
+      }
+      if (e.data?.type === 'cockpit:set-layout-props') {
+        setLayoutFixtureProps(e.data.props as Record<string, unknown>)
+        if (e.data.reset) setLayoutFixtureKey(k => k + 1)
       }
     }
     window.addEventListener('message', handleMessage)
@@ -101,9 +110,13 @@ function PreviewApp() {
       folder={section}
       pagesDir={pagesDir}
       componentsDir={componentsDir}
+      layoutsDir={layoutsDir}
+      layoutComponent={layoutComponent}
+      layoutComponentPath={layoutComponentPath}
       fixtureProps={fixtureProps}
       fixtureKey={fixtureKey}
-
+      layoutProps={layoutFixtureProps}
+      layoutFixtureKey={layoutFixtureKey}
     />
   )
 }

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { setPreviewIframeWindow, notifyPropsChange } from './preview/ComponentLoader'
+import { setPreviewIframeWindow, notifyPropsChange, notifyLayoutPropsChange } from './preview/ComponentLoader'
 import { ExpressionTester } from './preview/ExpressionTester'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import type { SelectedNodeContext } from './inspector/InspectorPanel'
@@ -8,7 +8,7 @@ import { DOMTreePanel } from './tree/DOMTreePanel'
 import type { ExpressionMeta } from './tree/DOMTreePanel'
 import { ExpressionAssignPanel } from './preview/ExpressionAssignPanel'
 import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
-import { AddPageModal, AddComponentModal, AddExpressionModal } from './modals'
+import { AddPageModal, AddComponentModal, AddExpressionModal, AddLayoutModal } from './modals'
 import { ProjectPickerModal } from './ProjectPickerModal'
 import { SettingsPanel } from './SettingsPanel'
 import { DocsPanel } from './DocsPanel'
@@ -41,6 +41,27 @@ async function fetchPages(projectRoot: string): Promise<{ id: string; label: str
     return data.pages ?? []
   } catch (e) {
     console.error('[fetchPages] error:', e)
+    return []
+  }
+}
+
+async function fetchRoutes(projectRoot: string): Promise<{ pageId: string; route: string; layoutId?: string | null }[]> {
+  try {
+    const res = await fetch(`/__source/list-routes?projectRoot=${encodeURIComponent(projectRoot)}`)
+    if (!res.ok) return []
+    return (await res.json()).routes ?? []
+  } catch {
+    return []
+  }
+}
+
+async function fetchLayouts(projectRoot: string): Promise<{ id: string; label: string; name: string; file?: string }[]> {
+  try {
+    const res = await fetch(`/__source/list-layouts?projectRoot=${encodeURIComponent(projectRoot)}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.layouts ?? []
+  } catch {
     return []
   }
 }
@@ -80,14 +101,14 @@ const DEFAULT_PANEL_WIDTH = 480
 function readUrlState() {
   const p = new URLSearchParams(window.location.search)
   return {
-    section: (p.get('section') ?? 'pages') as 'pages' | 'components' | 'expressions',
+    section: (p.get('section') ?? 'pages') as 'pages' | 'components' | 'expressions' | 'layouts',
     page: p.get('page') ?? 'login',
     component: p.get('component') ?? null,
   }
 }
 
 /** Push updated params to the URL without triggering a navigation / reload. */
-function pushUrlState(section: 'pages' | 'components' | 'expressions', page: string, component: string | null) {
+function pushUrlState(section: 'pages' | 'components' | 'expressions' | 'layouts', page: string, component: string | null) {
   const p = new URLSearchParams()
   p.set('section', section)
   if (page) p.set('page', page)
@@ -158,7 +179,134 @@ function coerceStateData(data: Record<string, string>): Record<string, unknown> 
   return coerced
 }
 
+function LayoutAssignDropdown({
+  layouts,
+  activeLayoutId,
+  onChange,
+}: {
+  layouts: { id: string; label: string; name: string }[]
+  activeLayoutId: string | null
+  onChange: (layoutId: string | null) => void
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ color: '#6c7086', fontSize: '0.7rem' }}>Layout:</span>
+      <select
+        value={activeLayoutId ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+        style={{
+          background: '#1e1e2e',
+          color: '#cdd6f4',
+          border: '1px solid #313244',
+          borderRadius: 4,
+          fontSize: '0.7rem',
+          padding: '2px 6px',
+          cursor: 'pointer',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        <option value="">— none —</option>
+        {layouts.map(l => (
+          <option key={l.id} value={l.id}>{l.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 interface BreadcrumbStateMeta { key: string; label: string }
+
+function BreadcrumbLayoutStatesDropdown({ layoutId, projectRoot }: { layoutId: string; projectRoot: string }) {
+  const [states, setStates] = useState<BreadcrumbStateMeta[]>([])
+  const [activeKey, setActiveKey] = useState('')
+
+  useEffect(() => {
+    if (!layoutId || !projectRoot) return
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&layout=${encodeURIComponent(layoutId)}`
+    let cancelled = false
+    fetch(`/__source/list-layout-states?${qs}`)
+      .then(r => r.json())
+      .then(async (json) => {
+        if (cancelled) return
+        const list: BreadcrumbStateMeta[] = json.states ?? []
+        setStates(list)
+        if (list.length > 0) {
+          const first = list[0].key
+          setActiveKey(first)
+          const dr = await fetch(`/__source/layout-state-data?${qs}&state=${encodeURIComponent(first)}`)
+          if (cancelled) return
+          const dj = await dr.json()
+          notifyLayoutPropsChange(coerceStateData(dj.data ?? {}), true)
+        }
+      })
+      .catch(() => { if (!cancelled) setStates([]) })
+    return () => { cancelled = true }
+  }, [layoutId, projectRoot])
+
+  if (states.length === 0) return null
+
+  const activeIdx = states.findIndex(s => s.key === activeKey)
+
+  async function handleChange(key: string) {
+    setActiveKey(key)
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&layout=${encodeURIComponent(layoutId)}`
+    try {
+      const r = await fetch(`/__source/layout-state-data?${qs}&state=${encodeURIComponent(key)}`)
+      const j = await r.json()
+      notifyLayoutPropsChange(coerceStateData(j.data ?? {}), true)
+    } catch { /* ignore */ }
+  }
+
+  const navBtnStyle: React.CSSProperties = {
+    background: '#1e1e2e',
+    border: '1px solid #313244',
+    borderRadius: 4,
+    color: '#cdd6f4',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    lineHeight: 1,
+    padding: '2px 8px',
+    fontFamily: 'system-ui, sans-serif',
+    display: 'flex',
+    alignItems: 'center',
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ color: '#6c7086', fontSize: '0.7rem' }}>Layout:</span>
+      <select
+        value={activeKey}
+        onChange={e => void handleChange(e.target.value)}
+        style={{
+          background: '#1e1e2e',
+          color: '#cdd6f4',
+          border: '1px solid #313244',
+          borderRadius: 4,
+          fontSize: '0.7rem',
+          padding: '2px 6px',
+          cursor: 'pointer',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        {states.map(s => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </select>
+      <button
+        style={{ ...navBtnStyle, opacity: activeIdx <= 0 ? 0.3 : 1 }}
+        disabled={activeIdx <= 0}
+        title="Previous layout state"
+        onClick={() => { if (activeIdx > 0) void handleChange(states[activeIdx - 1].key) }}
+      >&#8249;</button>
+      <button
+        style={{ ...navBtnStyle, opacity: activeIdx >= states.length - 1 ? 0.3 : 1 }}
+        disabled={activeIdx >= states.length - 1}
+        title="Next layout state"
+        onClick={() => { if (activeIdx < states.length - 1) void handleChange(states[activeIdx + 1].key) }}
+      >&#8250;</button>
+    </div>
+  )
+}
 
 function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string; projectRoot: string }) {
   const [states, setStates] = useState<BreadcrumbStateMeta[]>([])
@@ -216,7 +364,7 @@ function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string;
   }
 
   return (
-    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <span style={{ color: '#6c7086', fontSize: '0.7rem' }}>State:</span>
       <select
         value={activeKey}
@@ -255,10 +403,11 @@ function BreadcrumbStatesDropdown({ pageName, projectRoot }: { pageName: string;
 export default function App() {
   const initial = readUrlState()
   const [location, setLocation] = useState<SourceLocation | null>(null)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
   const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(null)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
-  const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions'>(initial.section)
+  const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions' | 'layouts'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
   const [previewComponent, setPreviewComponent] = useState<string | null>(initial.component)
   const [pages, setPages] = useState<{ id: string; label: string; root: string; file?: string }[]>([])
@@ -275,6 +424,12 @@ export default function App() {
   // The actual resolved component name from fiber (e.g. 'AlSignIn' for SignInPage.tsx).
   // Overrides activePage?.root / previewComponent for isReadOnly checks when they differ.
   const [resolvedRootName, setResolvedRootName] = useState<string | null>(null)
+
+  // Layouts
+  const [layouts, setLayouts] = useState<{ id: string; label: string; name: string; file?: string }[]>([])
+  const [activeLayout, setActiveLayout] = useState<{ id: string; name: string; file?: string } | null>(null)
+  const [addLayoutOpen, setAddLayoutOpen] = useState(false)
+  const [routes, setRoutes] = useState<{ pageId: string; route: string; layoutId?: string | null }[]>([])
 
   // Project selection
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
@@ -355,16 +510,20 @@ export default function App() {
     const info: ProjectInfo = await infoRes.json()
     setProjectInfo(info)
     // Load pages/components/expressions
-    const [loadedPages, loadedComponents, loadedExpressions] = await Promise.all([
+    const [loadedPages, loadedComponents, loadedExpressions, loadedLayouts, loadedRoutes] = await Promise.all([
       fetchPages(root),
       fetchComponents(root),
       fetchExpressions(root),
+      fetchLayouts(root),
+      fetchRoutes(root),
     ])
     console.log('[loadProject] pages:', loadedPages.length, loadedPages.map(p => p.id))
     console.log('[loadProject] components:', loadedComponents.length, loadedComponents.map(c => c.id))
     setPages(loadedPages)
     setComponents(loadedComponents)
     setExpressions(loadedExpressions)
+    setLayouts(loadedLayouts)
+    setRoutes(loadedRoutes)
     setPreviewPage(loadedPages[0]?.id ?? '')
     setPreviewComponent(null)
     setSelectedNode(null)
@@ -402,6 +561,13 @@ export default function App() {
 
   useEffect(() => {
     if (activeSection !== 'expressions') setActiveExpression(null)
+  }, [activeSection])
+
+  // When switching to layouts section, open the selected layout in inspector
+  useEffect(() => {
+    if (activeSection === 'layouts') {
+      setCanvasEl(null)
+    }
   }, [activeSection])
 
   // Auto-load project from localStorage, or show project picker
@@ -466,8 +632,14 @@ export default function App() {
         setLocation({ file: `${componentsDir}/${comp.file}.tsx`, line: 1, inspectMode: 'file', componentName: comp.name })
         setPanelOpen(true)
       }
+    } else if (activeSection === 'layouts') {
+      if (activeLayout && layoutsDir) {
+        const filePath = `${layoutsDir}/${activeLayout.id}/layout.tsx`
+        setLocation({ file: filePath, line: 1, inspectMode: 'file', componentName: activeLayout.name })
+        setPanelOpen(true)
+      }
     }
-  }, [previewPage, previewComponent, activeSection]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [previewPage, previewComponent, activeSection, activeLayout]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openInspector(
     file: string,
@@ -529,8 +701,45 @@ export default function App() {
     setExpressions((prev) => prev.filter((e) => e.name !== name))
   }
 
+  async function deleteLayout(id: string) {
+    try {
+      const qs = projectRoot ? `?projectRoot=${encodeURIComponent(projectRoot)}` : ''
+      await fetch(`/__source/layout/${encodeURIComponent(id)}${qs}`, { method: 'DELETE' })
+    } catch {
+      // best-effort
+    }
+    setLayouts((prev) => prev.filter((l) => l.id !== id))
+    if (activeLayout?.id === id) setActiveLayout(null)
+  }
+
   const pagesDir = projectInfo?.pagesDir ?? ''
   const componentsDir = projectInfo?.componentsDir ?? ''
+
+  // Load the page's assigned layout whenever the active page changes
+  useEffect(() => {
+    if (!projectRoot || !activePage) { setActiveLayout(null); return }
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(activePage.id)}`
+    fetch(`/__source/page-layout?${qs}`)
+      .then(r => r.json())
+      .then(data => {
+        const layoutId: string | null = data.layout ?? null
+        if (layoutId) {
+          const found = layouts.find(l => l.id === layoutId)
+          setActiveLayout(found ? { id: found.id, name: found.name, file: found.file } : null)
+        } else {
+          setActiveLayout(null)
+        }
+      })
+      .catch(() => setActiveLayout(null))
+  }, [activePage?.id, projectRoot, layouts]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // layoutsDir from project info (fallback to src/layouts)
+  const layoutsDir = useMemo(() => {
+    if (!projectRoot) return ''
+    // We don't store layoutsDir in ProjectInfo yet — infer from projectRoot
+    // (server default is src/layouts)
+    return `${projectRoot}/src/layouts`
+  }, [projectRoot])
 
   // Build the URL for the preview iframe. Empty string = no iframe (show empty state instead).
   const previewSrc = useMemo(() => {
@@ -542,6 +751,11 @@ export default function App() {
         componentsDir: componentsDir || '',
         section: 'pages',
       })
+      if (activeLayout && layoutsDir) {
+        p.set('layoutComponent', activeLayout.name)
+        p.set('layoutComponentPath', activeLayout.file ?? activeLayout.name)
+        p.set('layoutsDir', layoutsDir)
+      }
       return `/preview.html?${p.toString()}`
     }
     if (activeSection === 'components' && previewComponent && componentsDir) {
@@ -555,8 +769,19 @@ export default function App() {
       })
       return `/preview.html?${p.toString()}`
     }
+    if (activeSection === 'layouts' && activeLayout && layoutsDir) {
+      const p = new URLSearchParams({
+        page: activeLayout.name,
+        componentPath: `${activeLayout.id}/layout`,
+        pagesDir: pagesDir || '',
+        componentsDir: layoutsDir,
+        section: 'components',
+      })
+      p.set('layoutsDir', layoutsDir)
+      return `/preview.html?${p.toString()}`
+    }
     return ''
-  }, [activeSection, activePage, previewComponent, pagesDir, componentsDir, components])
+  }, [activeSection, activePage, previewComponent, pagesDir, componentsDir, components, activeLayout, layoutsDir])
 
   // Clear canvas state while the iframe transitions to a new src.
   useEffect(() => {
@@ -626,6 +851,12 @@ export default function App() {
             onClick={() => setActiveSection('expressions')}
           >
             Expressions
+          </button>
+          <button
+            style={{ ...styles.tab, ...(activeSection === 'layouts' ? styles.tabActive : {}), ...(activeSection === 'layouts' ? { borderBottomColor: '#94e2d2', color: '#94e2d2' } : {}) }}
+            onClick={() => setActiveSection('layouts')}
+          >
+            Layouts
           </button>
         </div>
 
@@ -719,6 +950,7 @@ export default function App() {
       {/* Main area */}
       <div style={styles.main}>
         {/* Left: DOM tree */}
+        <div style={{ display: leftPanelCollapsed ? 'none' : 'flex', flexShrink: 0 }}>
         <DOMTreePanel
           canvasEl={canvasEl}
           onLocate={openInspector}
@@ -731,7 +963,7 @@ export default function App() {
             }
           }}
           hoveredWrapNodeKey={hoveredWrapKey}
-          preferredRootComponentName={activeSection === 'components' ? (previewComponent ?? undefined) : activePage?.root}
+          preferredRootComponentName={activeSection === 'components' ? (previewComponent ?? undefined) : activeSection === 'layouts' ? (activeLayout?.name ?? undefined) : activePage?.root}
           activeSection={activeSection}
           pages={pages}
           activePage={previewPage}
@@ -792,11 +1024,55 @@ export default function App() {
           hasLoadError={canvasHasError}
           loadErrorComponentName={
             activeSection === 'components' ? (previewComponent ?? undefined)
+            : activeSection === 'layouts' ? (activeLayout?.name ?? undefined)
             : activePage?.root
           }
           pagesDir={pagesDir || undefined}
           componentsDir={componentsDir || undefined}
+          layouts={layouts}
+          activeLayoutId={activeLayout?.id ?? null}
+          onLayoutClick={(layout) => {
+            setActiveLayout({ id: layout.id, name: layout.name, file: layout.file })
+            if (layoutsDir) {
+              const filePath = `${layoutsDir}/${layout.id}/layout.tsx`
+              openInspector(filePath, 1, 'file')
+            }
+            setPanelOpen(true)
+          }}
+          onAddLayout={() => setAddLayoutOpen(true)}
+          onDeleteLayout={(id) => void deleteLayout(id)}
+          projectRoot={projectRoot ?? undefined}
+          pageId={activePage?.id}
+          routeLayouts={layouts.map(l => ({ id: l.id, name: l.name }))}
+          onRouteChange={(routePath, lid) => {
+            void fetchRoutes(projectRoot ?? '').then(setRoutes)
+            if (lid) {
+              const found = layouts.find(l => l.id === lid)
+              if (found) setActiveLayout({ id: found.id, name: found.name, file: found.file })
+            } else {
+              setActiveLayout(null)
+            }
+          }}
         />
+        </div>
+        {leftPanelCollapsed && (
+          <div
+            style={{
+              width: 18,
+              background: '#1e1e2e',
+              borderRight: '1px solid #313244',
+              flexShrink: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Show left panel"
+            onClick={() => setLeftPanelCollapsed(false)}
+          >
+            <span style={{ color: '#6c7086', fontSize: 11 }}>›</span>
+          </div>
+        )}
 
         {/* Center: preview canvas */}
         <div
@@ -804,8 +1080,19 @@ export default function App() {
         >
           {/* Breadcrumb sub-header */}
           <div style={styles.breadcrumb}>
+            <button
+              title={leftPanelCollapsed ? 'Show left panel' : 'Hide left panel'}
+              style={{ background: 'transparent', border: 'none', color: '#6c7086', cursor: 'pointer', padding: '3px 2px', flexShrink: 0, display: 'flex', alignItems: 'center', marginRight: 4 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#cdd6f4' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#6c7086' }}
+              onClick={() => setLeftPanelCollapsed(v => !v)}
+            ><svg width="14" height="12" viewBox="0 0 14 12" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                <rect x="0.6" y="0.6" width="12.8" height="10.8" rx="1.4" stroke="currentColor" strokeWidth="1.1"/>
+                <line x1="4.5" y1="0.6" x2="4.5" y2="11.4" stroke={leftPanelCollapsed ? 'currentColor' : '#45475a'} strokeWidth="1.1"/>
+                <rect x="1.1" y="1.1" width="3" height="9.8" rx="0.6" fill={leftPanelCollapsed ? 'transparent' : 'currentColor'} opacity="0.25"/>
+              </svg></button>
             <span style={styles.breadcrumbItem}>
-              {activeSection === 'pages' ? '📄 Pages' : activeSection === 'components' ? '🧩 Components' : '🔀 Expressions'}
+              {activeSection === 'pages' ? 'Pages' : activeSection === 'components' ? 'Components' : activeSection === 'layouts' ? 'Layouts' : 'Expressions'}
             </span>
             {activeSection === 'pages' && activePage && (
               <>
@@ -825,9 +1112,28 @@ export default function App() {
                 <span style={{ ...styles.breadcrumbCurrent, color: '#94e2d5' }}>{activeExpression}</span>
               </>
             )}
-            {!panelOpen && activeSection === 'pages' && activePage && projectRoot && (
-              <BreadcrumbStatesDropdown pageName={activePage.id} projectRoot={projectRoot} />
+            {activeSection === 'layouts' && activeLayout && (
+              <>
+                <span style={styles.breadcrumbSep}>›</span>
+                <span style={{ ...styles.breadcrumbCurrent, color: '#94e2d2' }}>{activeLayout.name}</span>
+              </>
             )}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {activeSection === 'pages' && activePage && projectRoot && (
+                <BreadcrumbStatesDropdown pageName={activePage.id} projectRoot={projectRoot} />
+              )}
+              <button
+                title={panelOpen ? 'Hide right panel' : 'Show right panel'}
+                style={{ background: 'transparent', border: 'none', color: '#6c7086', cursor: 'pointer', padding: '3px 2px', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#cdd6f4' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#6c7086' }}
+                onClick={() => setPanelOpen(v => !v)}
+              ><svg width="14" height="12" viewBox="0 0 14 12" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                  <rect x="0.6" y="0.6" width="12.8" height="10.8" rx="1.4" stroke="currentColor" strokeWidth="1.1"/>
+                  <line x1="9.5" y1="0.6" x2="9.5" y2="11.4" stroke={panelOpen ? 'currentColor' : '#45475a'} strokeWidth="1.1"/>
+                  <rect x="9.9" y="1.1" width="3" height="9.8" rx="0.6" fill={panelOpen ? 'currentColor' : 'transparent'} opacity="0.25"/>
+                </svg></button>
+            </div>
           </div>
 
           {/* Wrap intent tab bar */}
@@ -929,6 +1235,23 @@ export default function App() {
             </div>
           )}
 
+          {/* Layouts section — no canvas, inspector-driven (or standalone preview) */}
+          {activeSection === 'layouts' && !previewSrc && (
+            <div style={{ flex: 1, background: '#11111b' }}>
+              {layouts.length === 0 && (
+                <SectionEmptyState
+                  icon="⬜"
+                  title="No layouts yet"
+                  message="Layouts wrap your pages with shared structure like navbars and sidebars. Create your first one to get started."
+                  action={{ label: '+ New Layout', onClick: () => setAddLayoutOpen(true) }}
+                />
+              )}
+              {layouts.length > 0 && !activeLayout && (
+                <div style={{ ...styles.emptyState, color: '#6c7086' }}>Select a layout from the panel to preview it.</div>
+              )}
+            </div>
+          )}
+
           {/* Expressions section — inline rendering (ExpressionTester needs fiber access in same doc) */}
           {activeSection === 'expressions' && (
             <div
@@ -965,7 +1288,7 @@ export default function App() {
             inspectMode={location?.inspectMode ?? 'file'}
             componentName={location?.componentName}
             selectedNode={selectedNode}
-            rootComponentName={resolvedRootName ?? (activeSection === 'components' ? (previewComponent ?? activePage?.root) : activePage?.root)}
+            rootComponentName={resolvedRootName ?? (activeSection === 'components' ? (previewComponent ?? activePage?.root) : activeSection === 'layouts' ? (activeLayout?.name ?? activePage?.root) : activePage?.root)}
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
             expressionMode={activeSection === 'expressions'}
@@ -980,6 +1303,9 @@ export default function App() {
             activeSection={activeSection}
             activePage={activePage?.id ?? ''}
             projectRoot={projectRoot ?? ''}
+            layoutComponentName={activeLayout?.name}
+            layoutId={activeLayout?.id}
+            pageId={activePage?.id}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)
               setActiveSection('components')
@@ -1024,6 +1350,17 @@ export default function App() {
           onAdd={(expr) => {
             setExpressions((prev) => [...prev, expr])
             setAddExpressionOpen(false)
+          }}
+        />
+      )}
+
+      {addLayoutOpen && (
+        <AddLayoutModal
+          projectRoot={projectRoot ?? ''}
+          onClose={() => setAddLayoutOpen(false)}
+          onAdd={(layout) => {
+            setLayouts((prev) => [...prev, layout])
+            setAddLayoutOpen(false)
           }}
         />
       )}

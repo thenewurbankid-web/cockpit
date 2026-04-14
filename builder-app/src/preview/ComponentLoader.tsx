@@ -4,6 +4,7 @@ import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react'
 // Cleared on HMR so edits always produce a fresh import.
 const pageCache = new Map<string, ReturnType<typeof lazy>>()
 const componentCache = new Map<string, ReturnType<typeof lazy>>()
+const layoutCache = new Map<string, ReturnType<typeof lazy>>()
 
 // ── forced refresh API ───────────────────────────────────────────────────────
 // Allows InspectorPanel (and any other caller) to directly trigger a preview
@@ -30,6 +31,7 @@ export function notifyPreviewRefresh(): void {
   importTimestamp = Date.now()
   pageCache.clear()
   componentCache.clear()
+  layoutCache.clear()
   refreshCallbacks.forEach((cb) => cb())
   try {
     previewIframeWindow?.postMessage({ type: 'cockpit:refresh' }, location.origin)
@@ -42,11 +44,18 @@ export function notifyPropsChange(props: Record<string, unknown>, reset?: boolea
   } catch { /* cross-origin safety */ }
 }
 
+export function notifyLayoutPropsChange(props: Record<string, unknown>, reset?: boolean): void {
+  try {
+    previewIframeWindow?.postMessage({ type: 'cockpit:set-layout-props', props, reset }, location.origin)
+  } catch { /* cross-origin safety */ }
+}
+
 if (import.meta.hot) {
   const clearCaches = () => {
     importTimestamp = Date.now()
     pageCache.clear()
     componentCache.clear()
+    layoutCache.clear()
   }
   import.meta.hot.on('vite:afterUpdate', clearCaches)
   import.meta.hot.on('project:update', clearCaches)
@@ -109,6 +118,31 @@ function getLazyPage(componentName: string, pagesDir: string, componentPath?: st
   return pageCache.get(key)!
 }
 
+function getLazyLayout(componentName: string, layoutsDir: string, componentPath?: string) {
+  const filePath = componentPath ?? componentName
+  const key = `${layoutsDir}/${filePath}`
+  if (!layoutCache.has(key)) {
+    const baseUrl = `/@fs/${layoutsDir}/${filePath}.tsx`
+    const url = importTimestamp > 0 ? `${baseUrl}?t=${importTimestamp}` : baseUrl
+    layoutCache.set(
+      key,
+      lazy(() => {
+        return probeTransform(url).then(() => {
+          return import(/* @vite-ignore */ url).then((m) => {
+            const comp = (m[componentName] ?? m.default) as React.ComponentType<Record<string, unknown>>
+            if (!comp) {
+              const available = Object.keys(m).filter(k => k !== '__esModule').join(', ') || '(none)'
+              throw new Error(`MISSING_PACKAGE:layout-export\nLayout file does not export "${componentName}".\n\nFile: ${url.replace('/@fs/', '')}\nAvailable exports: ${available}\n\nRename the export to "${componentName}" or update the layout name.`)
+            }
+            return { default: comp }
+          })
+        })
+      })
+    )
+  }
+  return layoutCache.get(key)!
+}
+
 function getLazyComponent(componentName: string, componentsDir: string, componentPath?: string) {
   const filePath = componentPath ?? componentName
   const key = `${componentsDir}/${filePath}`
@@ -125,7 +159,10 @@ function getLazyComponent(componentName: string, componentsDir: string, componen
           return import(/* @vite-ignore */ url).then((m) => {
             console.log('[ComponentLoader] dynamic import() resolved, named exports:', JSON.stringify(Object.keys(m)))
             const comp = (m[componentName] ?? m.default) as React.ComponentType<unknown>
-            if (!comp) console.warn('[ComponentLoader] export not found:', componentName, '— available:', Object.keys(m))
+            if (!comp) {
+              const available = Object.keys(m).filter(k => k !== '__esModule').join(', ') || '(none)'
+              throw new Error(`MISSING_PACKAGE:export\nFile does not export "${componentName}".\n\nFile: ${url.replace('/@fs/', '')}\nAvailable exports: ${available}\n\nRename the export to "${componentName}" or update the component name.`)
+            }
             return { default: comp }
           })
         }).catch((e: unknown) => {
@@ -314,8 +351,13 @@ export function ComponentLoader({
   folder = 'pages',
   pagesDir,
   componentsDir,
+  layoutsDir,
+  layoutComponent,
+  layoutComponentPath,
   fixtureProps,
   fixtureKey,
+  layoutProps,
+  layoutFixtureKey,
   onOpenSettings,
   onOpenSource,
   onRuntimeError,
@@ -326,8 +368,13 @@ export function ComponentLoader({
   folder?: 'pages' | 'components'
   pagesDir: string
   componentsDir: string
+  layoutsDir?: string
+  layoutComponent?: string
+  layoutComponentPath?: string
   fixtureProps?: Record<string, unknown> | null
   fixtureKey?: number
+  layoutProps?: Record<string, unknown> | null
+  layoutFixtureKey?: number
   onOpenSettings?: (pkgs: string[]) => void
   onOpenSource?: (filePath: string) => void
   onRuntimeError?: () => void
@@ -379,6 +426,7 @@ export function ComponentLoader({
       const refresh = () => {
         pageCache.clear()
         componentCache.clear()
+        layoutCache.clear()
         setLoadError(null)
         setResetKey((k) => k + 1)
       }
@@ -400,6 +448,19 @@ export function ComponentLoader({
     ? getLazyComponent(componentName, componentsDir, resolvedPath)
     : getLazyPage(componentName, pagesDir, resolvedPath)
 
+  const hasLayout = folder === 'pages' && !!layoutComponent && !!layoutsDir
+  const LayoutLoaded = hasLayout
+    ? getLazyLayout(layoutComponent!, layoutsDir!, layoutComponentPath)
+    : null
+
+  const pageContent = (
+    <ErrorBoundary key={`${folder}-${page}-${resetKey}-${fixtureKey ?? 0}`} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError}>
+      {folder === 'components'
+        ? <ComponentPreviewShell Component={Loaded} filePath={filePath} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError} />
+        : <Loaded {...(fixtureProps ?? {})} />}
+    </ErrorBoundary>
+  )
+
   return (
     <PreviewCanvas>
       {missingPackages.length > 0 && !bannerDismissed && (
@@ -410,11 +471,16 @@ export function ComponentLoader({
         />
       )}
       <Suspense fallback={<div style={styles.loading}>Loading component…</div>}>
-        <ErrorBoundary key={`${folder}-${page}-${resetKey}-${fixtureKey ?? 0}`} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError}>
-          {folder === 'components'
-            ? <ComponentPreviewShell Component={Loaded} filePath={filePath} onOpenSource={onOpenSource ? () => onOpenSource(filePath) : undefined} onRuntimeError={onRuntimeError} />
-            : <Loaded {...(fixtureProps ?? {})} />}
-        </ErrorBoundary>
+        {hasLayout && LayoutLoaded
+          ? (
+            <ErrorBoundary key={`layout-${layoutComponent}-${resetKey}-${layoutFixtureKey ?? 0}`} onOpenSource={undefined} onRuntimeError={onRuntimeError}>
+              <LayoutLoaded {...(layoutProps ?? {})}>
+                {pageContent}
+              </LayoutLoaded>
+            </ErrorBoundary>
+          )
+          : pageContent
+        }
       </Suspense>
     </PreviewCanvas>
   )

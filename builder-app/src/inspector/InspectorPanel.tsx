@@ -29,7 +29,8 @@ import { enrichWithTypeDeclaration, stringifyTSType, inferTypeFromExpression, in
 import { rewriteAttrValue, removeAttr, removePropFromOwnerSignature, addStateVariable, removeStateVariable, removePropUsagesInBody, insertAttr, addPropToOwnerSignature, rewritePropType, rewriteDefaultValue, reorderPropsInSource, rewriteJsxChildrenAsExpression } from './astRewriters'
 import { ScopePanel, scopeStyles } from './ScopePanel'
 import { StatesPanel } from './StatesPanel'
-import { notifyPropsChange } from '../preview/ComponentLoader'
+import { LayoutStatesPanel } from './LayoutStatesPanel'
+import { notifyPropsChange, notifyLayoutPropsChange } from '../preview/ComponentLoader'
 import { WrapExpressionChooser, ExpressionPickerPanel } from './ExpressionPicker'
 import { styles } from './styles'
 
@@ -151,9 +152,14 @@ export function InspectorPanel({
   activeSection,
   activePage,
   projectRoot,
+  layoutComponentName,
+  layoutId,
+  pageId,
+  routeLayouts = [],
+  onRouteChange,
 }: InspectorPanelProps) {
   const [panelWidth, setPanelWidth] = useState(480)
-  const [codeExpanded, setCodeExpanded] = useState(false)
+  const [codeExpanded, setCodeExpanded] = useState(true)
   const [editorFullscreen, setEditorFullscreen] = useState(false)
 
   function startResize(e: React.PointerEvent<HTMLDivElement>) {
@@ -211,7 +217,8 @@ export function InspectorPanel({
   const isReadOnly = inspectMode !== 'component-usage' && !!rootComponentName && !!selectedNode && (
     !/^[A-Z]/.test(selectedNode.tag) &&
     !!selectedNode.ownerComponentName &&
-    selectedNode.ownerComponentName !== rootComponentName
+    selectedNode.ownerComponentName !== rootComponentName &&
+    (!layoutComponentName || selectedNode.ownerComponentName !== layoutComponentName)
   )
   // True when the selected component IS the root — it has no parent, so binding makes no sense.
   // Root props only support default values; child props support binding + default values.
@@ -743,15 +750,27 @@ export function InspectorPanel({
       // Asynchronously find the usage site of this component to:
       // 1. populate the "currently passed" value column
       // 2. build the parent scope layer
-      // Use fiber-supplied ownerFile/ownerLine first; fall back to locatorjs.
+      // Use fiber-supplied ownerFile/ownerLine first; then ownerChain (search by name); fall back to locatorjs.
       const tag = node.tag
       const directOwnerFile = node.ownerFile ?? null
       const directOwnerLine = node.ownerLine ?? null
+      // Find usage site from ownerChain by matching component name (more robust than index-based access
+      // because firstDomElement may return an element owned by a sub-component, not the clicked node).
+      const chainLookupComp = (name: string): { file: string; line: number } | null => {
+        const e = node.ownerChain?.find(cE => cE.componentName === name)
+        if (!e?.file || e.line == null) return null
+        if (e.file.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')) return null
+        return { file: e.file, line: e.line }
+      }
+      const chainCandidateForTag = chainLookupComp(tag)
+      console.log('[scope:comp] tag=%s chainEntry=', tag, chainCandidateForTag, 'ownerChain=', node.ownerChain?.map(e => `${e.componentName}@${e.file?.replace(/.*[/\\]/, '')}:${e.line}`))
       void (async () => {
         const usages: Array<{ file: string; line: number }> =
           directOwnerFile && directOwnerLine
             ? [{ file: directOwnerFile, line: directOwnerLine }]
+            : chainCandidateForTag ? [chainCandidateForTag]
             : findLocatorUsages(tag)
+        console.log('[scope:comp] usages=', usages)
         if (usages.length === 0) { setBindingsLoading(false); return }
         // Try each usage file until we get a non-empty attr set.
         for (const { file: usageFile, line: usageLine } of usages) {
@@ -816,10 +835,86 @@ export function InspectorPanel({
                     childProp: a.name,
                   }))
                   .filter(l => l.parentVar)
-                setScopeLayers([
-                  { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
-                  { componentName: tagCapture, isCurrent: true, props: childProps, state: childState, links },
-                ])
+                // Walk further up for a full scope chain (beyond the immediate parent).
+                const ancestors: Array<{
+                  componentName: string
+                  propItems: ScopeItem[]
+                  stateItems: ScopeItem[]
+                  links: Array<{ parentVar: string; childProp: string }>
+                }> = [
+                  { componentName: tagCapture, propItems: childProps, stateItems: childState, links },
+                ]
+                if (parentName !== rootComponentName) {
+                  let searchName2 = parentName
+                  // Use ownerChain (by name) to find where parentName is used, avoiding locatorjs.
+                  const chainCandidateForParent = chainLookupComp(parentName)
+                  let searchCandidates2: Array<{ file: string; line: number }> = chainCandidateForParent
+                    ? [chainCandidateForParent]
+                    : findLocatorUsages(parentName)
+                  let pendingProps2 = parentPropItems
+                  let pendingState2 = parentStateItems
+                  let done2 = false
+                  for (let step2 = 0; step2 < 4 && !done2; step2++) {
+                    let levelFound2 = false
+                    for (const { file: uf2, line: ul2 } of searchCandidates2) {
+                      try {
+                        const res2 = await fetch(`/__source?file=${encodeURIComponent(uf2)}`)
+                        if (!res2.ok) continue
+                        const us2 = await res2.text()
+                        const gpName = inferOwnerComponentName(us2, ul2)
+                        if (!gpName) continue
+                        const passed2 = extractJsxAttrs(us2, ul2)
+                        const passedVals2 = new Set(
+                          passed2.filter(a => !a.isSpread).flatMap(a => {
+                            const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+                            return [...stripped.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g)].map(m => m[1])
+                          })
+                        )
+                        const gpLinks: Array<{ parentVar: string; childProp: string }> = passed2
+                          .filter(a => !a.isSpread && a.isExpression)
+                          .map(a => ({
+                            parentVar: /^([a-zA-Z_$][a-zA-Z0-9_$]*)/.exec(a.rawValue.replace(/^\{|\}$/g, '').trim())?.[1] ?? '',
+                            childProp: a.name,
+                          }))
+                          .filter(l => l.parentVar)
+                        ancestors.push({ componentName: searchName2, propItems: pendingProps2, stateItems: pendingState2, links: gpLinks })
+                        const gpPropsArr = extractOwnerProps(us2, gpName)
+                        const gpLocals2 = extractComponentLocals(us2, gpName)
+                        const gpPropItems = gpPropsArr.filter(p => p.source === 'owner')
+                          .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedVals2.has(p.name), defaultValue: p.defaultValue }))
+                        const gpStateItems = gpLocals2
+                          .filter(n => !gpPropsArr.find(p => p.name === n))
+                          .map(n => ({ name: n, typeStr: inferTypeOfLocal(us2, gpName, n), usedInNode: passedVals2.has(n) }))
+                        if (gpName === rootComponentName || step2 >= 3) {
+                          ancestors.push({ componentName: gpName, propItems: gpPropItems, stateItems: gpStateItems, links: [] })
+                          done2 = true
+                        } else {
+                          pendingProps2 = gpPropItems
+                          pendingState2 = gpStateItems
+                          searchName2 = gpName
+                          const chainCandidateForGp = chainLookupComp(gpName)
+                          searchCandidates2 = chainCandidateForGp ? [chainCandidateForGp] : findLocatorUsages(gpName)
+                        }
+                        levelFound2 = true
+                        break
+                      } catch { /* skip */ }
+                    }
+                    if (!levelFound2) {
+                      ancestors.push({ componentName: searchName2, propItems: pendingProps2, stateItems: pendingState2, links: [] })
+                      done2 = true
+                    }
+                  }
+                } else {
+                  ancestors.push({ componentName: parentName, propItems: parentPropItems, stateItems: parentStateItems, links: [] })
+                }
+                const chain = [...ancestors].reverse()
+                setScopeLayers(chain.map((item, i) => ({
+                  componentName: item.componentName,
+                  isCurrent: i === chain.length - 1,
+                  props: item.propItems,
+                  state: item.stateItems,
+                  ...(i > 0 ? { links: item.links } : {}),
+                })))
               }
               break
             }
@@ -902,50 +997,106 @@ export function InspectorPanel({
       // Never use builder-app files as parent scope sources — ComponentLoader.tsx calls
       // the page component, so its ownerFile points there rather than any project file.
       const isBuilderOwnerFile = !!directOwnerFile && directOwnerFile.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')
+      // Lookup ownerChain entry by name (avoids index mismatch if first DOM element is inside a sub-component).
+      const chainLookupDom = (name: string): { file: string; line: number } | null => {
+        const e = node.ownerChain?.find(cE => cE.componentName === name)
+        if (!e?.file || e.line == null) return null
+        if (e.file.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/')) return null
+        return { file: e.file, line: e.line }
+      }
+      const chainCandidateForOwner = chainLookupDom(ownerNameCapture)
       const candidateUsages: Array<{ file: string; line: number }> =
         directOwnerFile && directOwnerLine && !isBuilderOwnerFile
           ? [{ file: directOwnerFile, line: directOwnerLine }]
+          : chainCandidateForOwner ? [chainCandidateForOwner]
           : findLocatorUsages(ownerNameCapture)
+      console.log('[scope:dom] ownerName=%s ownerFile=%s chainCandidate=', ownerNameCapture, directOwnerFile, chainCandidateForOwner, 'candidates=', candidateUsages)
       void (async () => {
-        for (const { file: usageFile, line: usageLine } of candidateUsages) {
-          try {
-            const res = await fetch(`/__source?file=${encodeURIComponent(usageFile)}`)
-            if (!res.ok) continue
-            const usageSource = await res.text()
-            const parentName = inferOwnerComponentName(usageSource, usageLine)
-            if (!parentName) continue
-            const parentPropsArr = extractOwnerProps(usageSource, parentName)
-            const parentLocalsArr = extractComponentLocals(usageSource, parentName)
-            // What values are passed to ownerName at this usage site?
-            const passedToOwner = extractJsxAttrs(usageSource, usageLine)
-            const passedValues = new Set(
-              passedToOwner.filter(a => !a.isSpread).flatMap(a => {
-                const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
-                return [...stripped.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g)].map(m => m[1])
-              })
-            )
-            const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
-              .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedValues.has(p.name), defaultValue: p.defaultValue }))
-            const parentStateItems = parentLocalsArr
-              .filter(n => !parentPropsArr.find(p => p.name === n))
-              .map(n => ({ name: n, typeStr: inferTypeOfLocal(usageSource, parentName, n), usedInNode: passedValues.has(n) }))
-            // Build binding links: parentVar → childProp
-            const links = passedToOwner.filter(a => !a.isSpread && a.isExpression)
-              .map(a => ({
-                parentVar: /^([a-zA-Z_$][a-zA-Z0-9_$]*)/.exec(a.rawValue.replace(/^\{|\}$/g, '').trim())?.[1] ?? '',
-                childProp: a.name,
-              }))
-              .filter(l => l.parentVar)
-            setParentSource(usageSource)
-            setParentLocals(parentLocalsArr)
-            setParentComponentName(parentName)
-            setScopeLayers([
-              { componentName: parentName, isCurrent: false, props: parentPropItems, state: parentStateItems },
-              { componentName: ownerNameCapture, isCurrent: true, props: op, state: os, links },
-            ])
-            break
-          } catch { /* skip */ }
+        // Walk up the component hierarchy to build a full scope chain (up to 5 levels).
+        // ancestors is built bottom-up: [ownerName, parent, grandparent, ..., root]
+        const ancestors: Array<{
+          componentName: string
+          propItems: ScopeItem[]
+          stateItems: ScopeItem[]
+          links: Array<{ parentVar: string; childProp: string }>
+        }> = []
+        let searchName = ownerNameCapture
+        let searchCandidates = candidateUsages
+        let pendingProps: ScopeItem[] = op
+        let pendingState: ScopeItem[] = os
+        let done = false
+        for (let step = 0; step < 5 && !done; step++) {
+          let levelFound = false
+          for (const { file: uf, line: ul } of searchCandidates) {
+            try {
+              const res = await fetch(`/__source?file=${encodeURIComponent(uf)}`)
+              if (!res.ok) continue
+              const us = await res.text()
+              const parentName = inferOwnerComponentName(us, ul)
+              if (!parentName) continue
+              const passedAttrs = extractJsxAttrs(us, ul)
+              const passedVals = new Set(
+                passedAttrs.filter(a => !a.isSpread).flatMap(a => {
+                  const stripped = a.rawValue.replace(/^\{|\}$/g, '').trim()
+                  return [...stripped.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g)].map(m => m[1])
+                })
+              )
+              const links: Array<{ parentVar: string; childProp: string }> = passedAttrs
+                .filter(a => !a.isSpread && a.isExpression)
+                .map(a => ({
+                  parentVar: /^([a-zA-Z_$][a-zA-Z0-9_$]*)/.exec(a.rawValue.replace(/^\{|\}$/g, '').trim())?.[1] ?? '',
+                  childProp: a.name,
+                }))
+                .filter(l => l.parentVar)
+              // Push searchName with its just-computed links (from parentName)
+              ancestors.push({ componentName: searchName, propItems: pendingProps, stateItems: pendingState, links })
+              const parentPropsArr = extractOwnerProps(us, parentName)
+              const parentLocalsArr = extractComponentLocals(us, parentName)
+              const parentPropItems = parentPropsArr.filter(p => p.source === 'owner')
+                .map(p => ({ name: p.name, typeStr: p.typeStr, usedInNode: passedVals.has(p.name), defaultValue: p.defaultValue }))
+              const parentStateItems = parentLocalsArr
+                .filter(n => !parentPropsArr.find(p => p.name === n))
+                .map(n => ({ name: n, typeStr: inferTypeOfLocal(us, parentName, n), usedInNode: passedVals.has(n) }))
+              // Keep the direct parent info for variable dropdowns (step 0 = immediate parent)
+              if (step === 0) {
+                setParentSource(us)
+                setParentLocals(parentLocalsArr)
+                setParentComponentName(parentName)
+              }
+              if (parentName === rootComponentName || step >= 4) {
+                // Reached root (or depth limit): push root layer with no links
+                ancestors.push({ componentName: parentName, propItems: parentPropItems, stateItems: parentStateItems, links: [] })
+                done = true
+              } else {
+                // Walk one level higher. Use ownerChain by NAME to find where parentName is used.
+                pendingProps = parentPropItems
+                pendingState = parentStateItems
+                searchName = parentName
+                const chainCandidateForNext = chainLookupDom(parentName)
+                searchCandidates = chainCandidateForNext ? [chainCandidateForNext] : findLocatorUsages(parentName)
+              }
+              levelFound = true
+              break
+            } catch { /* skip */ }
+          }
+          if (!levelFound) {
+            // No usage site found — seal the pending layer without links
+            if (ancestors.length === 0) {
+              ancestors.push({ componentName: searchName, propItems: pendingProps, stateItems: pendingState, links: [] })
+            }
+            done = true
+          }
         }
+        if (ancestors.length === 0) return
+        // Reverse to get [root, ..., parent, ownerName] order for display
+        const chain = [...ancestors].reverse()
+        setScopeLayers(chain.map((item, i) => ({
+          componentName: item.componentName,
+          isCurrent: i === chain.length - 1,
+          props: item.propItems,
+          state: item.stateItems,
+          ...(i > 0 ? { links: item.links } : {}),
+        })))
       })()
     }
   }
@@ -2111,6 +2262,24 @@ export function InspectorPanel({
               else { try { coerced[k] = JSON.parse(v) } catch { coerced[k] = v } }
             }
             notifyPropsChange(coerced, switched)
+          }}
+        />
+      )}
+
+      {/* Layout States panel — visible when browsing pages with an active layout */}
+      {!expressionMode && (activeSection === 'pages' || activeSection === 'layouts') && layoutId && projectRoot && (
+        <LayoutStatesPanel
+          layoutName={layoutId}
+          projectRoot={projectRoot}
+          onStateChange={(props, switched) => {
+            const coerced: Record<string, unknown> = {}
+            for (const [k, v] of Object.entries(props)) {
+              if (v === 'true') coerced[k] = true
+              else if (v === 'false') coerced[k] = false
+              else if (v !== '' && !isNaN(Number(v))) coerced[k] = Number(v)
+              else { try { coerced[k] = JSON.parse(v) } catch { coerced[k] = v } }
+            }
+            notifyLayoutPropsChange(coerced, switched)
           }}
         />
       )}

@@ -2,7 +2,8 @@
   "aliases": {
     "@": "D:/Repositories/max-builder",
     "@/subframe": "D:/Repositories/max-builder/src/subframe",
-    "@/ui": "D:/Repositories/max-builder/src/ui"
+    "@/ui": "D:/Repositories/max-builder/src/ui",
+    "@/ui/utils": "D:/Repositories/max-builder/src/ui/utils"
   },
   "packages": [],
   "nodeModulesDirs": [
@@ -15,7 +16,6 @@
     }
   },
   "cssFiles": [
-    "D:/Repositories/max-builder/src/app/globals.css",
     "D:/Repositories/max-builder/src/ui/theme.css"
   ],
   "publicDirs": [],

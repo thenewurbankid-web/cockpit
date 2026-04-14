@@ -208,14 +208,19 @@ function toMixedTree(
   }
 
   if (effectiveOwnerName && effectiveOwnerName !== parentOwnerName) {
+    // Don't expose builder-app files as usage sites — ComponentLoader.tsx uses
+    // variable names like 'Loaded'/'LayoutLoaded' for lazy wrappers, so name
+    // patching would rename 'AlSignIn' → 'Loaded' if we kept ownerFile here.
+    const rawOwnerFile = node.sourceInfo?.ownerFile ?? null
+    const isBuilderOwnerFile = !!rawOwnerFile && normalizeSlashes(rawOwnerFile).includes('builder-app/src/')
     return {
       kind: 'component',
       key: `${keyPrefix}-comp-${effectiveOwnerName}`,
       name: effectiveOwnerName,
       file: node.sourceInfo?.file ?? '',
       line: node.sourceInfo?.line ?? 1,
-      usageFile: node.sourceInfo?.ownerFile ?? null,
-      usageLine: node.sourceInfo?.ownerLine ?? null,
+      usageFile: isBuilderOwnerFile ? null : rawOwnerFile,
+      usageLine: isBuilderOwnerFile ? null : (node.sourceInfo?.ownerLine ?? null),
       depth,
       children: [domNode],
     }
@@ -224,8 +229,13 @@ function toMixedTree(
   return domNode
 }
 
-export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[]): DisplayNode[] | null {
+export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[], layoutComponentName?: string): DisplayNode[] | null {
   const rawRoots: RawDomNode[] = []
+
+  // When layout wraps the page, we save the page component name here so we can
+  // remap builder-app lazy-loader intermediates (e.g. 'LayoutLoaded', 'Loaded')
+  // out of the tree while keeping the layout and page component names.
+  let pageComponentName: string | undefined = undefined
 
   // Collect raw DOM roots from canvas children, but transparently unwrap any
   // builder-app wrapper elements (e.g. the <div> rendered by PreviewCanvas in
@@ -280,35 +290,113 @@ export function buildMixedTree(root: Element, preferredRootComponentName?: strin
       )
       // No project content → canvas still loading / Suspense fallback only.
       if (!hasProjectContent) return null
-      // Project content is present but the exported function name differs from
-      // the file name (e.g. SignInPage.tsx exports AlSignIn). Walk the fiber
-      // chain to find the real topmost project component and use that name.
-      const actualName = firstProjectEl ? findTopmostProjectComponentName(firstProjectEl) : null
-      preferredRootComponentName = actualName ?? undefined
+      // Layout is explicitly assigned — trust it and use it as the tree root.
+      // Walking the fiber chain via findTopmostProjectComponentName is unreliable
+      // here because builder-app wrappers (ErrorBoundary, Suspense) sit above the
+      // layout in the fiber tree and would be returned instead of the layout itself.
+      if (layoutComponentName) {
+        // Layout wraps the page. Root the tree at the layout; keep the page name
+        // so remapRawNode can preserve it while stripping builder intermediates.
+        pageComponentName = preferredRootComponentName
+        preferredRootComponentName = layoutComponentName
+      } else {
+        // No layout — the exported function name simply differs from the file
+        // name (e.g. SignInPage.tsx exports AlSignIn). Find the actual topmost.
+        const actualName = firstProjectEl ? findTopmostProjectComponentName(firstProjectEl) : null
+        preferredRootComponentName = actualName ?? undefined
+      }
     }
   }
 
-  const pageRoot = inferPageRoot(rawRoots, preferredRootComponentName, projectDirs)
+  // When the layout wraps the page, the React fiber tree contains
+  // builder-app lazy-loader synthetic components ('LayoutLoaded', 'Loaded')
+  // between the layout DOM boundary and the page component. These intermediate
+  // names appear as ownerComponentName on some DOM elements because the
+  // ComponentLoader assigns those names to React.lazy wrappers.
+  // We remap them to null (inherit from parent) while keeping the layout and
+  // page component names intact so they appear correctly in the tree.
+  //
+  // A component is a builder intermediate when any of:
+  //  • Its name is the variable name used in ComponentLoader for the lazy wrappers.
+  //  • Its ownerFile is from builder-app/src/ (called inside ComponentLoader).
+  //  • Its ownerFile is null/empty (lazy-resolved components have no _debugSource).
+  // Sub-components of the page (Badge, TextField, …) are safe because their
+  // ownerFile points to the page source file (SignInPage/page.tsx etc.) which
+  // never satisfies these conditions.
+  const BUILDER_LAZY_NAMES = new Set(['Loaded', 'LayoutLoaded'])
+  const knownNames: Set<string> | null = layoutComponentName && pageComponentName
+    ? new Set([layoutComponentName, pageComponentName])
+    : null
 
-  const out: DisplayNode[] = rawRoots
+  function remapRawNode(node: RawDomNode): RawDomNode {
+    const info = node.sourceInfo
+    let newInfo = info
+    if (knownNames && info?.ownerComponentName && !knownNames.has(info.ownerComponentName)) {
+      const ownerFile = normalizeSlashes(info.ownerFile ?? '')
+      const isBuilderIntermediate =
+        BUILDER_LAZY_NAMES.has(info.ownerComponentName) ||
+        !ownerFile ||
+        ownerFile.includes('builder-app/src/')
+      if (isBuilderIntermediate) {
+        newInfo = { ...info, ownerComponentName: null }
+      }
+    }
+    const newChildren = node.children.map(remapRawNode)
+    return newInfo === info && newChildren === node.children ? node : { ...node, sourceInfo: newInfo, children: newChildren }
+  }
+
+  const processedRoots = knownNames ? rawRoots.map(remapRawNode) : rawRoots
+
+  const pageRoot = inferPageRoot(processedRoots, preferredRootComponentName, projectDirs)
+
+  const out: DisplayNode[] = processedRoots
     .map((raw, i) => toMixedTree(raw, pageRoot ? 1 : 0, pageRoot?.name ?? null, `root-${i}`))
     .filter((n): n is DisplayNode => n !== null)
 
+  // When layout wraps the page, mark the page component node with isPageRoot so
+  // TreeRow treats it like a root (expanded by default, displaying its DOM children)
+  // even though it appears at depth > 0 inside the layout's subtree.
+  function markPageRoot(nodes: DisplayNode[], targetName: string): DisplayNode[] {
+    return nodes.map(node => {
+      if (node.kind === 'component' && node.name === targetName && !node.isPageRoot) {
+        return { ...node, isPageRoot: true }
+      }
+      const children = markPageRoot(node.children, targetName)
+      return children === node.children ? node : { ...node, children }
+    })
+  }
+  const finalOut = pageComponentName ? markPageRoot(out, pageComponentName) : out
+
   if (pageRoot) {
+    // In layout mode (pageComponentName is set), inferPageRoot falls back to a page-file
+    // (e.g. page.tsx:30) when it can't find the layout via ownerComponentName because the
+    // layout's ownerFile is ComponentLoader.tsx (builder, filtered out). The correct layout
+    // file is the _debugSource.fileName of the outermost DOM element, which IS in the layout
+    // template (e.g. BlankLayout/layout.tsx). Use that as the source location for the wrapper.
+    let wrapperFile = pageRoot.file
+    let wrapperLine = pageRoot.line
+    if (pageComponentName && layoutComponentName) {
+      const firstRaw = processedRoots[0]
+      const layoutSrcFile = firstRaw?.sourceInfo?.file
+      if (layoutSrcFile && !normalizeSlashes(layoutSrcFile).includes('builder-app/src/')) {
+        wrapperFile = layoutSrcFile
+        wrapperLine = 1
+      }
+    }
     return [
       {
         kind: 'component',
         key: `page-root-${pageRoot.name}`,
         name: pageRoot.name,
-        file: pageRoot.file,
-        line: pageRoot.line,
+        file: wrapperFile,
+        line: wrapperLine,
         depth: 0,
-        children: out,
+        children: finalOut,
       },
     ]
   }
 
-  return out
+  return finalOut
 }
 
 export function firstDomElement(node: DisplayNode): Element | null {

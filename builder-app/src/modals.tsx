@@ -2,6 +2,95 @@ import { useState } from 'react'
 import type { ExpressionMeta } from './tree/DOMTreePanel'
 import { modalStyles } from './appStyles'
 
+// ─── Add Layout Modal ────────────────────────────────────────────────────────
+
+function toLayoutComponentName(name: string): string {
+  return name.trim()
+    .replace(/(?:^|\s+)\w/g, (c) => c.trim().toUpperCase())
+    .replace(/\s+/g, '') + 'Layout'
+}
+
+export function AddLayoutModal({
+  onClose,
+  onAdd,
+  projectRoot,
+}: {
+  onClose: () => void
+  onAdd: (layout: { id: string; label: string; name: string }) => void
+  projectRoot: string
+}) {
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const componentName = name.trim() ? toLayoutComponentName(name) : ''
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/__source/create-layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), projectRoot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create layout')
+      onAdd({ id: data.id, label: name.trim(), name: data.componentName })
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>New layout</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Layout name</label>
+          <input
+            autoFocus
+            style={modalStyles.input}
+            placeholder="e.g. App"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null) }}
+          />
+
+          {name.trim() && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>Component</span>
+              <span style={{ ...modalStyles.previewVal, color: '#94e2d2' }}>{componentName}</span>
+              <span style={modalStyles.previewKey}>File</span>
+              <span style={{ ...modalStyles.previewVal, color: '#94e2d2' }}>layouts/{name.trim().toLowerCase().replace(/\s+/g, '-')}/layout.tsx</span>
+            </div>
+          )}
+
+          {error && <div style={modalStyles.error}>{error}</div>}
+
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !name.trim() || loading ? '#45475a' : '#94e2d2', opacity: !name.trim() || loading ? 0.5 : 1 }}
+              disabled={!name.trim() || loading}
+            >
+              {loading ? 'Creating…' : 'Create layout'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Add Expression Modal ────────────────────────────────────────────────────
 
 export function AddExpressionModal({

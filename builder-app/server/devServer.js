@@ -17,7 +17,7 @@ import pty from 'node-pty'
 
 import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, readProjectConfig, writeProjectConfig } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
-import { buildPageTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS } from './templates.js'
+import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate } from './templates.js'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -677,7 +677,7 @@ app.delete('/__source/expression/:name', (req, res) => {
  * Absolute override paths are used as-is.
  */
 function getProjectDirs(projectRootArg) {
-  if (!projectRootArg) return { pagesDir: null, componentsDir: null, expressionsDir: null }
+  if (!projectRootArg) return { pagesDir: null, componentsDir: null, expressionsDir: null, layoutsDir: null }
   const resolved = path.resolve(projectRootArg)
   const cfg = readProjectConfig(resolved)
   return {
@@ -690,6 +690,9 @@ function getProjectDirs(projectRootArg) {
     expressionsDir: cfg.expressionsDir
       ? (path.isAbsolute(cfg.expressionsDir) ? cfg.expressionsDir : path.join(resolved, cfg.expressionsDir))
       : path.join(resolved, 'src', 'expressions'),
+    layoutsDir: cfg.layoutsDir
+      ? (path.isAbsolute(cfg.layoutsDir) ? cfg.layoutsDir : path.join(resolved, cfg.layoutsDir))
+      : path.join(resolved, 'src', 'layouts'),
   }
 }
 
@@ -1151,6 +1154,13 @@ function getPageStatesDir(projectRoot, pageName) {
   return path.join(pagesDir, pageName, 'states')
 }
 
+function getLayoutStatesDir(projectRoot, layoutName) {
+  if (!projectRoot || !layoutName) return null
+  const { layoutsDir } = getProjectDirs(projectRoot)
+  if (!layoutsDir) return null
+  return path.join(layoutsDir, layoutName, 'states')
+}
+
 /** Label from state key — e.g. "my-state" → "My State" */
 function stateKeyToLabel(key) {
   return key.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
@@ -1308,6 +1318,413 @@ app.delete('/__source/state', (req, res) => {
   if (!fs.existsSync(stateDir)) return res.status(404).json({ error: 'State not found' })
   fs.rmSync(stateDir, { recursive: true, force: true })
   console.log(`[delete-state] ${stateDir}`)
+  res.json({ ok: true })
+})
+
+// ── Layouts ──────────────────────────────────────────────────────────────────
+
+// GET /__source/list-layouts?projectRoot=<abs>
+app.get('/__source/list-layouts', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { layoutsDir } = getProjectDirs(projectRoot)
+  if (!layoutsDir || !fs.existsSync(layoutsDir)) return res.json({ layouts: [] })
+  let entries
+  try { entries = fs.readdirSync(layoutsDir, { withFileTypes: true }) } catch { return res.json({ layouts: [] }) }
+  const layouts = entries
+    .filter(e => e.isDirectory() && fs.existsSync(path.join(layoutsDir, e.name, 'layout.tsx')))
+    .map(e => {
+      const dirName = e.name
+      const filePath = path.join(layoutsDir, dirName, 'layout.tsx')
+      let componentName = dirName
+      try {
+        const source = fs.readFileSync(filePath, 'utf-8')
+        const info = extractAstInfo(source, filePath)
+        if (info.components.length > 0) componentName = info.components[0].name
+      } catch { /* fall back to dirName */ }
+      const baseName = dirName.endsWith('Layout') ? dirName.slice(0, -6) : dirName
+      const label = baseName.replace(/([A-Z])/g, ' $1').trim()
+      return { id: dirName, label, name: componentName, file: `${dirName}/layout` }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+  res.json({ layouts })
+})
+
+// POST /__source/create-layout  body: { name }
+app.post('/__source/create-layout', (req, res) => {
+  const { name } = req.body ?? {}
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Body must contain { name: string }' })
+  }
+  const trimmed = name.trim()
+  const pascal = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+  const componentName = pascal.endsWith('Layout') ? pascal : `${pascal}Layout`
+  const baseName = componentName.endsWith('Layout') ? componentName.slice(0, -6) : componentName
+  const label = baseName.replace(/([A-Z])/g, ' $1').trim()
+  const projectRoot = getProjectRoot(req)
+  const { layoutsDir } = getProjectDirs(projectRoot)
+  if (!layoutsDir) return res.status(400).json({ error: 'No layouts directory configured' })
+  const layoutDir = path.join(layoutsDir, componentName)
+  const layoutFile = path.join(layoutDir, 'layout.tsx')
+  if (!isSafeFile(layoutFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(layoutDir)) return res.status(409).json({ error: `Layout "${componentName}" already exists` })
+  fs.mkdirSync(layoutDir, { recursive: true })
+  fs.writeFileSync(layoutFile, buildLayoutTemplate(componentName, label), 'utf-8')
+  console.log(`[create-layout] ${layoutFile}`)
+  res.json({ ok: true, id: componentName, label, name: componentName })
+})
+
+// DELETE /__source/layout/:name
+app.delete('/__source/layout/:name', (req, res) => {
+  const { name } = req.params
+  const projectRoot = getProjectRoot(req)
+  const { layoutsDir } = getProjectDirs(projectRoot)
+  if (!layoutsDir) return res.status(400).json({ error: 'No layouts directory configured' })
+  const layoutDir = path.join(layoutsDir, name)
+  if (!isSafeFile(layoutDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(layoutDir)) return res.status(404).json({ error: 'Layout not found' })
+  fs.rmSync(layoutDir, { recursive: true, force: true })
+  console.log(`[delete-layout] ${layoutDir}`)
+  res.json({ ok: true })
+})
+
+// GET /__source/page-layout?projectRoot=<abs>&page=<pageId>
+app.get('/__source/page-layout', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ layout: null })
+  const page = req.query.page
+  if (!page) return res.json({ layout: null })
+  const cfg = readProjectConfig(path.resolve(projectRoot))
+  const layout = (cfg.pageLayouts?.[page]) ?? null
+  res.json({ layout })
+})
+
+// POST /__source/page-layout  body: { projectRoot, page, layout: string | null }
+app.post('/__source/page-layout', (req, res) => {
+  const { projectRoot, page, layout } = req.body ?? {}
+  if (!projectRoot || !page) return res.status(400).json({ error: 'Body must contain { projectRoot, page }' })
+  const resolved = path.resolve(projectRoot)
+  const cfg = readProjectConfig(resolved)
+  if (!cfg.pageLayouts) cfg.pageLayouts = {}
+  if (layout) {
+    cfg.pageLayouts[page] = layout
+  } else {
+    delete cfg.pageLayouts[page]
+  }
+  writeProjectConfig(resolved, cfg)
+  res.json({ ok: true })
+})
+
+// GET /__source/list-layout-states?projectRoot=<abs>&layout=<layoutId>
+app.get('/__source/list-layout-states', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ states: [] })
+  const layout = req.query.layout
+  if (!layout || typeof layout !== 'string') return res.status(400).json({ error: 'Missing ?layout= query parameter' })
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir || !fs.existsSync(statesDir)) return res.json({ states: [] })
+  let entries
+  try { entries = fs.readdirSync(statesDir, { withFileTypes: true }) } catch { return res.json({ states: [] }) }
+  const stateKeys = entries.filter(e => e.isDirectory()).map(e => e.name)
+  let order = []
+  try {
+    const orderFile = path.join(statesDir, 'order.json')
+    if (fs.existsSync(orderFile)) order = JSON.parse(fs.readFileSync(orderFile, 'utf-8'))
+  } catch { /* ignore */ }
+  const ordered = [
+    ...order.filter(k => stateKeys.includes(k)),
+    ...stateKeys.filter(k => !order.includes(k)).sort((a, b) => a.localeCompare(b)),
+  ]
+  res.json({ states: ordered.map(k => ({ key: k, label: stateKeyToLabel(k) })) })
+})
+
+// GET /__source/layout-state-data?projectRoot=<abs>&layout=<layoutId>&state=<key>
+app.get('/__source/layout-state-data', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ data: {} })
+  const { layout, state } = req.query
+  if (!layout || !state) return res.status(400).json({ error: 'Missing ?layout= or ?state= query parameter' })
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.json({ data: {} })
+  const dataFile = path.join(statesDir, state, 'data.json')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(dataFile)) return res.json({ data: {} })
+  try { res.json({ data: JSON.parse(fs.readFileSync(dataFile, 'utf-8')) }) } catch { res.json({ data: {} }) }
+})
+
+// POST /__source/layout-state-data  body: { projectRoot, layout, state, data }
+app.post('/__source/layout-state-data', (req, res) => {
+  const { projectRoot, layout, state, data } = req.body ?? {}
+  if (!projectRoot || !layout || !state || data === undefined) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, layout, state, data }' })
+  }
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or layoutsDir' })
+  const stateDir = path.join(statesDir, state)
+  const dataFile = path.join(stateDir, 'data.json')
+  const modelFile = path.join(stateDir, 'model.ts')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8')
+  fs.writeFileSync(modelFile, generateModelTs(layout, state, data), 'utf-8')
+  res.json({ ok: true })
+})
+
+// POST /__source/create-layout-state  body: { projectRoot, layout, stateName }
+app.post('/__source/create-layout-state', (req, res) => {
+  const { projectRoot, layout, stateName } = req.body ?? {}
+  if (!projectRoot || !layout || !stateName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, layout, stateName }' })
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(stateName)) {
+    return res.status(400).json({ error: 'stateName must contain only letters, numbers, hyphens, and underscores' })
+  }
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or layoutsDir' })
+  const stateDir = path.join(statesDir, stateName)
+  const dataFile = path.join(stateDir, 'data.json')
+  if (!isSafeFile(dataFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(stateDir)) return res.status(409).json({ error: `State "${stateName}" already exists` })
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(dataFile, '{}\n', 'utf-8')
+  fs.writeFileSync(path.join(stateDir, 'model.ts'), generateModelTs(layout, stateName, {}), 'utf-8')
+  res.json({ ok: true, key: stateName, label: stateKeyToLabel(stateName) })
+})
+
+// POST /__source/rename-layout-state  body: { projectRoot, layout, oldName, newName }
+app.post('/__source/rename-layout-state', (req, res) => {
+  const { projectRoot, layout, oldName, newName } = req.body ?? {}
+  if (!projectRoot || !layout || !oldName || !newName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, layout, oldName, newName }' })
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+    return res.status(400).json({ error: 'newName must contain only letters, numbers, hyphens, and underscores' })
+  }
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or layoutsDir' })
+  const oldDir = path.join(statesDir, oldName)
+  const newDir = path.join(statesDir, newName)
+  if (!isSafeFile(oldDir) || !isSafeFile(newDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(oldDir)) return res.status(404).json({ error: 'State not found' })
+  if (fs.existsSync(newDir)) return res.status(409).json({ error: `State "${newName}" already exists` })
+  fs.renameSync(oldDir, newDir)
+  try {
+    const dataFile = path.join(newDir, 'data.json')
+    const data = fs.existsSync(dataFile) ? JSON.parse(fs.readFileSync(dataFile, 'utf-8')) : {}
+    fs.writeFileSync(path.join(newDir, 'model.ts'), generateModelTs(layout, newName, data), 'utf-8')
+  } catch { /* best-effort */ }
+  res.json({ ok: true, key: newName, label: stateKeyToLabel(newName) })
+})
+
+// POST /__source/reorder-layout-states  body: { projectRoot, layout, order: string[] }
+app.post('/__source/reorder-layout-states', (req, res) => {
+  const { projectRoot, layout, order } = req.body ?? {}
+  if (!projectRoot || !layout || !Array.isArray(order)) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, layout, order: string[] }' })
+  }
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or layoutsDir' })
+  const orderFile = path.join(statesDir, 'order.json')
+  if (!isSafeFile(orderFile)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(statesDir, { recursive: true })
+  fs.writeFileSync(orderFile, JSON.stringify(order, null, 2), 'utf-8')
+  res.json({ ok: true })
+})
+
+// DELETE /__source/layout-state?projectRoot=<abs>&layout=<layoutId>&state=<key>
+app.delete('/__source/layout-state', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.status(400).json({ error: 'No active project set' })
+  const { layout, state } = req.query
+  if (!layout || !state) return res.status(400).json({ error: 'Missing ?layout= or ?state= query parameter' })
+  const statesDir = getLayoutStatesDir(projectRoot, layout)
+  if (!statesDir) return res.status(400).json({ error: 'No active project or layoutsDir' })
+  const stateDir = path.join(statesDir, state)
+  if (!isSafeFile(stateDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(stateDir)) return res.status(404).json({ error: 'State not found' })
+  fs.rmSync(stateDir, { recursive: true, force: true })
+  res.json({ ok: true })
+})
+
+// ── Route helpers ───────────────────────────────────────────────────────────
+
+function getAppDir(projectRoot) {
+  const candidates = [
+    path.join(projectRoot, 'src', 'app'),
+    path.join(projectRoot, 'app'),
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return path.join(projectRoot, 'src', 'app') // default even if not yet created
+}
+
+function findPageFile(pagesDir, pageId) {
+  const folder = path.join(pagesDir, pageId)
+  if (!fs.existsSync(folder)) return null
+  // Always read from the real directory listing to preserve correct filename casing.
+  // On Windows, fs.existsSync is case-insensitive, so testing candidate strings
+  // like 'page.tsx' would match 'Page.tsx' but return the wrong casing.
+  let entries
+  try { entries = fs.readdirSync(folder) } catch { return null }
+  const preferred = ['page.tsx', 'Page.tsx', 'index.tsx']
+  for (const name of preferred) {
+    if (entries.includes(name)) return path.join(folder, name)
+  }
+  const tsx = entries.find(f => f.endsWith('.tsx') && f !== 'controller.tsx')
+  if (tsx) return path.join(folder, tsx)
+  return null
+}
+
+function extractPageComponentInfo(filePath) {
+  let source = ''
+  try { source = fs.readFileSync(filePath, 'utf-8') } catch {
+    return { componentName: null, isDefaultExport: false, props: [] }
+  }
+  let componentName = null
+  let isDefaultExport = false
+  // 1. export default function Name
+  const defaultFn = source.match(/export\s+default\s+function\s+(\w+)/)
+  if (defaultFn) { componentName = defaultFn[1]; isDefaultExport = true }
+  // 2. export { Name as default }
+  if (!componentName) {
+    const reExport = source.match(/export\s*\{[^}]*\b(\w+)\s+as\s+default[^}]*\}/)
+    if (reExport) { componentName = reExport[1]; isDefaultExport = true }
+  }
+  // 3. export default Name  (identifier, not arrow/function keyword)
+  if (!componentName) {
+    const defaultId = source.match(/export\s+default\s+(?!function\b|class\b)([A-Z]\w+)/)
+    if (defaultId) { componentName = defaultId[1]; isDefaultExport = true }
+  }
+  // 4. export function Name (named export)
+  if (!componentName) {
+    const namedFn = source.match(/export\s+function\s+(\w+)/)
+    if (namedFn) { componentName = namedFn[1]; isDefaultExport = false }
+  }
+  // 5. export const Name = (named export)
+  if (!componentName) {
+    const constFn = source.match(/export\s+const\s+(\w+)\s*=/)
+    if (constFn) { componentName = constFn[1]; isDefaultExport = false }
+  }
+  const props = []
+  const ifaceMatch = source.match(/interface\s+\w*Props\s*\{([^}]+)\}/)
+  if (ifaceMatch) {
+    const body = ifaceMatch[1]
+    const propRe = /(\w+)\??:\s*([^\n;]+)/g
+    let m
+    while ((m = propRe.exec(body)) !== null) {
+      const name = m[1]
+      const type = m[2].trim().replace(/,$/, '').replace(/;$/, '')
+      if (name === 'children' || type.includes('ReactNode')) continue
+      props.push({ name, type })
+    }
+  }
+  return { componentName, isDefaultExport, props }
+}
+
+// ── Route endpoints ───────────────────────────────────────────────────────────
+
+app.get('/__source/list-routes', (req, res) => {
+  const projectRoot = req.query.projectRoot
+  if (!projectRoot) return res.status(400).json({ error: 'Missing ?projectRoot=' })
+  const resolved = path.resolve(projectRoot)
+  const cfg = readProjectConfig(resolved)
+  const pageRoutes = cfg.pageRoutes ?? {}
+  const routes = Object.entries(pageRoutes).map(([pageId, info]) => ({
+    pageId,
+    route: info.route,
+    layoutId: info.layoutId ?? null,
+  }))
+  res.json({ routes })
+})
+
+app.post('/__source/assign-route', (req, res) => {
+  const { projectRoot, pageId, route, layoutId } = req.body ?? {}
+  if (!projectRoot || !pageId || !route) {
+    return res.status(400).json({ error: 'Missing projectRoot, pageId, or route' })
+  }
+  const resolved = path.resolve(projectRoot)
+  const normalizedRoute = route.startsWith('/') ? route : '/' + route
+  const routeSegment = normalizedRoute.replace(/^\//, '')
+  const { pagesDir, layoutsDir } = getProjectDirs(resolved)
+  const appDir = getAppDir(resolved)
+  const controllerDir = path.join(pagesDir, pageId)
+  const controllerFile = path.join(controllerDir, 'controller.tsx')
+  if (!isSafeFile(controllerFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(controllerFile)) {
+    const pageFile = findPageFile(pagesDir, pageId)
+    const { componentName, isDefaultExport, props } = pageFile
+      ? extractPageComponentInfo(pageFile)
+      : { componentName: pageId, isDefaultExport: false, props: [] }
+    const finalComponentName = componentName ?? pageId
+    const controllerName = pageId + 'Controller'
+    const pageImportPath = pageFile ? './' + path.basename(pageFile, '.tsx') : './page'
+    const controllerSource = buildControllerTemplate(controllerName, finalComponentName, pageImportPath, isDefaultExport, props)
+    fs.mkdirSync(controllerDir, { recursive: true })
+    fs.writeFileSync(controllerFile, controllerSource, 'utf-8')
+  }
+  const srcDir = path.join(resolved, 'src')
+  const pagesDirRel = path.relative(srcDir, pagesDir).replace(/\\/g, '/')
+  const layoutsDirRel = layoutsDir ? path.relative(srcDir, layoutsDir).replace(/\\/g, '/') : 'layouts'
+  const controllerName = pageId + 'Controller'
+  const controllerImport = `@/${pagesDirRel}/${pageId}/controller`
+  const routeDir = path.join(appDir, routeSegment)
+  const routePageFile = path.join(routeDir, 'page.tsx')
+  if (!isSafeFile(routePageFile)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(routeDir, { recursive: true })
+  fs.writeFileSync(routePageFile, buildNextRoutePageTemplate(controllerName, controllerImport), 'utf-8')
+  if (layoutId) {
+    const routeLayoutFile = path.join(routeDir, 'layout.tsx')
+    if (!isSafeFile(routeLayoutFile)) return res.status(403).json({ error: 'Access denied' })
+    let layoutComponentName = layoutId
+    if (layoutsDir) {
+      const layoutFile = path.join(layoutsDir, layoutId, 'layout.tsx')
+      if (fs.existsSync(layoutFile)) {
+        const layoutSource = fs.readFileSync(layoutFile, 'utf-8')
+        const namedMatch = layoutSource.match(/export\s+function\s+(\w+)/)
+        if (namedMatch) layoutComponentName = namedMatch[1]
+      }
+    }
+    const layoutImport = `@/${layoutsDirRel}/${layoutId}/layout`
+    fs.writeFileSync(routeLayoutFile, buildNextRouteLayoutTemplate(layoutComponentName, layoutImport), 'utf-8')
+  }
+  const cfg = readProjectConfig(resolved)
+  cfg.pageRoutes = cfg.pageRoutes ?? {}
+  cfg.pageRoutes[pageId] = { route: normalizedRoute, layoutId: layoutId ?? null }
+  cfg.pageLayouts = cfg.pageLayouts ?? {}
+  if (layoutId) { cfg.pageLayouts[pageId] = layoutId } else { delete cfg.pageLayouts[pageId] }
+  writeProjectConfig(resolved, cfg)
+  res.json({
+    ok: true,
+    route: normalizedRoute,
+    controllerFile: controllerFile.replace(/\\/g, '/'),
+    routeDir: routeDir.replace(/\\/g, '/'),
+  })
+})
+
+app.delete('/__source/route', (req, res) => {
+  const { projectRoot, pageId } = req.query
+  if (!projectRoot || !pageId) return res.status(400).json({ error: 'Missing projectRoot or pageId' })
+  const resolved = path.resolve(projectRoot)
+  const cfg = readProjectConfig(resolved)
+  const pageRoutes = cfg.pageRoutes ?? {}
+  const entry = pageRoutes[pageId]
+  if (entry?.route) {
+    const routeSegment = entry.route.replace(/^\//, '')
+    const appDir = getAppDir(resolved)
+    const routeDir = path.join(appDir, routeSegment)
+    if (isSafeFile(routeDir) && fs.existsSync(routeDir)) {
+      fs.rmSync(routeDir, { recursive: true, force: true })
+    }
+  }
+  // Also delete the controller file
+  const { pagesDir } = getProjectDirs(resolved)
+  const controllerFile = path.join(pagesDir, pageId, 'controller.tsx')
+  if (isSafeFile(controllerFile) && fs.existsSync(controllerFile)) {
+    fs.rmSync(controllerFile, { force: true })
+  }
+  delete cfg.pageRoutes[pageId]
+  if (cfg.pageLayouts) delete cfg.pageLayouts[pageId]
+  writeProjectConfig(resolved, cfg)
   res.json({ ok: true })
 })
 

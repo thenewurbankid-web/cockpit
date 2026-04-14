@@ -44,6 +44,8 @@ interface DisplayComponentNode {
   usageFile?: string | null
   /** JSX usage-site line (only set for expression nodes). */
   usageLine?: number | null
+  /** When true, this node is treated as a page root even if depth > 0 (e.g. page inside a layout). */
+  isPageRoot?: boolean
 }
 
 /** Greyed-out ghost node for an expression that renders null (inactive). */
@@ -85,6 +87,13 @@ export interface SelectedNodeSnapshot {
   ownerComponentName: string | null
   ownerFile?: string | null
   ownerLine?: number | null
+  /**
+   * Full fiber ancestry chain for multi-level scope walking without locatorjs.
+   * chain[0] = immediate owner (same as ownerFile/ownerLine).
+   * chain[N] = the Nth ancestor component, each entry's file/line pointing to
+   * WHERE that component is used in its parent's JSX.
+   */
+  ownerChain?: Array<{ componentName: string; file: string | null; line: number | null }>
   domAttributes: Array<{ name: string; value: string }>
 }
 
@@ -100,6 +109,13 @@ export interface ComponentEntry {
   name: string
 }
 
+export interface LayoutEntry {
+  id: string
+  label: string
+  name: string
+  file?: string
+}
+
 export interface DOMTreePanelProps {
   /** The live DOM element that contains the preview content (iframe body or expression div). */
   canvasEl: HTMLElement | null
@@ -113,7 +129,7 @@ export interface DOMTreePanelProps {
   onNodeSelect?: (snapshot: SelectedNodeSnapshot | null) => void
   preferredRootComponentName?: string
   /** Controls which section is shown in the panel. */
-  activeSection?: 'pages' | 'components' | 'expressions'
+  activeSection?: 'pages' | 'components' | 'expressions' | 'layouts'
   /** Optional list of pages to display at the top of the panel. */
   pages?: PageEntry[]
   activePage?: string
@@ -150,4 +166,22 @@ export interface DOMTreePanelProps {
   pagesDir?: string
   /** Configured components directory for this project. */
   componentsDir?: string
+  /** Optional list of layouts to display below pages in the panel. */
+  layouts?: LayoutEntry[]
+  /** The id of the currently active (selected) layout. */
+  activeLayoutId?: string | null
+  /** Called when the user clicks a layout row. */
+  onLayoutClick?: (layout: LayoutEntry) => void
+  /** Called when the user clicks "+ Add layout". */
+  onAddLayout?: () => void
+  /** Called when the user confirms deleting a layout. */
+  onDeleteLayout?: (id: string, name: string) => void
+  /** Project root path — passed to RoutePanel for route management. */
+  projectRoot?: string
+  /** Active page id — passed to RoutePanel. */
+  pageId?: string
+  /** Layouts available for route assignment in RoutePanel. */
+  routeLayouts?: { id: string; name: string }[]
+  /** Called when the user saves or removes a route assignment. */
+  onRouteChange?: (route: string | null, layoutId: string | null) => void
 }

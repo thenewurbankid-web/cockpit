@@ -57,7 +57,8 @@ interface RowProps {
 
 export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey, filterDomNodes = false }: RowProps) {
   // Child component nodes (depth > 0) start collapsed but are expandable.
-  const isChildComponent = node.kind === 'component' && node.depth > 0
+  // Exception: nodes flagged as isPageRoot (page component inside a layout) behave like roots.
+  const isChildComponent = node.kind === 'component' && node.depth > 0 && !node.isPageRoot
   // Inside a child component subtree, hide DOM nodes — only show nested React component nodes
   // (i.e. what the page source explicitly composes, not the component's internal DOM implementation).
   const hideDOM = isChildComponent || filterDomNodes

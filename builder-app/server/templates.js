@@ -24,6 +24,87 @@ export function buildPageTemplate(componentName, label) {
   ].join('\n')
 }
 
+// ── Layout template ───────────────────────────────────────────────────────────
+
+export function buildLayoutTemplate(componentName, label) {
+  return [
+    `import type { ReactNode } from 'react'`,
+    ``,
+    `interface ${componentName}Props {`,
+    `  children?: ReactNode`,
+    `}`,
+    ``,
+    `export function ${componentName}({ children }: ${componentName}Props) {`,
+    `  return (`,
+    `    <div style={{ minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>`,
+    `      {/* ${label} layout — add nav, sidebars, footers here */}`,
+    `      {children}`,
+    `    </div>`,
+    `  )`,
+    `}`,
+  ].join('\n')
+}
+
+// ── Controller + Next.js route templates ─────────────────────────────────────
+
+export function buildControllerTemplate(controllerName, componentName, pageImportPath, isDefaultExport, props) {
+  const importLine = isDefaultExport
+    ? `import ${componentName} from '${pageImportPath}'`
+    : `import { ${componentName} } from '${pageImportPath}'`
+
+  const stateLines = props.map(p => {
+    const upper = p.name.charAt(0).toUpperCase() + p.name.slice(1)
+    const t = (p.type || 'string').trim()
+    let defaultVal = 'null'
+    if (t === 'string') defaultVal = "''"
+    else if (t === 'boolean') defaultVal = 'false'
+    else if (t === 'number') defaultVal = '0'
+    return `  const [${p.name}, set${upper}] = useState<${t}>(${defaultVal})`
+  })
+
+  const jsxTag = props.length === 0
+    ? `    <${componentName} />`
+    : [`    <${componentName}`, ...props.map(p => `      ${p.name}={${p.name}}`), `    />`].join('\n')
+
+  const lines = [
+    `'use client'`,
+    ``,
+    `import { useState } from 'react'`,
+    importLine,
+    ``,
+    `export function ${controllerName}() {`,
+    ...stateLines,
+    stateLines.length > 0 ? `` : null,
+    `  return (`,
+    jsxTag,
+    `  )`,
+    `}`,
+  ].filter(l => l !== null)
+
+  return lines.join('\n')
+}
+
+export function buildNextRoutePageTemplate(controllerName, controllerImport) {
+  return [
+    `import { ${controllerName} } from '${controllerImport}'`,
+    ``,
+    `export default function Page() {`,
+    `  return <${controllerName} />`,
+    `}`,
+  ].join('\n')
+}
+
+export function buildNextRouteLayoutTemplate(layoutComponentName, layoutImport) {
+  return [
+    `import type { ReactNode } from 'react'`,
+    `import { ${layoutComponentName} } from '${layoutImport}'`,
+    ``,
+    `export default function Layout({ children }: { children: ReactNode }) {`,
+    `  return <${layoutComponentName}>{children}</${layoutComponentName}>`,
+    `}`,
+  ].join('\n')
+}
+
 // ── Component template ────────────────────────────────────────────────────────
 
 export function buildComponentTemplate(componentName, label) {
