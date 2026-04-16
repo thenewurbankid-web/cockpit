@@ -443,6 +443,7 @@ export default function App() {
   const [aliasesWereNew, setAliasesWereNew] = useState(false)
   const [detectedPackages, setDetectedPackages] = useState<string[]>([])
   const [previewHasError, setPreviewHasError] = useState(false)
+  const [runtimeErrorMessage, setRuntimeErrorMessage] = useState<string | null>(null)
 
   // Packages that are commonly needed by non-Vite projects but are not
   // bundled with Node.js / browser environments.
@@ -557,7 +558,21 @@ export default function App() {
   // Clear runtime error flag when the user navigates to a different page/component.
   useEffect(() => {
     setPreviewHasError(false)
+    setRuntimeErrorMessage(null)
   }, [activeSection, previewPage, previewComponent])
+
+  // Listen for uncaught errors forwarded from the preview iframe via postMessage.
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.data?.type !== 'cockpit:runtime-error') return
+      const msg: string = e.data.message ?? 'Unknown error'
+      const stack: string | undefined = e.data.stack
+      setPreviewHasError(true)
+      setRuntimeErrorMessage(stack ? `${msg}\n\n${stack}` : msg)
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   useEffect(() => {
     if (activeSection !== 'expressions') setActiveExpression(null)
@@ -1009,7 +1024,15 @@ export default function App() {
               const comp = components.find(c => c.name === componentName)
               if (comp?.file && componentsDir) resolvedFile = `${componentsDir}/${comp.file}.tsx`
             }
-            if (resolvedFile) setLocation({ file: resolvedFile, line, inspectMode: 'file', componentName })
+            // In layouts section, always use the registered layout file — the fiber _debugSource
+            // may point to a Subframe UI helper file (e.g. ui/layouts/Blank.tsx) rather than the
+            // actual layout template (layouts/BlankLayout/layout.tsx), causing the wrong source
+            // to be loaded in the inspector and componentHasPropTypeDef to return false.
+            if (activeSection === 'layouts' && componentName && layoutsDir) {
+              const layout = layouts.find(l => l.name === componentName)
+              if (layout) resolvedFile = `${layoutsDir}/${layout.id}/layout.tsx`
+            }
+            if (resolvedFile) setLocation({ file: resolvedFile, line: 1, inspectMode: 'file', componentName })
             setPanelOpen(true)
           }}
           onExpressionNodeClick={(nodes, exprName) => {
@@ -1043,6 +1066,7 @@ export default function App() {
           onDeleteLayout={(id) => void deleteLayout(id)}
           projectRoot={projectRoot ?? undefined}
           pageId={activePage?.id}
+          layoutsDir={layoutsDir ?? undefined}
           routeLayouts={layouts.map(l => ({ id: l.id, name: l.name }))}
           onRouteChange={(routePath, lid) => {
             void fetchRoutes(projectRoot ?? '').then(setRoutes)
@@ -1170,6 +1194,30 @@ export default function App() {
               onCancel={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
               onDone={() => { setWrapIntent(null); setWrapChosenExpr(null); setHoveredWrapKey(null) }}
             />
+          )}
+
+          {/* Runtime error banner — shown when the preview throws an uncaught error */}
+          {previewHasError && runtimeErrorMessage && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+              background: '#2d1b1b', borderBottom: '1px solid #5c2626',
+              padding: '8px 14px', fontSize: 12, fontFamily: 'system-ui, sans-serif',
+              color: '#f38ba8', flexShrink: 0, overflowX: 'auto',
+            }}>
+              <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>
+              <pre style={{
+                margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                fontFamily: 'monospace', fontSize: 11, color: '#f38ba8',
+                maxHeight: 160, overflowY: 'auto', flex: 1,
+              }}>
+                {runtimeErrorMessage}
+              </pre>
+              <button
+                onClick={() => { setPreviewHasError(false); setRuntimeErrorMessage(null) }}
+                style={{ background: 'none', border: 'none', color: '#6c7086', fontSize: 16, cursor: 'pointer', padding: '0 2px', flexShrink: 0, lineHeight: 1 }}
+                title="Dismiss"
+              >×</button>
+            </div>
           )}
 
           {/* Preview iframe — pages & components section */}

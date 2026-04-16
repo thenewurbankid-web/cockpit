@@ -88,6 +88,13 @@ function projectHmrNotify(): Plugin {
               count++
             }
           }
+          // If the file wasn't in the module graph (e.g. it previously had a
+          // compilation error and was never successfully transformed), emit a
+          // watcher 'change' event so Vite's HMR pipeline re-processes the file
+          // from scratch — clearing any cached error state.
+          if (count === 0) {
+            server.watcher.emit('change', filePath)
+          }
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ ok: true, invalidated: count }))

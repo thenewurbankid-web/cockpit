@@ -115,6 +115,7 @@ export function DOMTreePanel({
   onDeleteLayout,
   projectRoot,
   pageId,
+  layoutsDir,
   routeLayouts,
   onRouteChange,
 }: DOMTreePanelProps) {
@@ -519,7 +520,14 @@ export function DOMTreePanel({
         } else {
           // Layout/page root nodes (depth 0 or isPageRoot) should show the full file.
           const isRootNode = node.depth === 0 || node.isPageRoot
-          onLocate(node.file, node.line, isRootNode ? 'file' : 'component', node.name)
+          // When the layout root is selected while in layouts section and node.file resolved
+          // to a sub-component's file (e.g. a Subframe library file), use the layout's
+          // actual layout.tsx source file so the inspector operates on the right code.
+          let locateFile = node.file
+          if (isRootNode && activeSection === 'layouts' && layoutsDir && activeLayoutId && node.name === layouts?.find(l => l.id === activeLayoutId)?.name) {
+            locateFile = `${layoutsDir}/${activeLayoutId}/layout.tsx`
+          }
+          onLocate(locateFile, node.line, isRootNode ? 'file' : 'component', node.name)
         }
       }
       const el = firstDomElement(node)
@@ -1236,6 +1244,7 @@ export function DOMTreePanel({
                 onClearForceExpand={() => { setForceExpandAll(false); setExpandedAncestors(null) }}
                 expandedAncestors={expandedAncestors}
                 scrollToKey={scrollToKey}
+                layoutComponentName={layouts?.find(l => l.id === activeLayoutId)?.name}
               />
             ))
           ) : (

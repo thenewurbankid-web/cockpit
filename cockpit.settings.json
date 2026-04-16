@@ -3,7 +3,10 @@
     "@": "D:/Repositories/max-builder",
     "@/subframe": "D:/Repositories/max-builder/src/subframe",
     "@/ui": "D:/Repositories/max-builder/src/ui",
-    "@/ui/utils": "D:/Repositories/max-builder/src/ui/utils"
+    "@/ui/utils": "D:/Repositories/max-builder/src/ui/utils",
+    "@/layout": "D:/Repositories/max-builder/src/layout",
+    "@/layouts": "D:/Repositories/max-builder/src/layouts",
+    "@/pages": "D:/Repositories/max-builder/src/pages"
   },
   "packages": [],
   "nodeModulesDirs": [

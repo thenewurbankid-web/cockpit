@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-Cockpit is a visual dev tool for inspecting and editing React component source code in real time — built for agentic development workflows. An AI agent modifies **target project** source files and a human reviews the live result in **builder-app**.
+Cockpit is a visual dev tool for inspecting and editing React component source code in real time — built for agentic development workflows. An AI agent modifies **target project** () source files and a human reviews the live result in **builder-app**.
+
+## Referece target project is max-builder in the dir outside the cockpit root dir
 
 ## Monorepo Layout
 

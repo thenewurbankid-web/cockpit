@@ -55,6 +55,14 @@ export function warmDiagnosticsCache(projectRoot) {
   getTsServerClient(resolved) // ensures the process is started now
 }
 
+/**
+ * Pre-open a list of source files in the already-warm tsserver so it loads the
+ * project graph eagerly. Call this after warmDiagnosticsCache.
+ */
+export function warmOpenFiles(projectRoot, filePaths) {
+  getTsServerClient(path.resolve(projectRoot)).warmOpen(filePaths)
+}
+
 // ── Per-project .cockpit/config.json helpers ──────────────────────────────────
 
 const COCKPIT_DIR = '.cockpit'

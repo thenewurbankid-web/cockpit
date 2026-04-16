@@ -445,6 +445,51 @@ export function inferOwnerComponentName(source: string, targetLine: number): str
   }
 }
 
+/**
+ * Resolve an alias/wrapper to the actual function node, handling:
+ * - Identifier aliases: `export const Foo = Bar` → finds Bar's declaration
+ * - forwardRef/memo wrappers: `React.forwardRef(fn)` → extracts fn (first arg)
+ * - Direct function expressions / declarations → returned as-is
+ */
+function resolveAlias(body: AstNode[], fn: AstNode | null | undefined, depth = 0): AstNode | null | undefined {
+  if (!fn || depth > 5) return fn
+  const type = fn.type
+  if (type === 'FunctionExpression' || type === 'ArrowFunctionExpression' || type === 'FunctionDeclaration') return fn
+  // forwardRef(fn) / memo(fn) — unwrap first arg
+  if (type === 'CallExpression') {
+    const args = (fn as AstNode & { arguments?: AstNode[] }).arguments ?? []
+    return resolveAlias(body, args[0] ?? null, depth + 1)
+  }
+  // Identifier alias: const Foo = Bar → look up Bar in body
+  if (type === 'Identifier') {
+    const name = (fn as AstNode & { name?: string }).name
+    if (!name) return fn
+    for (const n of body) {
+      if (n.type === 'FunctionDeclaration') {
+        const id = (n as AstNode & { id?: AstNode & { name?: string } }).id
+        if (id?.name === name) return n
+      }
+      const decl = (n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration')
+        ? (n as AstNode & { declaration?: AstNode }).declaration : undefined
+      if (decl?.type === 'FunctionDeclaration') {
+        const id = (decl as AstNode & { id?: AstNode & { name?: string } }).id
+        if (id?.name === name) return decl
+      }
+      const varDecl = decl?.type === 'VariableDeclaration' ? decl
+        : n.type === 'VariableDeclaration' ? n : null
+      if (varDecl) {
+        for (const d of ((varDecl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+          const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
+          if (id?.name === name) {
+            return resolveAlias(body, (d as AstNode & { init?: AstNode }).init ?? null, depth + 1)
+          }
+        }
+      }
+    }
+  }
+  return fn
+}
+
 export function componentHasPropTypeDef(source: string, ownerName: string): boolean {
   try {
     const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
@@ -460,14 +505,14 @@ export function componentHasPropTypeDef(source: string, ownerName: string): bool
         for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
           const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
           if (id?.name === ownerName) {
-            const fn = (d as AstNode & { init?: AstNode }).init
+            const fn = resolveAlias(body, (d as AstNode & { init?: AstNode }).init ?? null)
             if (fn) candidates.push(fn)
           }
         }
       }
       for (const cand of candidates) {
         const fnId = (cand as AstNode & { id?: AstNode & { name?: string } }).id
-        if (cand.type === 'FunctionDeclaration' && fnId?.name !== ownerName) continue
+        if (cand.type === 'FunctionDeclaration' && fnId?.name !== ownerName && fnId?.name !== undefined) continue
         const params = (cand as AstNode & { params?: AstNode[] })?.params ?? []
         const firstParam = params[0]
         if (!firstParam) return false
@@ -535,20 +580,9 @@ export function extractOwnerProps(source: string, ownerName: string): ComponentP
         ? (componentNode as AstNode & { init?: AstNode }).init
         : componentNode
 
-    // Unwrap React.forwardRef(renderFn) / React.memo(renderFn) —
-    // esbuild compiles forwardRef components as a CallExpression whose first
-    // argument is the actual render function. Without this the params lookup
-    // below finds no params on the CallExpression and returns an empty array.
-    if (fnNode?.type === 'CallExpression') {
-      const args = (fnNode as AstNode & { arguments?: AstNode[] }).arguments ?? []
-      const firstArg = args[0]
-      if (
-        firstArg &&
-        (firstArg.type === 'FunctionExpression' || firstArg.type === 'ArrowFunctionExpression')
-      ) {
-        fnNode = firstArg
-      }
-    }
+    // Resolve aliases (export const Foo = Bar) and wrappers (React.forwardRef(fn), React.memo(fn))
+    // to the actual render function so params/type annotations can be read.
+    fnNode = resolveAlias(body, fnNode) ?? fnNode
 
     const params = (fnNode as AstNode & { params?: AstNode[] })?.params ?? []
     const firstParam = params[0]

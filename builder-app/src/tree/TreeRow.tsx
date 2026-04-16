@@ -53,15 +53,18 @@ interface RowProps {
   scrollToKey?: string | null
   /** When true, DOM nodes are hidden — only component/ghost/loop nodes are shown. */
   filterDomNodes?: boolean
+  /** Name of the active layout component — used to show the (layout) badge */
+  layoutComponentName?: string
 }
 
-export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey, filterDomNodes = false }: RowProps) {
+export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFiles, multiSelectedKeys, onMultiToggle, onRowContextMenu, hoveredWrapKey, expandGen = 0, collapseGen = 0, forceExpandAll = false, onClearForceExpand, expandedAncestors, scrollToKey, filterDomNodes = false, layoutComponentName }: RowProps) {
   // Child component nodes (depth > 0) start collapsed but are expandable.
   // Exception: nodes flagged as isPageRoot (page component inside a layout) behave like roots.
   const isChildComponent = node.kind === 'component' && node.depth > 0 && !node.isPageRoot
   // Inside a child component subtree, hide DOM nodes — only show nested React component nodes
   // (i.e. what the page source explicitly composes, not the component's internal DOM implementation).
-  const hideDOM = isChildComponent || filterDomNodes
+  // isPageRoot nodes always show DOM children even when a parent passed filterDomNodes=true.
+  const hideDOM = (isChildComponent || filterDomNodes) && !node.isPageRoot
   const [open, setOpen] = useState(!isChildComponent)
   const rowRef = useRef<HTMLDivElement>(null)
 
@@ -138,7 +141,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
             expandGen={expandGen} collapseGen={collapseGen}
             forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
             expandedAncestors={expandedAncestors} scrollToKey={scrollToKey}
-            filterDomNodes={hideDOM} />
+            filterDomNodes={hideDOM} layoutComponentName={layoutComponentName} />
         ))}
       </div>
     )
@@ -189,7 +192,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
             expandGen={expandGen} collapseGen={collapseGen}
             forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand}
             expandedAncestors={expandedAncestors} scrollToKey={scrollToKey}
-            filterDomNodes={hideDOM} />
+            filterDomNodes={hideDOM} layoutComponentName={layoutComponentName} />
         ))}
       </div>
     )
@@ -282,7 +285,12 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
                         }}
                       >!</span>
                     )}
-                    <span style={{ color: '#6c7086', fontSize: 11 }}>(component)</span>
+                    {node.isPageRoot
+                      ? <span style={{ color: '#a6e3a1', fontSize: 10, background: 'rgba(166,227,161,0.12)', border: '1px solid rgba(166,227,161,0.3)', padding: '1px 5px', borderRadius: 3 }}>page</span>
+                      : layoutComponentName && node.name === layoutComponentName
+                        ? <span style={{ color: '#89dceb', fontSize: 10, background: 'rgba(137,220,235,0.12)', border: '1px solid rgba(137,220,235,0.3)', padding: '1px 5px', borderRadius: 3 }}>layout</span>
+                        : <span style={{ color: '#6c7086', fontSize: 11 }}>(component)</span>
+                    }
                   </>
                 )
             }
@@ -334,7 +342,7 @@ export function TreeRow({ node, selected, onSelect, hoveredElement, multiCompFil
       {effectiveOpen &&
         hasChildren &&
         visibleChildren.map((child, i) => (
-          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} expandGen={expandGen} collapseGen={collapseGen} forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand} expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} filterDomNodes={hideDOM} />
+          <TreeRow key={i} node={child} selected={selected} onSelect={onSelect} hoveredElement={hoveredElement} multiCompFiles={multiCompFiles} multiSelectedKeys={multiSelectedKeys} onMultiToggle={onMultiToggle} onRowContextMenu={onRowContextMenu} hoveredWrapKey={hoveredWrapKey} expandGen={expandGen} collapseGen={collapseGen} forceExpandAll={forceExpandAll} onClearForceExpand={onClearForceExpand} expandedAncestors={expandedAncestors} scrollToKey={scrollToKey} filterDomNodes={hideDOM} layoutComponentName={layoutComponentName} />
         ))}
     </div>
   )

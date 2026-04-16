@@ -15,7 +15,7 @@ import { execSync, spawn } from 'child_process'
 import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, readProjectConfig, writeProjectConfig } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
 import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate } from './templates.js'
 
@@ -350,6 +350,37 @@ app.post('/__source/set-active-project', (req, res) => {
   // Pre-warm the TypeScript program cache in the background so the first
   // diagnostics request hits the warm cache instead of cold-starting (~2-6s).
   warmDiagnosticsCache(resolved)
+
+  // Eagerly open the project's page, component, and expression source files so
+  // tsserver loads the full project graph now rather than on the first edit.
+  setImmediate(() => {
+    try {
+      const cfg = readProjectConfig(resolved)
+      const dirs = [cfg.pagesDir, cfg.componentsDir, cfg.expressionsDir].filter(Boolean)
+      const tsxFiles = []
+      for (const dir of dirs) {
+        const abs = path.isAbsolute(dir) ? dir : path.join(resolved, dir)
+        if (!fs.existsSync(abs)) continue
+        ;(function walk(d) {
+          let entries
+          try { entries = fs.readdirSync(d, { withFileTypes: true }) } catch { return }
+          for (const e of entries) {
+            if (e.isDirectory()) walk(path.join(d, e.name))
+            else if (e.name.endsWith('.tsx') || e.name.endsWith('.ts')) {
+              tsxFiles.push(path.join(d, e.name))
+            }
+          }
+        })(abs)
+      }
+      if (tsxFiles.length > 0) {
+        warmOpenFiles(resolved, tsxFiles)
+        console.log(`[set-active-project] warm-opened ${tsxFiles.length} file(s)`)
+      }
+    } catch (e) {
+      console.warn(`[set-active-project] warmOpen scan failed: ${e.message}`)
+    }
+  })
+
   res.json({ ok: true })
 })
 

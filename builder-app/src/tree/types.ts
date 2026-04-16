@@ -180,6 +180,8 @@ export interface DOMTreePanelProps {
   projectRoot?: string
   /** Active page id — passed to RoutePanel. */
   pageId?: string
+  /** Absolute path to the layouts directory — used to navigate directly to the layout source file. */
+  layoutsDir?: string
   /** Layouts available for route assignment in RoutePanel. */
   routeLayouts?: { id: string; name: string }[]
   /** Called when the user saves or removes a route assignment. */

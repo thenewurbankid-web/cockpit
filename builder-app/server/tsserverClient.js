@@ -34,6 +34,9 @@ const TSSERVER_JS = findTsserverPath()
 
 const clients = new Map() // projectRoot → TsServerClient
 
+/** Maximum number of file contents to hold in memory per client. */
+const FILE_CONTENTS_LRU_LIMIT = 60
+
 class TsServerClient {
   constructor(projectRoot) {
     this.projectRoot = projectRoot
@@ -41,9 +44,13 @@ class TsServerClient {
     this.seq = 0
     /** seq → {resolve, file, syntaxDiags, semanticDiags} */
     this.pending = new Map()
-    /** filePath → last content string sent to tsserver (null = disk content) */
+    /** filePath → last content string sent to tsserver (null = disk content).
+     *  Insertion order is used for LRU eviction. */
     this.fileContents = new Map()
     this._buf = ''
+    /** Queue of pending getDiagnostics calls for the same file, ensuring serial
+     *  execution so tsserver event streams never interleave. */
+    this._queue = new Map() // filePath → Promise (tail of in-flight chain)
     this._spawn()
   }
 
@@ -75,6 +82,31 @@ class TsServerClient {
     }
     this.pending.clear()
     this.fileContents.clear()
+    this._queue.clear()
+  }
+
+  /** Evict oldest entries from fileContents if the LRU limit is exceeded. */
+  _evictLru() {
+    while (this.fileContents.size > FILE_CONTENTS_LRU_LIMIT) {
+      const oldest = this.fileContents.keys().next().value
+      this.fileContents.delete(oldest)
+    }
+  }
+
+  /**
+   * Pre-open a list of files in tsserver without waiting for diagnostics.
+   * Called at project-warm time so tsserver loads the project graph eagerly,
+   * reducing cold latency on the first real diagnostic request.
+   */
+  warmOpen(filePaths) {
+    if (!this.proc) return
+    for (const fp of filePaths) {
+      if (this.fileContents.has(fp)) continue // already opened
+      const scriptKindName = /\.[jt]sx$/.test(fp) ? 'TSX' : 'TS'
+      this._send('open', { file: fp, scriptKindName })
+      this.fileContents.set(fp, null)
+      this._evictLru()
+    }
   }
 
   // ── framing / parsing ──────────────────────────────────────────────────────
@@ -159,8 +191,56 @@ class TsServerClient {
    * Get TypeScript diagnostics for `filePath`, optionally using in-memory
    * `content` instead of the on-disk file.
    * Returns { diagnostics: DiagnosticItem[], error: string|null }.
+   *
+   * Per-file concurrency model: at most ONE request runs at a time, plus at
+   * most ONE queued follow-up holding the *latest* content.  If multiple calls
+   * arrive while a request is in flight they all share the same queued slot and
+   * the last writer wins — so rapid node-switching collapses into at most two
+   * total tsserver round-trips instead of N sequential ones.
    */
   async getDiagnostics(filePath, content) {
+    let slot = this._queue.get(filePath)
+    if (!slot) {
+      slot = { running: false, queued: null }
+      this._queue.set(filePath, slot)
+    }
+
+    if (!slot.running) {
+      return this._runSlot(filePath, slot, content)
+    }
+
+    // A request is already in flight — collapse into (or update) a single queued follow-up.
+    if (!slot.queued) {
+      let resolve
+      const promise = new Promise(r => { resolve = r })
+      slot.queued = { content, promise, resolve }
+    } else {
+      // Update to the latest content; callers share the same promise.
+      slot.queued.content = content
+    }
+    return slot.queued.promise
+  }
+
+  async _runSlot(filePath, slot, content) {
+    slot.running = true
+    let result
+    try {
+      result = await this._getDiagnosticsInner(filePath, content)
+    } catch (e) {
+      result = { diagnostics: [], error: String(e?.message ?? e) }
+    } finally {
+      slot.running = false
+    }
+    // If a follow-up was queued while we were running, execute it now.
+    if (slot.queued) {
+      const { content: nextContent, resolve } = slot.queued
+      slot.queued = null
+      this._runSlot(filePath, slot, nextContent).then(resolve)
+    }
+    return result
+  }
+
+  async _getDiagnosticsInner(filePath, content) {
     if (!this.proc) this._spawn()
 
     const scriptKindName = /\.[jt]sx$/.test(filePath) ? 'TSX' : 'TS'
@@ -173,7 +253,7 @@ class TsServerClient {
       this._send('open', openArgs)
     } else if (content != null && content !== prev) {
       // Content changed — full-file replacement change
-      const prevLines = prev.split('\n')
+      const prevLines = prev ? prev.split('\n') : ['']
       this._send('change', {
         file: filePath,
         line: 1,
@@ -184,7 +264,10 @@ class TsServerClient {
       })
     }
 
+    // Update LRU: delete then re-insert so this entry moves to the back.
+    this.fileContents.delete(filePath)
     this.fileContents.set(filePath, content ?? prev ?? null)
+    this._evictLru()
 
     return new Promise(resolve => {
       const seq = this._send('geterr', { files: [filePath], delay: 0 })

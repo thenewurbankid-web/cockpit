@@ -772,14 +772,27 @@ export function InspectorPanel({
             : findLocatorUsages(tag)
         console.log('[scope:comp] usages=', usages)
         if (usages.length === 0) { setBindingsLoading(false); return }
+        // ownerChain already has every ancestor's file+line — fetch all in one parallel batch.
+        const _compScopeFiles = [
+          ...usages.map(u => u.file),
+          ...(node.ownerChain ?? [])
+            .filter(e => e.file && !e.file.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/'))
+            .map(e => e.file as string),
+        ]
+        const _compScopeFetched = await Promise.all(
+          [...new Set(_compScopeFiles)].map(async f => {
+            try {
+              const r = await fetch(`/__source?file=${encodeURIComponent(f)}`)
+              return r.ok ? { file: f, source: await r.text() } : null
+            } catch { return null }
+          })
+        )
+        const _compScopeMap = new Map(_compScopeFetched.filter(Boolean).map(r => [r!.file, r!.source]))
         // Try each usage file until we get a non-empty attr set.
         for (const { file: usageFile, line: usageLine } of usages) {
           try {
-            const usageFetchT0 = performance.now()
-            const res = await fetch(`/__source?file=${encodeURIComponent(usageFile)}`)
-            console.log(`[inspector] fetch usage-file ${(performance.now() - usageFetchT0).toFixed(1)}ms  ${usageFile.replace(/.*[/\\]/, '')}`)
-            if (!res.ok) continue
-            const usageSource = await res.text()
+            const usageSource = _compScopeMap.get(usageFile)
+            if (!usageSource) continue
             const rawAttrs = extractJsxAttrs(usageSource, usageLine)
             // Synthesize a 'children' attr from JSX slot text/expression children when not already an explicit attr.
             const slotChildren = extractJsxTextChildren(usageSource, usageLine)
@@ -858,9 +871,8 @@ export function InspectorPanel({
                     let levelFound2 = false
                     for (const { file: uf2, line: ul2 } of searchCandidates2) {
                       try {
-                        const res2 = await fetch(`/__source?file=${encodeURIComponent(uf2)}`)
-                        if (!res2.ok) continue
-                        const us2 = await res2.text()
+                        const us2 = _compScopeMap.get(uf2)
+                        if (!us2) continue
                         const gpName = inferOwnerComponentName(us2, ul2)
                         if (!gpName) continue
                         const passed2 = extractJsxAttrs(us2, ul2)
@@ -1012,6 +1024,23 @@ export function InspectorPanel({
           : findLocatorUsages(ownerNameCapture)
       console.log('[scope:dom] ownerName=%s ownerFile=%s chainCandidate=', ownerNameCapture, directOwnerFile, chainCandidateForOwner, 'candidates=', candidateUsages)
       void (async () => {
+        // ownerChain already has every ancestor's file+line from fiber data.
+        // Fetch all unique files in one parallel batch — no serial round-trips.
+        const _scopeFiles = [
+          ...candidateUsages.map(u => u.file),
+          ...(node.ownerChain ?? [])
+            .filter(e => e.file && !e.file.toLowerCase().replace(/\\/g, '/').includes('builder-app/src/'))
+            .map(e => e.file as string),
+        ]
+        const _scopeFetched = await Promise.all(
+          [...new Set(_scopeFiles)].map(async f => {
+            try {
+              const r = await fetch(`/__source?file=${encodeURIComponent(f)}`)
+              return r.ok ? { file: f, source: await r.text() } : null
+            } catch { return null }
+          })
+        )
+        const _scopeMap = new Map(_scopeFetched.filter(Boolean).map(r => [r!.file, r!.source]))
         // Walk up the component hierarchy to build a full scope chain (up to 5 levels).
         // ancestors is built bottom-up: [ownerName, parent, grandparent, ..., root]
         const ancestors: Array<{
@@ -1029,9 +1058,8 @@ export function InspectorPanel({
           let levelFound = false
           for (const { file: uf, line: ul } of searchCandidates) {
             try {
-              const res = await fetch(`/__source?file=${encodeURIComponent(uf)}`)
-              if (!res.ok) continue
-              const us = await res.text()
+              const us = _scopeMap.get(uf)
+              if (!us) continue
               const parentName = inferOwnerComponentName(us, ul)
               if (!parentName) continue
               const passedAttrs = extractJsxAttrs(us, ul)
@@ -1789,6 +1817,40 @@ export function InspectorPanel({
       const propsTypeName = `${tag}Props`
 
       // ── 1. Find the component function node ─────────────────────────────────
+      // Handles alias exports (const Foo = Bar) and wrapped exports (const Foo = React.forwardRef(fn)).
+      function resolveHandlerAlias(b: AstNode[], fn: AstNode | null | undefined, depth = 0): AstNode | null | undefined {
+        if (!fn || depth > 5) return fn
+        const type = fn.type
+        if (['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'].includes(type)) return fn
+        if (['CallExpression', 'MemberExpression'].includes(type) || type.startsWith('TS')) {
+          const args = (fn as AstNode & { arguments?: AstNode[] }).arguments ?? []
+          return resolveHandlerAlias(b, args[0] ?? null, depth + 1)
+        }
+        if (type === 'Identifier') {
+          const name = (fn as AstNode & { name?: string }).name
+          if (!name) return fn
+          for (const n of b) {
+            if (n.type === 'FunctionDeclaration') {
+              const id = (n as AstNode & { id?: AstNode & { name?: string } }).id
+              if (id?.name === name) return n
+            }
+            const decl = (n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration')
+              ? (n as AstNode & { declaration?: AstNode }).declaration : undefined
+            if (decl?.type === 'FunctionDeclaration') {
+              const id = (decl as AstNode & { id?: AstNode & { name?: string } }).id
+              if (id?.name === name) return decl
+            }
+            const varDecl2 = decl?.type === 'VariableDeclaration' ? decl : n.type === 'VariableDeclaration' ? n : null
+            if (varDecl2) {
+              for (const d of ((varDecl2 as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+                const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
+                if (id?.name === name) return resolveHandlerAlias(b, (d as AstNode & { init?: AstNode }).init ?? null, depth + 1)
+              }
+            }
+          }
+        }
+        return fn
+      }
       let fnNode: AstNode | null = null
       let declLine = 1
       for (const node of body) {
@@ -1804,7 +1866,9 @@ export function InspectorPanel({
           for (const d of ((varDecl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
             const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
             if (id?.name === tag) {
-              const fn = (d as AstNode & { init?: AstNode }).init
+              const init = (d as AstNode & { init?: AstNode }).init
+              // Resolve alias chains: Foo = Bar → Bar, Foo = React.forwardRef(fn) → fn
+              const fn = init ? resolveHandlerAlias(body, init) : init
               if (fn) { candidates.push(fn); declLine = nodeStartLine }
             }
           }

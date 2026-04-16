@@ -603,6 +603,42 @@ export function addPropToOwnerSignature(
     const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
     const body = (ast.program as unknown as { body: AstNode[] }).body
 
+    /** Resolve alias (Identifier) / wrapper (CallExpression) to the actual fn node. */
+    function resolveAlias(fn: AstNode | null | undefined, depth = 0): AstNode | null | undefined {
+      if (!fn || depth > 5) return fn
+      const t = fn.type
+      if (t === 'FunctionExpression' || t === 'ArrowFunctionExpression' || t === 'FunctionDeclaration') return fn
+      if (t === 'CallExpression') {
+        const args = (fn as AstNode & { arguments?: AstNode[] }).arguments ?? []
+        return resolveAlias(args[0] ?? null, depth + 1)
+      }
+      if (t === 'Identifier') {
+        const name = (fn as AstNode & { name?: string }).name
+        if (!name) return fn
+        for (const n of body) {
+          if (n.type === 'FunctionDeclaration') {
+            const id = (n as AstNode & { id?: AstNode & { name?: string } }).id
+            if (id?.name === name) return n
+          }
+          const decl = (n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration')
+            ? (n as AstNode & { declaration?: AstNode }).declaration : undefined
+          if (decl?.type === 'FunctionDeclaration') {
+            const id = (decl as AstNode & { id?: AstNode & { name?: string } }).id
+            if (id?.name === name) return decl
+          }
+          const varDecl = decl?.type === 'VariableDeclaration' ? decl
+            : n.type === 'VariableDeclaration' ? n : null
+          if (varDecl) {
+            for (const d of ((varDecl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
+              const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
+              if (id?.name === name) return resolveAlias((d as AstNode & { init?: AstNode }).init ?? null, depth + 1)
+            }
+          }
+        }
+      }
+      return fn
+    }
+
     let propsTypeName = ''
     let paramPatternLoc: AstLocFull | null = null
     let paramPatternNode: AstNode | null = null
@@ -622,7 +658,7 @@ export function addPropToOwnerSignature(
           for (const d of ((decl as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
             const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
             if (id?.name === ownerName) {
-              const fn = (d as AstNode & { init?: AstNode }).init
+              const fn = resolveAlias((d as AstNode & { init?: AstNode }).init ?? null)
               if (fn) candidates.push(fn)
             }
           }
@@ -632,7 +668,7 @@ export function addPropToOwnerSignature(
         for (const d of ((node as AstNode & { declarations?: AstNode[] }).declarations ?? [])) {
           const id = (d as AstNode & { id?: AstNode & { name?: string } }).id
           if (id?.name === ownerName) {
-            const fn = (d as AstNode & { init?: AstNode }).init
+            const fn = resolveAlias((d as AstNode & { init?: AstNode }).init ?? null)
             if (fn) candidates.push(fn)
           }
         }

@@ -88,6 +88,34 @@ function PreviewApp() {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
+  // Forward uncaught runtime errors to the parent builder window so it can
+  // surface them in the inspector panel without requiring a DevTools open.
+  useEffect(() => {
+    function sendError(message: string, stack?: string) {
+      try {
+        window.parent.postMessage({ type: 'cockpit:runtime-error', message, stack }, '*')
+      } catch { /* cross-origin guard — should never happen (same-origin preview) */ }
+    }
+
+    function handleError(event: ErrorEvent) {
+      sendError(event.message, event.error?.stack)
+    }
+    function handleRejection(event: PromiseRejectionEvent) {
+      const reason = event.reason
+      const message = reason instanceof Error ? reason.message : String(reason)
+      const stack = reason instanceof Error ? reason.stack : undefined
+      sendError(message, stack)
+    }
+
+    window.addEventListener('error', handleError)
+    window.addEventListener('unhandledrejection', handleRejection)
+
+    return () => {
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('unhandledrejection', handleRejection)
+    }
+  }, [])
+
   // After the component renders with new fixture props, fill any inputs whose
   // internal state wasn't driven by the prop (fallback DOM injection path).
   useEffect(() => {

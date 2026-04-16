@@ -229,7 +229,29 @@ function toMixedTree(
   return domNode
 }
 
-export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[], layoutComponentName?: string): DisplayNode[] | null {
+/** Re-number all depths in a subtree so that root node depth === startDepth. */
+function reDepth(node: DisplayNode, startDepth: number): DisplayNode {
+  const delta = startDepth - node.depth
+  function shift(n: DisplayNode): DisplayNode {
+    return { ...n, depth: n.depth + delta, children: n.children.map(shift) } as DisplayNode
+  }
+  return shift(node)
+}
+
+/**
+ * Find the first component node with the given name anywhere in the tree,
+ * returning it (with its full subtree) or null if not found.
+ */
+function findComponentNode(nodes: DisplayNode[], name: string): DisplayNode | null {
+  for (const node of nodes) {
+    if (node.kind === 'component' && node.name === name) return node
+    const found = findComponentNode(node.children, name)
+    if (found) return found
+  }
+  return null
+}
+
+export function buildMixedTree(root: Element, preferredRootComponentName?: string, projectDirs?: string[], layoutComponentName?: string, stripLayout?: boolean): DisplayNode[] | null {
   const rawRoots: RawDomNode[] = []
 
   // When layout wraps the page, we save the page component name here so we can
@@ -383,6 +405,7 @@ export function buildMixedTree(root: Element, preferredRootComponentName?: strin
         wrapperLine = 1
       }
     }
+
     return [
       {
         kind: 'component',
