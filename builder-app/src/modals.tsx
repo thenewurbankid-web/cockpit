@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ExpressionMeta } from './tree/DOMTreePanel'
 import { modalStyles } from './appStyles'
 
@@ -390,6 +390,342 @@ export function AddPageModal({
               disabled={!name.trim() || loading}
             >
               {loading ? 'Creating…' : 'Create page'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Add Feature Modal ────────────────────────────────────────────────────────
+
+function toFeatureId(name: string): string {
+  return name.trim().replace(/\s+/g, '-').toLowerCase()
+}
+
+export function AddFeatureModal({
+  onClose,
+  onAdd,
+  projectRoot,
+}: {
+  onClose: () => void
+  onAdd: (id: string) => void
+  projectRoot: string
+}) {
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const featureId = name.trim() ? toFeatureId(name) : ''
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!featureId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/__source/create-feature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: featureId, projectRoot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create feature')
+      onAdd(featureId)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>New feature</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Feature name</label>
+          <input
+            autoFocus
+            style={modalStyles.input}
+            placeholder="e.g. auth"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null) }}
+          />
+          {featureId && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>Directory</span>
+              <span style={{ ...modalStyles.previewVal, color: '#fab387' }}>src/features/{featureId}/</span>
+            </div>
+          )}
+          {error && <div style={modalStyles.error}>{error}</div>}
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !featureId || loading ? '#45475a' : '#fab387', opacity: !featureId || loading ? 0.5 : 1, color: '#1e1e2e' }}
+              disabled={!featureId || loading}
+            >
+              {loading ? 'Creating…' : 'Create feature'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Add Service Modal ────────────────────────────────────────────────────────
+
+export function AddServiceModal({
+  onClose,
+  onAdd,
+  projectRoot,
+  featureId,
+}: {
+  onClose: () => void
+  onAdd: (id: string) => void
+  projectRoot: string
+  featureId: string
+}) {
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const pascal = name.trim()
+    ? name.trim().replace(/(?:^|[-_\s])\w/g, c => c.replace(/[-_\s]/, '').toUpperCase())
+    : ''
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pascal) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/__source/create-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featureId, name: name.trim(), projectRoot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create service')
+      onAdd(data.id ?? pascal)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>New service</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Service name</label>
+          <input
+            autoFocus
+            style={modalStyles.input}
+            placeholder="e.g. AuthService"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null) }}
+          />
+          {pascal && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>File</span>
+              <span style={{ ...modalStyles.previewVal, color: '#cba6f7' }}>src/features/{featureId}/{pascal}.ts</span>
+            </div>
+          )}
+          {error && <div style={modalStyles.error}>{error}</div>}
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !pascal || loading ? '#45475a' : '#cba6f7', opacity: !pascal || loading ? 0.5 : 1, color: '#1e1e2e' }}
+              disabled={!pascal || loading}
+            >
+              {loading ? 'Creating…' : 'Create service'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Add Flow Modal ───────────────────────────────────────────────────────────
+
+export function AddFlowModal({
+  onClose,
+  onAdd,
+  projectRoot,
+  featureId,
+}: {
+  onClose: () => void
+  onAdd: (id: string) => void
+  projectRoot: string
+  featureId: string
+}) {
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const pascal = name.trim()
+    ? name.trim().replace(/(?:^|[-_\s])\w/g, c => c.replace(/[-_\s]/, '').toUpperCase())
+    : ''
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pascal) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/__source/create-flow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featureId, name: name.trim(), projectRoot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create flow')
+      onAdd(data.id ?? pascal)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>New XState flow</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Flow name</label>
+          <input
+            autoFocus
+            style={modalStyles.input}
+            placeholder="e.g. AuthFlow"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null) }}
+          />
+          {pascal && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>Machine</span>
+              <span style={{ ...modalStyles.previewVal, color: '#a6e3a1' }}>src/features/{featureId}/{pascal}.machine.ts</span>
+              <span style={modalStyles.previewKey}>Actor</span>
+              <span style={{ ...modalStyles.previewVal, color: '#a6e3a1' }}>src/features/{featureId}/{pascal}.actor.ts</span>
+            </div>
+          )}
+          {error && <div style={modalStyles.error}>{error}</div>}
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !pascal || loading ? '#45475a' : '#a6e3a1', opacity: !pascal || loading ? 0.5 : 1, color: '#1e1e2e' }}
+              disabled={!pascal || loading}
+            >
+              {loading ? 'Creating…' : 'Create flow'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── AddPageToFeatureModal ─────────────────────────────────────────────────────
+
+interface AddPageToFeatureModalProps {
+  projectRoot: string
+  featureId: string
+  alreadyLinked: string[]
+  onClose: () => void
+  onAdd: (pageId: string) => void
+}
+
+export function AddPageToFeatureModal({ projectRoot, featureId, alreadyLinked, onClose, onAdd }: AddPageToFeatureModalProps) {
+  const [pages, setPages] = useState<Array<{ id: string; label: string }>>([])
+  const [selected, setSelected] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`/__source/list-pages?projectRoot=${encodeURIComponent(projectRoot)}`)
+      .then(r => r.json())
+      .then(data => {
+        const available = (data.pages ?? []).filter((p: { id: string }) => !alreadyLinked.includes(p.id))
+        setPages(available)
+        if (available.length > 0) setSelected(available[0].id)
+      })
+      .catch(() => setError('Failed to load pages'))
+  }, [projectRoot, alreadyLinked])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selected) return
+    setLoading(true)
+    setError(null)
+    const res = await fetch('/__source/add-feature-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, pageId: selected }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) { setError(data.error ?? 'Error'); return }
+    onAdd(selected)
+  }
+
+  return (
+    <div style={modalStyles.overlay}>
+      <div style={modalStyles.dialog}>
+        <div style={modalStyles.header}>
+          <span style={modalStyles.title}>Link page to feature</span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={modalStyles.body}>
+          <label style={modalStyles.label}>Page</label>
+          {pages.length === 0 && !error && (
+            <div style={{ color: '#45475a', fontSize: 12, fontStyle: 'italic', padding: '4px 0' }}>
+              All pages already linked or no pages found.
+            </div>
+          )}
+          {pages.length > 0 && (
+            <select
+              style={{ ...modalStyles.input, appearance: 'none' as const }}
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+            >
+              {pages.map(p => (
+                <option key={p.id} value={p.id}>{p.label ?? p.id}</option>
+              ))}
+            </select>
+          )}
+          {selected && (
+            <div style={modalStyles.preview}>
+              <span style={modalStyles.previewKey}>Writes to</span>
+              <span style={{ ...modalStyles.previewVal, color: '#89b4fa' }}>src/features/{featureId}/pages.ts</span>
+            </div>
+          )}
+          {error && <div style={modalStyles.error}>{error}</div>}
+          <div style={modalStyles.actions}>
+            <button type="button" style={modalStyles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              style={{ ...modalStyles.submitBtn, background: !selected || loading ? '#45475a' : '#89b4fa', opacity: !selected || loading ? 0.5 : 1, color: '#1e1e2e' }}
+              disabled={!selected || loading || pages.length === 0}
+            >
+              {loading ? 'Linking…' : 'Link page'}
             </button>
           </div>
         </form>

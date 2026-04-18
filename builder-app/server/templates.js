@@ -123,6 +123,93 @@ export function buildComponentTemplate(componentName, label) {
   ].join('\n')
 }
 
+// ── Feature templates (XState v5) ─────────────────────────────────────────────
+
+/**
+ * Service file: a typed async fetch function for a feature.
+ * @param {string} name - PascalCase service name, e.g. "AuthService"
+ */
+export function buildServiceTemplate(name) {
+  const fnName = name.charAt(0).toLowerCase() + name.slice(1)
+  return [
+    `// ${name} — feature service`,
+    ``,
+    `export interface ${name}Params {`,
+    `  // TODO: define request params`,
+    `}`,
+    ``,
+    `export interface ${name}Result {`,
+    `  // TODO: define response shape`,
+    `}`,
+    ``,
+    `export async function ${fnName}(params: ${name}Params): Promise<${name}Result> {`,
+    `  const res = await fetch('/api/TODO', {`,
+    `    method: 'POST',`,
+    `    headers: { 'Content-Type': 'application/json' },`,
+    `    body: JSON.stringify(params),`,
+    `  })`,
+    `  if (!res.ok) throw new Error(await res.text())`,
+    `  return res.json()`,
+    `}`,
+  ].join('\n')
+}
+
+/**
+ * XState v5 machine file.
+ * @param {string} name - PascalCase flow name, e.g. "AuthFlow"
+ */
+export function buildMachineTemplate(name) {
+  const camel = name.charAt(0).toLowerCase() + name.slice(1)
+  return [
+    `import { createMachine } from 'xstate'`,
+    ``,
+    `export interface ${name}Context {`,
+    `  // TODO: define context shape`,
+    `}`,
+    ``,
+    `export type ${name}Event =`,
+    `  | { type: 'START' }`,
+    `  | { type: 'RESET' }`,
+    ``,
+    `export const ${camel}Machine = createMachine({`,
+    `  id: '${camel}',`,
+    `  initial: 'idle',`,
+    `  context: {} as ${name}Context,`,
+    `  states: {`,
+    `    idle: {`,
+    `      on: { START: 'active' },`,
+    `    },`,
+    `    active: {`,
+    `      on: { RESET: 'idle' },`,
+    `    },`,
+    `  },`,
+    `})`,
+  ].join('\n')
+}
+
+/**
+ * XState v5 actor context file — generates useFeatureActor() hook.
+ * @param {string} name - PascalCase flow name, e.g. "AuthFlow"
+ */
+export function buildActorTemplate(name) {
+  const camel = name.charAt(0).toLowerCase() + name.slice(1)
+  return [
+    `import { createActorContext } from '@xstate/react'`,
+    `import { ${camel}Machine } from './${name}.machine'`,
+    ``,
+    `const ${name}ActorContext = createActorContext(${camel}Machine)`,
+    ``,
+    `export const ${name}Provider = ${name}ActorContext.Provider`,
+    ``,
+    `/** Drop-in hook: returns [state, send] for the ${name} machine. */`,
+    `export function use${name}Actor() {`,
+    `  const actor = ${name}ActorContext.useActorRef()`,
+    `  const state = ${name}ActorContext.useSelector(s => s)`,
+    `  return [state, actor.send] as const`,
+    `}`,
+  ].join('\n')
+}
+
 // ── Expression template ───────────────────────────────────────────────────────
 
 export function buildExpressionTemplate(componentName, props) {

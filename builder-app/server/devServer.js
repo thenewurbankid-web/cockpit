@@ -15,9 +15,9 @@ import { execSync, spawn } from 'child_process'
 import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig, featuresRoot, listFeatures, addPageToFeature, removePageFromFeature, extractMachineStates, extractMachineContext, extractServiceInterfaces, rewriteMachineContext, rewriteControllerBindings, readLinkedPages } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
-import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate } from './templates.js'
+import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate, buildServiceTemplate, buildMachineTemplate, buildActorTemplate } from './templates.js'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -1445,6 +1445,208 @@ app.post('/__source/page-layout', (req, res) => {
   res.json({ ok: true })
 })
 
+// GET /__source/page-state-models?projectRoot=<abs>&page=<pageId>
+// Returns layout + all states with their model fields and data values in one call.
+app.get('/__source/page-state-models', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.json({ layout: null, states: [] })
+  const page = req.query.page
+  if (!page || typeof page !== 'string') return res.status(400).json({ error: 'Missing ?page= query parameter' })
+
+  const cfg = readProjectConfig(path.resolve(projectRoot))
+  const layout = (cfg.pageLayouts?.[page]) ?? null
+
+  const statesDir = getPageStatesDir(projectRoot, page)
+  if (!statesDir || !fs.existsSync(statesDir)) return res.json({ layout, states: [] })
+
+  let entries
+  try { entries = fs.readdirSync(statesDir, { withFileTypes: true }) } catch { return res.json({ layout, states: [] }) }
+  const stateKeys = entries.filter(e => e.isDirectory()).map(e => e.name)
+
+  let order = []
+  try {
+    const orderFile = path.join(statesDir, 'order.json')
+    if (fs.existsSync(orderFile)) order = JSON.parse(fs.readFileSync(orderFile, 'utf-8'))
+  } catch { /* ignore */ }
+
+  const ordered = [
+    ...order.filter(k => stateKeys.includes(k)),
+    ...stateKeys.filter(k => !order.includes(k)).sort((a, b) => a.localeCompare(b)),
+  ]
+
+  const states = ordered.map(key => {
+    const stateDir = path.join(statesDir, key)
+    let data = {}
+    try {
+      const dataFile = path.join(stateDir, 'data.json')
+      if (fs.existsSync(dataFile)) data = JSON.parse(fs.readFileSync(dataFile, 'utf-8'))
+    } catch { /* ignore */ }
+    let modelSource = ''
+    try {
+      const modelFile = path.join(stateDir, 'model.ts')
+      if (fs.existsSync(modelFile)) modelSource = fs.readFileSync(modelFile, 'utf-8')
+    } catch { /* ignore */ }
+    // Extract fields from the interface in model.ts using a simple regex
+    const fields = []
+    const ifaceMatch = modelSource.match(/interface\s+\w+\s*\{([^}]*)\}/)
+    if (ifaceMatch) {
+      const body = ifaceMatch[1]
+      for (const line of body.split('\n')) {
+        const m = line.match(/^\s+(\w+)(\??):\s*(.+?);?\s*$/)
+        if (m) fields.push({ name: m[1], optional: m[2] === '?', type: m[3].trim() })
+      }
+    }
+    return { key, label: stateKeyToLabel(key), fields, data }
+  })
+
+  res.json({ layout, states })
+})
+
+// GET /__source/all-flow-states?projectRoot=<abs>&featureId=<id>
+// Returns all flows in the feature with their XState state names and context fields.
+app.get('/__source/all-flow-states', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId } = req.query
+  if (!projectRoot || !featureId) return res.json({ flows: [] })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  let files = []
+  try { files = fs.readdirSync(featureDir) } catch { return res.json({ flows: [] }) }
+  const flows = files
+    .filter(f => f.endsWith('.machine.ts'))
+    .map(f => {
+      const flowId = f.replace(/\.machine\.ts$/, '')
+      const machineFile = path.join(featureDir, f)
+      const states = extractMachineStates(machineFile)
+      const context = extractMachineContext(machineFile)
+      return { id: flowId, states, context }
+    })
+  res.json({ flows })
+})
+
+// GET /__source/feature-scope?projectRoot=<abs>&featureId=<id>
+// Returns all page props and service interfaces for a feature (the 'scope' to bind context fields from).
+app.get('/__source/feature-scope', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId } = req.query
+  if (!projectRoot || !featureId) return res.json({ pages: [], services: [] })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  const pages = readLinkedPages(projectRoot, featureId)
+  let files = []
+  try { files = fs.readdirSync(featureDir) } catch {}
+  const services = files
+    .filter(f => /\.(ts|tsx)$/.test(f) && !f.endsWith('.machine.ts') && !f.endsWith('.actor.ts') && f !== 'pages.ts')
+    .map(f => {
+      const serviceFile = path.join(featureDir, f)
+      const interfaces = extractServiceInterfaces(serviceFile)
+      return { id: f.replace(/\.(tsx?)$/, ''), interfaces }
+    })
+    .filter(s => s.interfaces.length > 0)
+  res.json({ pages, services })
+})
+
+// GET /__source/flow-context?projectRoot=<abs>&featureId=<id>&flowId=<id>
+// Returns context fields by reading the *Context interface from the .machine.ts file.
+app.get('/__source/flow-context', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId } = req.query
+  if (!projectRoot || !featureId || !flowId) return res.json({ fields: [] })
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile) || !fs.existsSync(machineFile)) return res.json({ fields: [] })
+  const fields = extractMachineContext(machineFile)
+  // Sync context: {} in createMachine to match the current interface fields
+  if (fields.length > 0) rewriteMachineContext(machineFile, fields)
+  res.json({ fields })
+})
+
+// POST /__source/flow-context  body: { projectRoot, featureId, flowId, fields }
+// fields: Array<{ name, type, optional, source: { kind, pageId?, prop?, serviceId?, interface?, field? } | null }>
+// Rewrites the *Context interface (with @cockpit-source comments) in the .machine.ts file. No JSON file.
+app.post('/__source/flow-context', (req, res) => {
+  const { projectRoot, featureId, flowId, fields } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !Array.isArray(fields)) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, fields }' })
+  }
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  const machineFile = path.join(featureDir, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(machineFile)) {
+    rewriteMachineContext(machineFile, fields)
+  }
+
+  // Update page controllers: replace useState for bound props with machine context reads
+  const { pagesDir } = getProjectDirs(path.resolve(projectRoot))
+  if (pagesDir) {
+    const byPage = new Map()
+    for (const field of fields) {
+      if (field.source?.kind === 'page') {
+        const { pageId, prop } = field.source
+        if (!byPage.has(pageId)) byPage.set(pageId, [])
+        byPage.get(pageId).push({ prop, contextVar: field.name })
+      }
+    }
+    const flowPascal = flowId.charAt(0).toUpperCase() + flowId.slice(1)
+    const actorHookName = `use${flowPascal}Actor`
+    for (const [pageId, bindings] of byPage) {
+      const controllerFile = path.join(pagesDir, pageId, 'controller.tsx')
+      if (!isSafeFile(controllerFile)) continue
+      const controllerDir = path.join(pagesDir, pageId)
+      const relPath = path.relative(controllerDir, featureDir).replace(/\\/g, '/')
+      const actorImportPath = (relPath.startsWith('.') ? relPath : './' + relPath) + `/${flowId}.actor`
+      rewriteControllerBindings(controllerFile, bindings, actorHookName, actorImportPath)
+    }
+  }
+
+  res.json({ ok: true })
+})
+
+// GET /__source/feature-summary?projectRoot=<abs>&featureId=<id>
+app.get('/__source/feature-summary', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId } = req.query
+  if (!projectRoot || !featureId) return res.json({ summary: '' })
+  const file = path.join(featuresRoot(projectRoot), featureId, 'summary.md')
+  if (!isSafeFile(file)) return res.status(403).json({ error: 'Access denied' })
+  let summary = ''
+  try { summary = fs.readFileSync(file, 'utf-8') } catch { /* no summary yet */ }
+  res.json({ summary })
+})
+
+// POST /__source/rename-feature  body: { projectRoot, featureId, name }
+app.post('/__source/rename-feature', (req, res) => {
+  const { projectRoot, featureId, name } = req.body ?? {}
+  if (!projectRoot || !featureId || typeof name !== 'string') {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, name }' })
+  }
+  const file = path.join(featuresRoot(projectRoot), featureId, 'name.txt')
+  if (!isSafeFile(file)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  if (name.trim() === '') {
+    try { fs.unlinkSync(file) } catch { /* ignore */ }
+  } else {
+    fs.writeFileSync(file, name.trim(), 'utf-8')
+  }
+  res.json({ ok: true })
+})
+
+// POST /__source/feature-summary  body: { projectRoot, featureId, summary }
+app.post('/__source/feature-summary', (req, res) => {
+  const { projectRoot, featureId, summary } = req.body ?? {}
+  if (!projectRoot || !featureId || typeof summary !== 'string') {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, summary }' })
+  }
+  const file = path.join(featuresRoot(projectRoot), featureId, 'summary.md')
+  if (!isSafeFile(file)) return res.status(403).json({ error: 'Access denied' })
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  if (summary.trim() === '') {
+    try { fs.unlinkSync(file) } catch { /* ignore */ }
+  } else {
+    fs.writeFileSync(file, summary, 'utf-8')
+  }
+  res.json({ ok: true })
+})
+
 // GET /__source/list-layout-states?projectRoot=<abs>&layout=<layoutId>
 app.get('/__source/list-layout-states', (req, res) => {
   const projectRoot = getProjectRoot(req)
@@ -1756,6 +1958,123 @@ app.delete('/__source/route', (req, res) => {
   delete cfg.pageRoutes[pageId]
   if (cfg.pageLayouts) delete cfg.pageLayouts[pageId]
   writeProjectConfig(resolved, cfg)
+  res.json({ ok: true })
+})
+
+// ── Features (filesystem-only — code is source of truth) ─────────────────────
+
+app.get('/__source/list-features', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  res.json({ features: listFeatures(projectRoot) })
+})
+
+app.post('/__source/create-feature', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { id } = req.body ?? {}
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!id || typeof id !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid feature id — use letters, digits, hyphens, underscores' })
+  }
+  const featureDir = path.join(featuresRoot(projectRoot), id)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(featureDir)) return res.status(409).json({ error: `Feature "${id}" already exists` })
+  fs.mkdirSync(featureDir, { recursive: true })
+  res.json({ ok: true, id })
+})
+
+app.delete('/__source/feature/:id', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { id } = req.params
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  const featureDir = path.join(featuresRoot(projectRoot), id)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(featureDir)) return res.status(404).json({ error: 'Feature not found' })
+  fs.rmSync(featureDir, { recursive: true, force: true })
+  res.json({ ok: true })
+})
+
+app.post('/__source/create-service', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, name } = req.body ?? {}
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !name) return res.status(400).json({ error: 'featureId and name required' })
+  const pascal = name.trim().replace(/(?:^|[-_\s])\w/g, c => c.replace(/[-_\s]/, '').toUpperCase())
+  const filePath = path.join(featuresRoot(projectRoot), featureId, `${pascal}.ts`)
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(filePath)) return res.status(409).json({ error: `${pascal}.ts already exists` })
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, buildServiceTemplate(pascal), 'utf-8')
+  res.json({ ok: true, id: pascal })
+})
+
+app.delete('/__source/service', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, serviceId } = req.query
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !serviceId) return res.status(400).json({ error: 'featureId and serviceId required' })
+  const filePath = path.join(featuresRoot(projectRoot), featureId, `${serviceId}.ts`)
+  if (!isSafeFile(filePath)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Service file not found' })
+  fs.unlinkSync(filePath)
+  res.json({ ok: true })
+})
+
+app.post('/__source/create-flow', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, name } = req.body ?? {}
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !name) return res.status(400).json({ error: 'featureId and name required' })
+  const pascal = name.trim().replace(/(?:^|[-_\s])\w/g, c => c.replace(/[-_\s]/, '').toUpperCase())
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  const machineFile = path.join(featureDir, `${pascal}.machine.ts`)
+  const actorFile = path.join(featureDir, `${pascal}.actor.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(machineFile)) return res.status(409).json({ error: `${pascal}.machine.ts already exists` })
+  fs.mkdirSync(featureDir, { recursive: true })
+  fs.writeFileSync(machineFile, buildMachineTemplate(pascal), 'utf-8')
+  fs.writeFileSync(actorFile, buildActorTemplate(pascal), 'utf-8')
+  res.json({ ok: true, id: pascal })
+})
+
+app.delete('/__source/flow', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId } = req.query
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !flowId) return res.status(400).json({ error: 'featureId and flowId required' })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  const machineFile = path.join(featureDir, `${flowId}.machine.ts`)
+  const actorFile = path.join(featureDir, `${flowId}.actor.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(machineFile)) fs.unlinkSync(machineFile)
+  if (fs.existsSync(actorFile)) fs.unlinkSync(actorFile)
+  res.json({ ok: true })
+})
+
+app.post('/__source/add-feature-page', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, pageId } = req.body ?? {}
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !pageId) return res.status(400).json({ error: 'featureId and pageId required' })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(featureDir)) return res.status(404).json({ error: 'Feature not found' })
+  try {
+    const page = addPageToFeature(projectRoot, featureId, pageId)
+    res.json({ ok: true, page })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+app.delete('/__source/feature-page', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, pageId } = req.query
+  if (!projectRoot) return res.status(400).json({ error: 'No project root' })
+  if (!featureId || !pageId) return res.status(400).json({ error: 'featureId and pageId required' })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  removePageFromFeature(projectRoot, featureId, pageId)
   res.json({ ok: true })
 })
 

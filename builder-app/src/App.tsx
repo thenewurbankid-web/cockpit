@@ -8,15 +8,30 @@ import { DOMTreePanel } from './tree/DOMTreePanel'
 import type { ExpressionMeta } from './tree/DOMTreePanel'
 import { ExpressionAssignPanel } from './preview/ExpressionAssignPanel'
 import type { WrapIntentNode } from './preview/ExpressionAssignPanel'
-import { AddPageModal, AddComponentModal, AddExpressionModal, AddLayoutModal } from './modals'
+import { AddPageModal, AddComponentModal, AddExpressionModal, AddLayoutModal, AddFeatureModal, AddServiceModal, AddFlowModal, AddPageToFeatureModal } from './modals'
 import { ProjectPickerModal } from './ProjectPickerModal'
 import { SettingsPanel } from './SettingsPanel'
 import { DocsPanel } from './DocsPanel'
 import { TerminalPanel } from './TerminalPanel'
 import { appStyles as styles } from './appStyles'
+import { FeaturePanel } from './features/FeaturePanel'
+import { FeaturePagePanel } from './features/FeaturePagePanel'
+import { FlowPanel } from './features/FlowPanel'
+import { FeatureCanvas } from './features/FeatureCanvas'
+import type { Feature, FeatureItemSelection } from './features/types'
 // Side-effect: imports CSS/Tailwind files listed in cockpit.settings.json cssFiles.
 // Still needed for the expressions section which renders components inline.
 import 'virtual:cockpit-css'
+
+async function fetchFeatures(projectRoot: string): Promise<Feature[]> {
+  try {
+    const res = await fetch(`/__source/list-features?projectRoot=${encodeURIComponent(projectRoot)}`)
+    if (!res.ok) return []
+    return (await res.json()).features ?? []
+  } catch {
+    return []
+  }
+}
 
 export type PreviewPage = string
 
@@ -101,14 +116,14 @@ const DEFAULT_PANEL_WIDTH = 480
 function readUrlState() {
   const p = new URLSearchParams(window.location.search)
   return {
-    section: (p.get('section') ?? 'pages') as 'pages' | 'components' | 'expressions' | 'layouts',
+    section: (p.get('section') ?? 'features') as 'pages' | 'components' | 'expressions' | 'layouts' | 'features',
     page: p.get('page') ?? 'login',
     component: p.get('component') ?? null,
   }
 }
 
 /** Push updated params to the URL without triggering a navigation / reload. */
-function pushUrlState(section: 'pages' | 'components' | 'expressions' | 'layouts', page: string, component: string | null) {
+function pushUrlState(section: 'pages' | 'components' | 'expressions' | 'layouts' | 'features', page: string, component: string | null) {
   const p = new URLSearchParams()
   p.set('section', section)
   if (page) p.set('page', page)
@@ -407,7 +422,7 @@ export default function App() {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
   const [selectedNode, setSelectedNode] = useState<SelectedNodeContext | null>(null)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
-  const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions' | 'layouts'>(initial.section)
+  const [activeSection, setActiveSection] = useState<'pages' | 'components' | 'expressions' | 'layouts' | 'features'>(initial.section)
   const [previewPage, setPreviewPage] = useState<string>(initial.page)
   const [previewComponent, setPreviewComponent] = useState<string | null>(initial.component)
   const [pages, setPages] = useState<{ id: string; label: string; root: string; file?: string }[]>([])
@@ -430,6 +445,18 @@ export default function App() {
   const [activeLayout, setActiveLayout] = useState<{ id: string; name: string; file?: string } | null>(null)
   const [addLayoutOpen, setAddLayoutOpen] = useState(false)
   const [routes, setRoutes] = useState<{ pageId: string; route: string; layoutId?: string | null }[]>([])
+
+  // Features
+  const [features, setFeatures] = useState<Feature[]>([])
+  const [activeFeature, setActiveFeature] = useState<Feature | null>(null)
+  const [activeFeatureItem, setActiveFeatureItem] = useState<FeatureItemSelection | null>(null)
+  const [featureSelectedPage, setFeatureSelectedPage] = useState<string | null>(null)
+  const [featureSelectedFlow, setFeatureSelectedFlow] = useState<string | null>(null)
+  const [featurePageLayout, setFeaturePageLayout] = useState<{ id: string; name: string; file?: string } | null>(null)
+  const [addFeatureOpen, setAddFeatureOpen] = useState(false)
+  const [addServiceOpen, setAddServiceOpen] = useState(false)
+  const [addFlowOpen, setAddFlowOpen] = useState(false)
+  const [addPageToFeatureOpen, setAddPageToFeatureOpen] = useState(false)
 
   // Project selection
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
@@ -511,12 +538,13 @@ export default function App() {
     const info: ProjectInfo = await infoRes.json()
     setProjectInfo(info)
     // Load pages/components/expressions
-    const [loadedPages, loadedComponents, loadedExpressions, loadedLayouts, loadedRoutes] = await Promise.all([
+    const [loadedPages, loadedComponents, loadedExpressions, loadedLayouts, loadedRoutes, loadedFeatures] = await Promise.all([
       fetchPages(root),
       fetchComponents(root),
       fetchExpressions(root),
       fetchLayouts(root),
       fetchRoutes(root),
+      fetchFeatures(root),
     ])
     console.log('[loadProject] pages:', loadedPages.length, loadedPages.map(p => p.id))
     console.log('[loadProject] components:', loadedComponents.length, loadedComponents.map(c => c.id))
@@ -525,10 +553,13 @@ export default function App() {
     setExpressions(loadedExpressions)
     setLayouts(loadedLayouts)
     setRoutes(loadedRoutes)
+    setFeatures(loadedFeatures)
     setPreviewPage(loadedPages[0]?.id ?? '')
     setPreviewComponent(null)
     setSelectedNode(null)
     setPanelOpen(false)
+    setActiveFeature(loadedFeatures[0] ?? null)
+    setLeftPanelCollapsed(false)
     setProjectRoot(root)
     localStorage.setItem('cockpit:projectRoot', root)
     setShowPicker(false)
@@ -653,8 +684,51 @@ export default function App() {
         setLocation({ file: filePath, line: 1, inspectMode: 'file', componentName: activeLayout.name })
         setPanelOpen(true)
       }
+    } else if (activeSection === 'features' && featureSelectedPage) {
+      const page = pages.find(p => p.id === featureSelectedPage)
+      if (page?.file && pagesDir) {
+        setLocation({ file: `${pagesDir}/${page.file}.tsx`, line: 1, inspectMode: 'file', componentName: page.root })
+        setPanelOpen(true)
+      }
     }
-  }, [previewPage, previewComponent, activeSection, activeLayout]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [previewPage, previewComponent, activeSection, activeLayout, featureSelectedPage]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset featureSelectedPage/Flow when active feature changes or section changes away from features
+  useEffect(() => {
+    setFeatureSelectedPage(null)
+    setFeatureSelectedFlow(null)
+  }, [activeFeature?.id])
+
+  useEffect(() => {
+    if (activeSection !== 'features') {
+      setFeatureSelectedPage(null)
+      setFeatureSelectedFlow(null)
+    } else {
+      // Close the right panel when entering features overview (no page selected)
+      setPanelOpen(false)
+    }
+  }, [activeSection])
+
+  // Load the layout assigned to the feature-selected page
+  useEffect(() => {
+    if (!projectRoot || !featureSelectedPage) { setFeaturePageLayout(null); return }
+    const qs = `projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(featureSelectedPage)}`
+    let cancelled = false
+    fetch(`/__source/page-layout?${qs}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        const layoutId: string | null = data.layout ?? null
+        if (layoutId) {
+          const found = layouts.find(l => l.id === layoutId)
+          setFeaturePageLayout(found ? { id: found.id, name: found.name, file: found.file } : null)
+        } else {
+          setFeaturePageLayout(null)
+        }
+      })
+      .catch(() => { if (!cancelled) setFeaturePageLayout(null) })
+    return () => { cancelled = true }
+  }, [featureSelectedPage, projectRoot, layouts]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openInspector(
     file: string,
@@ -795,8 +869,26 @@ export default function App() {
       p.set('layoutsDir', layoutsDir)
       return `/preview.html?${p.toString()}`
     }
+    if (activeSection === 'features' && featureSelectedPage && pagesDir) {
+      const page = pages.find(p => p.id === featureSelectedPage)
+      if (page) {
+        const p = new URLSearchParams({
+          page: page.root,
+          componentPath: page.file ?? page.root,
+          pagesDir,
+          componentsDir: componentsDir || '',
+          section: 'pages',
+        })
+        if (featurePageLayout && layoutsDir) {
+          p.set('layoutComponent', featurePageLayout.name)
+          p.set('layoutComponentPath', featurePageLayout.file ?? featurePageLayout.name)
+          p.set('layoutsDir', layoutsDir)
+        }
+        return `/preview.html?${p.toString()}`
+      }
+    }
     return ''
-  }, [activeSection, activePage, previewComponent, pagesDir, componentsDir, components, activeLayout, layoutsDir])
+  }, [activeSection, activePage, previewComponent, pagesDir, componentsDir, components, activeLayout, layoutsDir, featureSelectedPage, pages, featurePageLayout])
 
   // Clear canvas state while the iframe transitions to a new src.
   useEffect(() => {
@@ -843,6 +935,12 @@ export default function App() {
         <span style={styles.logo}>✦ Cockpit</span>
 
         <div style={styles.tabs}>
+          <button
+            style={{ ...styles.tab, ...(activeSection === 'features' ? styles.tabActive : {}), ...(activeSection === 'features' ? { borderBottomColor: '#fab387', color: '#fab387' } : {}) }}
+            onClick={() => setActiveSection('features')}
+          >
+            Features
+          </button>
           <button
             style={{ ...styles.tab, ...(activeSection === 'pages' ? styles.tabActive : {}) }}
             onClick={() => {
@@ -964,8 +1062,24 @@ export default function App() {
 
       {/* Main area */}
       <div style={styles.main}>
-        {/* Left: DOM tree */}
+        {/* Left: DOM tree or Feature panel */}
         <div style={{ display: leftPanelCollapsed ? 'none' : 'flex', flexShrink: 0 }}>
+        {activeSection === 'features' && !featureSelectedPage ? (
+          <FeaturePanel
+            features={features}
+            activeFeature={activeFeature}
+            projectRoot={projectRoot ?? ''}
+            onFeatureSelect={(f) => {
+              setActiveFeature(f)
+              setActiveFeatureItem(null)
+            }}
+            onAddFeature={() => setAddFeatureOpen(true)}
+            onDeleteFeature={(id) => {
+              setFeatures(prev => prev.filter(f => f.id !== id))
+              if (activeFeature?.id === id) { setActiveFeature(null); setActiveFeatureItem(null) }
+            }}
+          />
+        ) : (
         <DOMTreePanel
           canvasEl={canvasEl}
           onLocate={openInspector}
@@ -978,10 +1092,15 @@ export default function App() {
             }
           }}
           hoveredWrapNodeKey={hoveredWrapKey}
-          preferredRootComponentName={activeSection === 'components' ? (previewComponent ?? undefined) : activeSection === 'layouts' ? (activeLayout?.name ?? undefined) : activePage?.root}
-          activeSection={activeSection}
+          preferredRootComponentName={
+            activeSection === 'components' ? (previewComponent ?? undefined)
+            : activeSection === 'layouts' ? (activeLayout?.name ?? undefined)
+            : activeSection === 'features' && featureSelectedPage ? (pages.find(p => p.id === featureSelectedPage)?.root ?? undefined)
+            : activePage?.root
+          }
+          activeSection={activeSection === 'features' ? 'pages' : activeSection}
           pages={pages}
-          activePage={previewPage}
+          activePage={activeSection === 'features' && featureSelectedPage ? featureSelectedPage : previewPage}
           onPageChange={(id) => {
             setPreviewPage(id)
             setActiveSection('pages')
@@ -1048,6 +1167,7 @@ export default function App() {
           loadErrorComponentName={
             activeSection === 'components' ? (previewComponent ?? undefined)
             : activeSection === 'layouts' ? (activeLayout?.name ?? undefined)
+            : activeSection === 'features' && featureSelectedPage ? (pages.find(p => p.id === featureSelectedPage)?.root ?? undefined)
             : activePage?.root
           }
           pagesDir={pagesDir || undefined}
@@ -1078,6 +1198,7 @@ export default function App() {
             }
           }}
         />
+        )}
         </div>
         {leftPanelCollapsed && (
           <div
@@ -1116,7 +1237,7 @@ export default function App() {
                 <rect x="1.1" y="1.1" width="3" height="9.8" rx="0.6" fill={leftPanelCollapsed ? 'transparent' : 'currentColor'} opacity="0.25"/>
               </svg></button>
             <span style={styles.breadcrumbItem}>
-              {activeSection === 'pages' ? 'Pages' : activeSection === 'components' ? 'Components' : activeSection === 'layouts' ? 'Layouts' : 'Expressions'}
+              {activeSection === 'pages' ? 'Pages' : activeSection === 'components' ? 'Components' : activeSection === 'layouts' ? 'Layouts' : activeSection === 'features' ? 'Features' : 'Expressions'}
             </span>
             {activeSection === 'pages' && activePage && (
               <>
@@ -1142,10 +1263,42 @@ export default function App() {
                 <span style={{ ...styles.breadcrumbCurrent, color: '#94e2d2' }}>{activeLayout.name}</span>
               </>
             )}
+            {activeSection === 'features' && activeFeature && (
+              <>
+                <span style={styles.breadcrumbSep}>›</span>
+                <span
+                  style={{ ...styles.breadcrumbCurrent, color: '#fab387', cursor: featureSelectedPage ? 'pointer' : 'default' }}
+                  onClick={featureSelectedPage ? () => { setFeatureSelectedPage(null); setPanelOpen(false) } : undefined}
+                  title={featureSelectedPage ? `Back to ${activeFeature.name}` : undefined}
+                >{activeFeature.name}</span>
+                {featureSelectedPage && (
+                  <>
+                    <span style={styles.breadcrumbSep}>›</span>
+                    <span style={{ ...styles.breadcrumbCurrent, color: '#89b4fa' }}>{featureSelectedPage}</span>
+                    {featurePageLayout && (
+                      <span style={{ fontSize: 10, color: '#6c7086', marginLeft: 4, fontFamily: 'system-ui, sans-serif' }}>via {featurePageLayout.name}</span>
+                    )}
+                  </>
+                )}
+                {featureSelectedFlow && (
+                  <>
+                    <span style={styles.breadcrumbSep}>›</span>
+                    <span style={{ ...styles.breadcrumbCurrent, color: '#a6e3a1' }}>{featureSelectedFlow}.machine</span>
+                  </>
+                )}
+                {!featureSelectedPage && activeFeatureItem && (
+                  <>
+                    <span style={styles.breadcrumbSep}>›</span>
+                    <span style={{ ...styles.breadcrumbCurrent, color: activeFeatureItem.kind === 'flow' ? '#a6e3a1' : '#cba6f7' }}>{activeFeatureItem.itemId}</span>
+                  </>
+                )}
+              </>
+            )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               {activeSection === 'pages' && activePage && projectRoot && (
                 <BreadcrumbStatesDropdown pageName={activePage.id} projectRoot={projectRoot} />
               )}
+              {(activeSection !== 'features' || !!featureSelectedPage || !!featureSelectedFlow) && (
               <button
                 title={panelOpen ? 'Hide right panel' : 'Show right panel'}
                 style={{ background: 'transparent', border: 'none', color: '#6c7086', cursor: 'pointer', padding: '3px 2px', flexShrink: 0, display: 'flex', alignItems: 'center' }}
@@ -1157,6 +1310,7 @@ export default function App() {
                   <line x1="9.5" y1="0.6" x2="9.5" y2="11.4" stroke={panelOpen ? 'currentColor' : '#45475a'} strokeWidth="1.1"/>
                   <rect x="9.9" y="1.1" width="3" height="9.8" rx="0.6" fill={panelOpen ? 'currentColor' : 'transparent'} opacity="0.25"/>
                 </svg></button>
+              )}
             </div>
           </div>
 
@@ -1326,34 +1480,100 @@ export default function App() {
               )}
             </div>
           )}
+
+          {/* Feature canvas — shown when a feature is selected and no page is selected */}
+          {activeSection === 'features' && activeFeature && projectRoot && !featureSelectedPage && (
+            <FeatureCanvas
+              feature={activeFeature}
+              projectRoot={projectRoot}
+              onSummaryChange={(summary) =>
+                setActiveFeature(prev => prev ? { ...prev, summary } : prev)
+              }
+              onNameChange={(name) => {
+                setFeatures(prev => prev.map(f => f.id === activeFeature.id ? { ...f, name } : f))
+                setActiveFeature(prev => prev ? { ...prev, name } : prev)
+              }}
+              onAddPage={() => setAddPageToFeatureOpen(true)}
+              onDeletePage={(featureId, pageId) => {
+                setFeatures(prev => prev.map(f => f.id === featureId ? { ...f, pages: f.pages.filter(p => p.id !== pageId) } : f))
+                setActiveFeature(prev => prev?.id === featureId ? { ...prev, pages: prev.pages.filter(p => p.id !== pageId) } : prev)
+              }}
+              onAddFlow={() => setAddFlowOpen(true)}
+              onDeleteFlow={(featureId, flowId) => {
+                setFeatures(prev => prev.map(f => f.id === featureId ? { ...f, flows: f.flows.filter(fl => fl !== flowId) } : f))
+                setActiveFeature(prev => prev?.id === featureId ? { ...prev, flows: prev.flows.filter(fl => fl !== flowId) } : prev)
+              }}
+              onPageSelect={(pageId) => {
+                setFeatureSelectedPage(pageId)
+                setFeatureSelectedFlow(null)
+                setSelectedNode(null)
+                setLeftPanelCollapsed(false)
+                setPanelOpen(true)
+              }}
+              activePageId={featureSelectedPage}
+              onFlowSelect={(flowId) => {
+                setFeatureSelectedFlow(flowId)
+                setFeatureSelectedPage(null)
+                setSelectedNode(null)
+                setPanelOpen(true)
+              }}
+              activeFlowId={featureSelectedFlow}
+            />
+          )}
+          {activeSection === 'features' && !activeFeature && (
+            <div style={{ flex: 1, background: '#11111b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 13, color: '#45475a', fontFamily: 'system-ui, sans-serif' }}>
+                Select a feature from the left panel.
+              </span>
+            </div>
+          )}
         </div>
 
+        {/* Right: flow panel when a flow is selected in features */}
+        {activeSection === 'features' && featureSelectedFlow && activeFeature && projectRoot && (
+          <FlowPanel
+            flowId={featureSelectedFlow}
+            featureId={activeFeature.id}
+            projectRoot={projectRoot}
+            width={panelWidth}
+            onClose={() => { setFeatureSelectedFlow(null); setPanelOpen(false) }}
+          />
+        )}
+
         {/* Right: inspector */}
-        {(panelOpen || !!wrapIntent) && (location || wrapIntent) && (
+        {(panelOpen || !!wrapIntent) && (location || wrapIntent) && (activeSection !== 'features' || !!featureSelectedPage) && (
           <InspectorPanel
             file={location?.file ?? wrapIntent!.nodes[0].file}
             line={location?.line ?? 1}
             inspectMode={location?.inspectMode ?? 'file'}
             componentName={location?.componentName}
             selectedNode={selectedNode}
-            rootComponentName={resolvedRootName ?? (activeSection === 'components' ? (previewComponent ?? activePage?.root) : activeSection === 'layouts' ? (activeLayout?.name ?? activePage?.root) : activePage?.root)}
+            rootComponentName={
+              resolvedRootName ?? (
+                activeSection === 'features' && featureSelectedPage
+                  ? (pages.find(p => p.id === featureSelectedPage)?.root ?? activePage?.root)
+                  : activeSection === 'components' ? (previewComponent ?? activePage?.root)
+                  : activeSection === 'layouts' ? (activeLayout?.name ?? activePage?.root)
+                  : activePage?.root
+              )
+            }
             onClose={() => setPanelOpen(false)}
             onWidthChange={setPanelWidth}
-            expressionMode={activeSection === 'expressions'}
-            expressionPages={activeSection === 'expressions' ? pages : []}
-            expressionComponents={activeSection === 'expressions' ? components : []}
+            expressionMode={false}
+            expressionPages={[]}
+            expressionComponents={[]}
             onInsertComponent={(tag) => insertTagRef.current?.(tag)}
             wrapMode={!!wrapIntent}
             wrapExpressions={wrapIntent ? expressions : []}
             wrapChosenExpr={wrapChosenExpr}
             onWrapChooseExpr={setWrapChosenExpr}
             hasRuntimeError={previewHasError}
-            activeSection={activeSection}
-            activePage={activePage?.id ?? ''}
+            activeSection={activeSection === 'features' ? 'pages' : activeSection}
+            activePage={activeSection === 'features' && featureSelectedPage ? featureSelectedPage : (activePage?.id ?? '')}
             projectRoot={projectRoot ?? ''}
             layoutComponentName={activeLayout?.name}
             layoutId={activeLayout?.id}
-            pageId={activePage?.id}
+            pageId={activeSection === 'features' && featureSelectedPage ? featureSelectedPage : activePage?.id}
             onNavigateToComponent={(name) => {
               setPreviewComponent(name)
               setActiveSection('components')
@@ -1409,6 +1629,57 @@ export default function App() {
           onAdd={(layout) => {
             setLayouts((prev) => [...prev, layout])
             setAddLayoutOpen(false)
+          }}
+        />
+      )}
+
+      {addFeatureOpen && (
+        <AddFeatureModal
+          projectRoot={projectRoot ?? ''}
+          onClose={() => setAddFeatureOpen(false)}
+          onAdd={(id) => {
+            void fetchFeatures(projectRoot ?? '').then(setFeatures)
+            setAddFeatureOpen(false)
+          }}
+        />
+      )}
+
+      {addServiceOpen && activeFeature && (
+        <AddServiceModal
+          projectRoot={projectRoot ?? ''}
+          featureId={activeFeature.id}
+          onClose={() => setAddServiceOpen(false)}
+          onAdd={(sid) => {
+            setFeatures(prev => prev.map(f => f.id === activeFeature.id ? { ...f, services: [...f.services, sid] } : f))
+            setAddServiceOpen(false)
+          }}
+        />
+      )}
+
+      {addFlowOpen && activeFeature && (
+        <AddFlowModal
+          projectRoot={projectRoot ?? ''}
+          featureId={activeFeature.id}
+          onClose={() => setAddFlowOpen(false)}
+          onAdd={(fid) => {
+            setFeatures(prev => prev.map(f => f.id === activeFeature.id ? { ...f, flows: [...f.flows, fid] } : f))
+            setAddFlowOpen(false)
+          }}
+        />
+      )}
+
+      {addPageToFeatureOpen && activeFeature && (
+        <AddPageToFeatureModal
+          projectRoot={projectRoot ?? ''}
+          featureId={activeFeature.id}
+          alreadyLinked={activeFeature.pages.map(p => p.id)}
+          onClose={() => setAddPageToFeatureOpen(false)}
+          onAdd={(pageId) => {
+            void fetchFeatures(projectRoot ?? '').then(loaded => {
+              setFeatures(loaded)
+              setActiveFeature(loaded.find(f => f.id === activeFeature.id) ?? activeFeature)
+            })
+            setAddPageToFeatureOpen(false)
           }}
         />
       )}
