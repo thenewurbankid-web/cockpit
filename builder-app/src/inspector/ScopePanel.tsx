@@ -125,15 +125,20 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
           })}
 
           {/* Child component layers — vars from current scope flowing down */}
-          {allChildBindings.map(({ componentName, bindings }, di) => {
+          {allChildBindings.map(({ componentName, bindings }, di, arr) => {
             const depth = layers.length
-            const isLastChild = di === allChildBindings.length - 1
+            const isSubComponent = componentName.includes('.')
+            const isLastChild = di === arr.length - 1
+            // Deduplicate by childProp (last binding for a prop wins, so inner compound props override)
+            const dedupedBindings = Array.from(
+              bindings.reduce((m, b) => { m.set(b.childProp, b); return m }, new Map<string, typeof bindings[0]>()).values()
+            )
             return (
-              <div key={`${componentName}-${di}`} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12, position: 'relative' }}>
+              <div key={`${componentName}-${di}`} style={{ ...scopeStyles.layer, paddingLeft: 8 + depth * 12 + (isSubComponent ? 14 : 0), position: 'relative' }}>
                 {!isLastChild && (
                   <div style={{
                     position: 'absolute',
-                    left: 8 + depth * 12 + 5,
+                    left: 8 + depth * 12 + (isSubComponent ? 14 : 0) + 5,
                     top: 18,
                     bottom: -6,
                     width: 1,
@@ -144,14 +149,14 @@ export function ScopePanel({ layers, onAddProp, onRemoveProp, onAddState, onRemo
                   <span style={scopeStyles.layerNameParent}>◦ {componentName}</span>
                   <span style={scopeStyles.parentBadge}>child</span>
                 </div>
-                {bindings.length > 0 && (
+                {dedupedBindings.length > 0 && (
                   <div style={scopeStyles.group}>
                     <span style={scopeStyles.groupLabel}>{/^[a-z]/.test(componentName) ? 'attrs' : 'props'}</span>
                     <div style={scopeStyles.items}>
-                      {bindings.map(({ childProp, rootVar }) => (
+                      {dedupedBindings.map(({ childProp, rootVar }) => (
                         <ScopeItemChip
-                          key={`${rootVar}:${childProp}`}
-                          item={{ name: childProp, typeStr: '', usedInNode: true }}
+                          key={childProp}
+                          item={{ name: childProp, typeStr: rootVar !== childProp ? `= ${rootVar}` : '', usedInNode: true }}
                           linkColor={layerColorMaps[currentLayerIdx]?.get(rootVar)}
                         />
                       ))}

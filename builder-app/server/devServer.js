@@ -15,7 +15,7 @@ import { execSync, spawn } from 'child_process'
 import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig, featuresRoot, listFeatures, addPageToFeature, removePageFromFeature, extractMachineStates, extractMachineContext, extractServiceInterfaces, rewriteMachineContext, rewriteControllerBindings, readLinkedPages } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig, featuresRoot, listFeatures, addPageToFeature, removePageFromFeature, extractMachineStates, extractMachineContext, extractServiceInterfaces, rewriteMachineContext, rewriteControllerBindings, readLinkedPages, extractMachineEvents, extractMachineStatesDetailed, extractMachineActions, rewriteMachineEvents, addMachineState, deleteMachineState } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
 import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate, buildServiceTemplate, buildMachineTemplate, buildActorTemplate } from './templates.js'
 
@@ -1522,6 +1522,63 @@ app.get('/__source/all-flow-states', (req, res) => {
       return { id: flowId, states, context }
     })
   res.json({ flows })
+})
+
+// GET /__source/flow-machine-details?projectRoot=<abs>&featureId=<id>&flowId=<id>
+// Returns events, states (detailed), and actions extracted from the machine file.
+app.get('/__source/flow-machine-details', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId } = req.query
+  if (!projectRoot || !featureId || !flowId) return res.json({ events: [], states: [], actions: [] })
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile) || !fs.existsSync(machineFile)) return res.json({ events: [], states: [], actions: [] })
+  const events = extractMachineEvents(machineFile)
+  const states = extractMachineStatesDetailed(machineFile)
+  const actions = extractMachineActions(machineFile)
+  res.json({ events, states, actions })
+})
+
+// POST /__source/flow-events  body: { projectRoot, featureId, flowId, events }
+// Rewrites the *Event union type in the machine file.
+app.post('/__source/flow-events', (req, res) => {
+  const { projectRoot, featureId, flowId, events } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !Array.isArray(events)) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, events }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  rewriteMachineEvents(machineFile, events)
+  res.json({ ok: true })
+})
+
+// POST /__source/flow-state  body: { projectRoot, featureId, flowId, name, stateType? }
+// Adds a new state to the machine file.
+app.post('/__source/flow-state', (req, res) => {
+  const { projectRoot, featureId, flowId, name, stateType } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !name) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, name }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  addMachineState(machineFile, name, stateType)
+  res.json({ ok: true })
+})
+
+// DELETE /__source/flow-state?projectRoot=<abs>&featureId=<id>&flowId=<id>&name=<name>
+// Removes a state from the machine file.
+app.delete('/__source/flow-state', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId, name } = req.query
+  if (!projectRoot || !featureId || !flowId || !name) {
+    return res.status(400).json({ error: 'Query must contain projectRoot, featureId, flowId, name' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  deleteMachineState(machineFile, name)
+  res.json({ ok: true })
 })
 
 // GET /__source/feature-scope?projectRoot=<abs>&featureId=<id>

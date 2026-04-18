@@ -692,3 +692,402 @@ export function extractMachineStates(machineFilePath) {
   for (const stmt of ast.program.body) walk(stmt)
   return result
 }
+
+/**
+ * Extract events from the *Event union type in a *.machine.ts file.
+ * Returns each event's type string + payload fields.
+ * @param {string} machineFilePath
+ * @returns {Array<{type: string, payload: Array<{name, type, optional}>}>}
+ */
+export function extractMachineEvents(machineFilePath) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return [] }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return [] }
+  for (const rawNode of ast.program.body) {
+    const node = rawNode.type === 'ExportNamedDeclaration' && rawNode.declaration?.type === 'TSTypeAliasDeclaration'
+      ? rawNode.declaration
+      : rawNode
+    if (node.type === 'TSTypeAliasDeclaration' && /Event$/.test(node.id?.name ?? '')) {
+      const ta = node.typeAnnotation
+      const members = ta?.type === 'TSUnionType' ? ta.types : (ta ? [ta] : [])
+      return members
+        .filter(m => m.type === 'TSTypeLiteral')
+        .map(m => {
+          const typeProp = m.members.find(p =>
+            p.type === 'TSPropertySignature' && (p.key?.name === 'type' || p.key?.value === 'type')
+          )
+          const typeVal = typeProp?.typeAnnotation?.typeAnnotation
+          const eventType = typeVal?.type === 'TSLiteralType' && typeVal.literal?.type === 'StringLiteral'
+            ? typeVal.literal.value : null
+          if (!eventType) return null
+          const payload = m.members
+            .filter(p => p.type === 'TSPropertySignature' && (p.key?.name ?? p.key?.value) !== 'type')
+            .map(p => ({
+              name: p.key?.name ?? p.key?.value ?? '?',
+              type: p.typeAnnotation?.typeAnnotation
+                ? source.slice(p.typeAnnotation.typeAnnotation.start, p.typeAnnotation.typeAnnotation.end)
+                : 'unknown',
+              optional: !!p.optional,
+            }))
+          return { type: eventType, payload }
+        })
+        .filter(Boolean)
+    }
+  }
+  return []
+}
+
+/**
+ * Extract detailed state info from a *.machine.ts file.
+ * Returns per-state: name, stateType, entry/exit counts, and transitions.
+ * @param {string} machineFilePath
+ * @returns {Array<{name, stateType, entryCount, exitCount, transitions}>}
+ */
+export function extractMachineStatesDetailed(machineFilePath) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return [] }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return [] }
+  const result = []
+
+  function getActionCount(node) {
+    if (!node) return 0
+    if (node.type === 'ArrayExpression') return node.elements.filter(Boolean).length
+    return 1
+  }
+
+  function getTransitions(onProp) {
+    if (!onProp?.value || onProp.value.type !== 'ObjectExpression') return []
+    return onProp.value.properties.map(p => {
+      const event = p.key?.name ?? p.key?.value ?? '?'
+      const val = p.value
+      let target, hasGuard = false, actionCount = 0
+      if (val?.type === 'StringLiteral') {
+        target = val.value
+      } else if (val?.type === 'ObjectExpression') {
+        const targetProp = val.properties.find(x => x.key?.name === 'target' || x.key?.value === 'target')
+        if (targetProp?.value?.type === 'StringLiteral') target = targetProp.value.value
+        hasGuard = !!val.properties.find(x => x.key?.name === 'guard' || x.key?.value === 'guard')
+        const actionsProp = val.properties.find(x => x.key?.name === 'actions' || x.key?.value === 'actions')
+        actionCount = getActionCount(actionsProp?.value)
+      }
+      return { event, target, hasGuard, actionCount }
+    })
+  }
+
+  function walk(node) {
+    if (!node || typeof node !== 'object') return
+    if (node.type === 'CallExpression') {
+      const { callee } = node
+      const isMachineCall =
+        (callee.type === 'Identifier' && callee.name === 'createMachine') ||
+        (callee.type === 'MemberExpression' && callee.property?.name === 'createMachine')
+      if (isMachineCall && node.arguments.length > 0) {
+        const config = node.arguments[0]
+        if (config.type === 'ObjectExpression') {
+          const statesProp = config.properties.find(
+            p => (p.type === 'ObjectProperty' || p.type === 'Property') &&
+              (p.key?.name === 'states' || p.key?.value === 'states')
+          )
+          if (statesProp?.value?.type === 'ObjectExpression') {
+            for (const sp of statesProp.value.properties) {
+              const name = sp.key?.name ?? sp.key?.value
+              if (!name) continue
+              const stateConfig = sp.value
+              if (!stateConfig || stateConfig.type !== 'ObjectExpression') {
+                result.push({ name, stateType: 'normal', entryCount: 0, exitCount: 0, transitions: [] })
+                continue
+              }
+              const typeProp = stateConfig.properties.find(p => p.key?.name === 'type' || p.key?.value === 'type')
+              const stateType = typeProp?.value?.value ?? 'normal'
+              const entryProp = stateConfig.properties.find(p => p.key?.name === 'entry' || p.key?.value === 'entry')
+              const exitProp = stateConfig.properties.find(p => p.key?.name === 'exit' || p.key?.value === 'exit')
+              const onProp = stateConfig.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+              result.push({
+                name, stateType,
+                entryCount: getActionCount(entryProp?.value),
+                exitCount: getActionCount(exitProp?.value),
+                transitions: getTransitions(onProp),
+              })
+            }
+          }
+        }
+        return
+      }
+    }
+    for (const key of Object.keys(node)) {
+      if (['loc', 'start', 'end', 'type', 'extra', 'tokens'].includes(key)) continue
+      const child = node[key]
+      if (Array.isArray(child)) child.forEach(walk)
+      else if (child && typeof child === 'object' && child.type) walk(child)
+    }
+  }
+  for (const stmt of ast.program.body) walk(stmt)
+  return result
+}
+
+/**
+ * Extract all assign() calls from a *.machine.ts file, grouped by state + trigger.
+ * @param {string} machineFilePath
+ * @returns {Array<{state: string, trigger: string, assigns: string[]}>}
+ */
+export function extractMachineActions(machineFilePath) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return [] }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return [] }
+  const result = []
+
+  function getAssignKeys(node) {
+    const keys = []
+    function find(n) {
+      if (!n || typeof n !== 'object') return
+      if (n.type === 'CallExpression') {
+        const callee = n.callee
+        if ((callee.type === 'Identifier' && callee.name === 'assign') ||
+            (callee.type === 'MemberExpression' && callee.property?.name === 'assign')) {
+          const arg = n.arguments[0]
+          if (arg?.type === 'ObjectExpression') {
+            for (const p of arg.properties) {
+              const k = p.key?.name ?? p.key?.value
+              if (k) keys.push(k)
+            }
+          }
+          return
+        }
+      }
+      for (const key of Object.keys(n)) {
+        if (['loc', 'start', 'end', 'type', 'extra'].includes(key)) continue
+        const child = n[key]
+        if (Array.isArray(child)) child.forEach(find)
+        else if (child && typeof child === 'object' && child.type) find(child)
+      }
+    }
+    find(node)
+    return keys
+  }
+
+  function collectFromActions(node, state, trigger) {
+    const keys = getAssignKeys(node)
+    if (keys.length > 0) result.push({ state, trigger, assigns: keys })
+  }
+
+  function processState(stateConfig, stateName) {
+    for (const p of stateConfig.properties) {
+      const key = p.key?.name ?? p.key?.value
+      if (key === 'entry') collectFromActions(p.value, stateName, 'entry')
+      else if (key === 'exit') collectFromActions(p.value, stateName, 'exit')
+      else if (key === 'on' && p.value?.type === 'ObjectExpression') {
+        for (const trans of p.value.properties) {
+          const evName = trans.key?.name ?? trans.key?.value
+          const val = trans.value
+          if (val?.type === 'ObjectExpression') {
+            const ap = val.properties.find(x => x.key?.name === 'actions' || x.key?.value === 'actions')
+            if (ap) collectFromActions(ap.value, stateName, evName)
+          }
+        }
+      }
+    }
+  }
+
+  function walk(node) {
+    if (!node || typeof node !== 'object') return
+    if (node.type === 'CallExpression') {
+      const { callee } = node
+      const isMachineCall =
+        (callee.type === 'Identifier' && callee.name === 'createMachine') ||
+        (callee.type === 'MemberExpression' && callee.property?.name === 'createMachine')
+      if (isMachineCall && node.arguments.length > 0) {
+        const config = node.arguments[0]
+        if (config.type === 'ObjectExpression') {
+          const globalOnProp = config.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+          if (globalOnProp?.value?.type === 'ObjectExpression') {
+            processState({ properties: [globalOnProp] }, '__global__')
+          }
+          const statesProp = config.properties.find(p => p.key?.name === 'states' || p.key?.value === 'states')
+          if (statesProp?.value?.type === 'ObjectExpression') {
+            for (const sp of statesProp.value.properties) {
+              const name = sp.key?.name ?? sp.key?.value
+              if (name && sp.value?.type === 'ObjectExpression') processState(sp.value, name)
+            }
+          }
+        }
+        return
+      }
+    }
+    for (const key of Object.keys(node)) {
+      if (['loc', 'start', 'end', 'type', 'extra', 'tokens'].includes(key)) continue
+      const child = node[key]
+      if (Array.isArray(child)) child.forEach(walk)
+      else if (child && typeof child === 'object' && child.type) walk(child)
+    }
+  }
+  for (const stmt of ast.program.body) walk(stmt)
+  return result
+}
+
+/**
+ * Rewrite the *Event union type in a *.machine.ts file with a new events array.
+ * Inserts the declaration after the last import if not found.
+ * @param {string} machineFilePath
+ * @param {Array<{type: string, payload: Array<{name, type, optional}>}>} events
+ */
+export function rewriteMachineEvents(machineFilePath, events) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return }
+
+  const buildBody = (evs) => evs.length === 0
+    ? 'never'
+    : evs.map(e => {
+        const fields = e.payload.length === 0
+          ? ''
+          : '; ' + e.payload.map(p => `${p.name}${p.optional ? '?' : ''}: ${p.type}`).join('; ')
+        return `  | { type: '${e.type}'${fields} }`
+      }).join('\n')
+
+  for (const rawNode of ast.program.body) {
+    const isExport = rawNode.type === 'ExportNamedDeclaration' && rawNode.declaration?.type === 'TSTypeAliasDeclaration'
+    const node = isExport ? rawNode.declaration : rawNode
+    if (node.type === 'TSTypeAliasDeclaration' && /Event$/.test(node.id?.name ?? '')) {
+      const newDecl = `export type ${node.id.name} =\n${buildBody(events)}`
+      source = source.slice(0, rawNode.start) + newDecl + source.slice(rawNode.end)
+      fs.writeFileSync(machineFilePath, source, 'utf-8')
+      return
+    }
+  }
+  // Not found — insert after last import
+  let insertPos = 0
+  for (const node of ast.program.body) {
+    if (node.type === 'ImportDeclaration') insertPos = node.end
+  }
+  const base = path.basename(machineFilePath).replace(/\.machine\.ts$/, '')
+  const pascal = base.charAt(0).toUpperCase() + base.slice(1)
+  source = source.slice(0, insertPos) + `\n\nexport type ${pascal}Event =\n${buildBody(events)}` + source.slice(insertPos)
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+}
+
+/**
+ * Add a new state to the `states: {}` object in a *.machine.ts file.
+ * @param {string} machineFilePath
+ * @param {string} name - state name
+ * @param {string} [stateType] - 'final' | 'parallel' | 'normal'
+ */
+export function addMachineState(machineFilePath, name, stateType) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return }
+
+  function findStatesObj(node) {
+    if (!node || typeof node !== 'object') return null
+    if (node.type === 'CallExpression') {
+      const { callee } = node
+      const isMachineCall =
+        (callee.type === 'Identifier' && callee.name === 'createMachine') ||
+        (callee.type === 'MemberExpression' && callee.property?.name === 'createMachine')
+      if (isMachineCall && node.arguments.length > 0) {
+        const config = node.arguments[0]
+        if (config?.type === 'ObjectExpression') {
+          const sp = config.properties.find(p => p.key?.name === 'states' || p.key?.value === 'states')
+          if (sp?.value?.type === 'ObjectExpression') return sp.value
+        }
+        return null
+      }
+    }
+    for (const key of Object.keys(node)) {
+      if (['loc', 'start', 'end', 'type', 'extra', 'tokens'].includes(key)) continue
+      const child = node[key]
+      if (Array.isArray(child)) { for (const c of child) { const r = findStatesObj(c); if (r) return r } }
+      else if (child && typeof child === 'object' && child.type) { const r = findStatesObj(child); if (r) return r }
+    }
+    return null
+  }
+
+  let statesObj = null
+  for (const stmt of ast.program.body) { statesObj = findStatesObj(stmt); if (statesObj) break }
+  if (!statesObj) return
+
+  const body = stateType === 'final' ? `{ type: 'final' }` : stateType === 'parallel' ? `{ type: 'parallel', states: {} }` : '{}'
+  const props = statesObj.properties
+  if (props.length > 0) {
+    const lastProp = props[props.length - 1]
+    let insertPos = lastProp.end
+    if (source[insertPos] === ',') insertPos++
+    source = source.slice(0, insertPos) + `,\n    ${name}: ${body}` + source.slice(insertPos)
+  } else {
+    source = source.slice(0, statesObj.end - 1) + `\n    ${name}: ${body},\n  ` + source.slice(statesObj.end - 1)
+  }
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+}
+
+/**
+ * Delete a named state from the `states: {}` object in a *.machine.ts file.
+ * @param {string} machineFilePath
+ * @param {string} name - state name to remove
+ */
+export function deleteMachineState(machineFilePath, name) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return }
+  let ast
+  try {
+    ast = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+  } catch { return }
+
+  function findStatesObj(node) {
+    if (!node || typeof node !== 'object') return null
+    if (node.type === 'CallExpression') {
+      const { callee } = node
+      const isMachineCall =
+        (callee.type === 'Identifier' && callee.name === 'createMachine') ||
+        (callee.type === 'MemberExpression' && callee.property?.name === 'createMachine')
+      if (isMachineCall && node.arguments.length > 0) {
+        const config = node.arguments[0]
+        if (config?.type === 'ObjectExpression') {
+          const sp = config.properties.find(p => p.key?.name === 'states' || p.key?.value === 'states')
+          if (sp?.value?.type === 'ObjectExpression') return sp.value
+        }
+        return null
+      }
+    }
+    for (const key of Object.keys(node)) {
+      if (['loc', 'start', 'end', 'type', 'extra', 'tokens'].includes(key)) continue
+      const child = node[key]
+      if (Array.isArray(child)) { for (const c of child) { const r = findStatesObj(c); if (r) return r } }
+      else if (child && typeof child === 'object' && child.type) { const r = findStatesObj(child); if (r) return r }
+    }
+    return null
+  }
+
+  let statesObj = null
+  for (const stmt of ast.program.body) { statesObj = findStatesObj(stmt); if (statesObj) break }
+  if (!statesObj) return
+
+  const prop = statesObj.properties.find(p => (p.key?.name ?? p.key?.value) === name)
+  if (!prop) return
+
+  // Find start of the property's line
+  let lineStart = prop.start
+  while (lineStart > 0 && source[lineStart - 1] !== '\n') lineStart--
+
+  // Find end past trailing comma + newline
+  let lineEnd = prop.end
+  if (source[lineEnd] === ',') lineEnd++
+  if (source[lineEnd] === '\r') lineEnd++
+  if (source[lineEnd] === '\n') lineEnd++
+
+  source = source.slice(0, lineStart) + source.slice(lineEnd)
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+}

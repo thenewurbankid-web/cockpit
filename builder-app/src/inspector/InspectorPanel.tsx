@@ -926,6 +926,7 @@ export function InspectorPanel({
                   props: item.propItems,
                   state: item.stateItems,
                   ...(i > 0 ? { links: item.links } : {}),
+                  ...(i === chain.length - 1 ? { childBindings: childBindingsComp } : {}),
                 })))
               }
               break
@@ -1216,6 +1217,28 @@ export function InspectorPanel({
       setFileImports([])
     }
   }, [file, line, inspectMode, componentName]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch source and refresh bindings when the target project file changes externally (HMR).
+  useEffect(() => {
+    if (!import.meta.hot) return
+    const handler = (data: { file?: string } | undefined) => {
+      if (!file) return
+      // If the updated file matches the currently inspected file, re-fetch and re-run bindings.
+      const updatedFile = data?.file ? data.file.replace(/\\/g, '/') : null
+      const currentFile = file.replace(/\\/g, '/')
+      if (updatedFile && updatedFile !== currentFile) return
+      fetch(`/__source?file=${encodeURIComponent(file)}`)
+        .then(r => r.ok ? r.text() : null)
+        .then(text => {
+          if (!text) return
+          fullSourceRef.current = text
+          refreshBindings(text, selectedNode)
+        })
+        .catch(() => {})
+    }
+    import.meta.hot.on('project:update', handler)
+    return () => { import.meta.hot!.off('project:update', handler) }
+  }, [file, selectedNode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-run bindings extraction when selectedNode changes (DOM selection in tree)
   // without re-fetching source.

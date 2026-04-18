@@ -452,6 +452,8 @@ export default function App() {
   const [activeFeatureItem, setActiveFeatureItem] = useState<FeatureItemSelection | null>(null)
   const [featureSelectedPage, setFeatureSelectedPage] = useState<string | null>(null)
   const [featureSelectedFlow, setFeatureSelectedFlow] = useState<string | null>(null)
+  const [featureSelectedState, setFeatureSelectedState] = useState<string | null>(null)
+  const [featureStateEventNames, setFeatureStateEventNames] = useState<string[]>([])
   const [featurePageLayout, setFeaturePageLayout] = useState<{ id: string; name: string; file?: string } | null>(null)
   const [addFeatureOpen, setAddFeatureOpen] = useState(false)
   const [addServiceOpen, setAddServiceOpen] = useState(false)
@@ -1069,9 +1071,21 @@ export default function App() {
             features={features}
             activeFeature={activeFeature}
             projectRoot={projectRoot ?? ''}
+            selectedFlow={featureSelectedFlow}
             onFeatureSelect={(f) => {
               setActiveFeature(f)
               setActiveFeatureItem(null)
+            }}
+            onFlowSelect={(flowId) => {
+              setFeatureSelectedFlow(flowId)
+              setFeatureSelectedState(null)
+              setFeatureStateEventNames([])
+              if (flowId) setPanelOpen(true)
+              else setPanelOpen(false)
+            }}
+            onStateSelect={(state, eventNames) => {
+              setFeatureSelectedState(state)
+              setFeatureStateEventNames(eventNames)
             }}
             onAddFeature={() => setAddFeatureOpen(true)}
             onDeleteFeature={(id) => {
@@ -1536,7 +1550,9 @@ export default function App() {
             featureId={activeFeature.id}
             projectRoot={projectRoot}
             width={panelWidth}
-            onClose={() => { setFeatureSelectedFlow(null); setPanelOpen(false) }}
+            selectedState={featureSelectedState}
+            stateEventNames={featureStateEventNames}
+            onClose={() => { setFeatureSelectedFlow(null); setFeatureSelectedState(null); setFeatureStateEventNames([]); setPanelOpen(false) }}
           />
         )}
 

@@ -356,9 +356,12 @@ export function extractChildBindings(
         if (nameNode?.type === 'JSXIdentifier' && typeof nameNode.name === 'string') {
           compName = nameNode.name
         } else if (nameNode?.type === 'JSXMemberExpression') {
-          // e.g. TextField.Input — use root identifier
+          // e.g. TextField.Input — use full dotted name so it's distinct from TextField
           const obj = nameNode.object as (AstNode & { name?: string }) | undefined
-          compName = typeof obj?.name === 'string' ? obj.name : null
+          const prop = (nameNode as any).property as (AstNode & { name?: string }) | undefined
+          const objName = typeof obj?.name === 'string' ? obj.name : null
+          const propName = typeof prop?.name === 'string' ? prop.name : null
+          compName = objName && propName ? `${objName}.${propName}` : objName
         }
 
         if (compName && /^[A-Z]/.test(compName)) {
@@ -382,11 +385,9 @@ export function extractChildBindings(
           }
           if (elementBindings.length > 0) {
             results.push({ componentName: compName, bindings: elementBindings })
-            // Stop recursion — bindings found, don't descend into its JSX children.
-            return
           }
-          // No direct bindings — fall through to recurse into JSX children.
-          // This handles compound components like <TextField><TextField.Input value={email}/></TextField>.
+          // Always recurse into JSX children to catch compound component patterns
+          // like <TextField helpText={email}><TextField.Input value={email}/></TextField>.
         } else if (compName) {
           // Native DOM element (div, span, img, etc.): collect attr + text-child bindings,
           // then continue recursing into its children.
