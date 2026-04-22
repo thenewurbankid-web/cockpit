@@ -630,6 +630,7 @@ export default function App() {
     }
   }, [])
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const pendingSimPropsRef = useRef<Record<string, unknown> | null>(null)
   /** The live DOM element that the DOMTreePanel uses as its canvas root.
    *  For pages/components: points to the preview iframe's body (set after iframe loads).
    *  For expressions: points to the expression tester container div. */
@@ -911,6 +912,7 @@ export default function App() {
       setCanvasEl(root)
       setIframeWindow(win)
       setPreviewIframeWindow(win)
+      if (pendingSimPropsRef.current) notifyPropsChange(pendingSimPropsRef.current)
     } catch {
       // Cross-origin safety (should not happen — preview.html is same-origin)
     }
@@ -1517,12 +1519,24 @@ export default function App() {
                 setFeatures(prev => prev.map(f => f.id === featureId ? { ...f, flows: f.flows.filter(fl => fl !== flowId) } : f))
                 setActiveFeature(prev => prev?.id === featureId ? { ...prev, flows: prev.flows.filter(fl => fl !== flowId) } : prev)
               }}
+              onDefinitionChange={(def) => {
+                setFeatures(prev => prev.map(f => f.id === activeFeature.id ? { ...f, ...def } : f))
+                setActiveFeature(prev => prev ? { ...prev, ...def } : prev)
+              }}
+              onAddController={(controllerId) => {
+                setFeatures(prev => prev.map(f => f.id === activeFeature.id ? { ...f, controllers: [...(f.controllers ?? []), controllerId] } : f))
+                setActiveFeature(prev => prev ? { ...prev, controllers: [...(prev.controllers ?? []), controllerId] } : prev)
+              }}
+              onDeleteController={(featureId, controllerId) => {
+                setFeatures(prev => prev.map(f => f.id === featureId ? { ...f, controllers: (f.controllers ?? []).filter(c => c !== controllerId) } : f))
+                setActiveFeature(prev => prev?.id === featureId ? { ...prev, controllers: (prev.controllers ?? []).filter(c => c !== controllerId) } : prev)
+              }}
               onPageSelect={(pageId) => {
                 setFeatureSelectedPage(pageId)
                 setFeatureSelectedFlow(null)
                 setSelectedNode(null)
                 setLeftPanelCollapsed(false)
-                setPanelOpen(true)
+                setPanelOpen(false)
               }}
               activePageId={featureSelectedPage}
               onFlowSelect={(flowId) => {
@@ -1552,7 +1566,25 @@ export default function App() {
             width={panelWidth}
             selectedState={featureSelectedState}
             stateEventNames={featureStateEventNames}
+            linkedPages={activeFeature.pages}
+            iframeWindow={iframeWindow}
+            onSimStart={(pageId) => setFeatureSelectedPage(pageId)}
+            onSimStop={() => {}}
+            onSimMockChange={(data) => { pendingSimPropsRef.current = data as Record<string, unknown>; notifyPropsChange(data as Record<string, unknown>) }}
             onClose={() => { setFeatureSelectedFlow(null); setFeatureSelectedState(null); setFeatureStateEventNames([]); setPanelOpen(false) }}
+          />
+        )}
+
+        {/* Right: page panel when a page is selected in features but no element has been clicked yet */}
+        {activeSection === 'features' && featureSelectedPage && activeFeature && projectRoot && !panelOpen && !featureSelectedFlow && (
+          <FeaturePagePanel
+            pageId={featureSelectedPage}
+            featureId={activeFeature.id}
+            flows={activeFeature.flows}
+            props={pages.find(p => p.id === featureSelectedPage)?.props ?? []}
+            projectRoot={projectRoot}
+            width={panelWidth}
+            onClose={() => { setFeatureSelectedPage(null); setLeftPanelCollapsed(false) }}
           />
         )}
 

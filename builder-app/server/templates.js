@@ -47,12 +47,25 @@ export function buildLayoutTemplate(componentName, label) {
 
 // ── Controller + Next.js route templates ─────────────────────────────────────
 
-export function buildControllerTemplate(controllerName, componentName, pageImportPath, isDefaultExport, props) {
+/**
+ * @param {string} controllerName
+ * @param {string} componentName
+ * @param {string} pageImportPath
+ * @param {boolean} isDefaultExport
+ * @param {Array<{name: string, type: string}>} props
+ * @param {{ bindings: Array<{prop: string, contextVar: string}>, actorHookName: string, actorImportPath: string } | null} [actor]
+ */
+export function buildControllerTemplate(controllerName, componentName, pageImportPath, isDefaultExport, props, actor = null) {
   const importLine = isDefaultExport
     ? `import ${componentName} from '${pageImportPath}'`
     : `import { ${componentName} } from '${pageImportPath}'`
 
+  const boundProps = new Set((actor?.bindings ?? []).map(b => b.prop))
+
+  // Props bound to actor context → const x = state.context.y (no useState)
+  // Unbound props → const [x, setX] = useState<T>(default)
   const stateLines = props.map(p => {
+    if (boundProps.has(p.name)) return null
     const upper = p.name.charAt(0).toUpperCase() + p.name.slice(1)
     const t = (p.type || 'string').trim()
     let defaultVal = 'null'
@@ -60,26 +73,71 @@ export function buildControllerTemplate(controllerName, componentName, pageImpor
     else if (t === 'boolean') defaultVal = 'false'
     else if (t === 'number') defaultVal = '0'
     return `  const [${p.name}, set${upper}] = useState<${t}>(${defaultVal})`
-  })
+  }).filter(l => l !== null)
+
+  const hasUseState = stateLines.length > 0
+  const hasActor = !!(actor && actor.bindings.length > 0)
+
+  // Provider name: e.g. useLoginActor → LoginProvider (strip "use", append "Provider")
+  const providerName = hasActor
+    ? actor.actorHookName.replace(/^use/, '').replace(/Actor$/, '') + 'Provider'
+    : null
 
   const jsxTag = props.length === 0
     ? `    <${componentName} />`
     : [`    <${componentName}`, ...props.map(p => `      ${p.name}={${p.name}}`), `    />`].join('\n')
 
-  const lines = [
+  const imports = [
     `'use client'`,
     ``,
-    `import { useState } from 'react'`,
+    ...(hasUseState ? [`import { useState } from 'react'`] : []),
     importLine,
+    ...(hasActor ? [`import { ${actor.actorHookName}, ${providerName} } from '${actor.actorImportPath}'`] : []),
+  ]
+
+  if (!hasActor) {
+    // Simple controller — no actor
+    const lines = [
+      ...imports,
+      ``,
+      `export function ${controllerName}() {`,
+      ...stateLines,
+      stateLines.length > 0 ? `` : null,
+      `  return (`,
+      jsxTag,
+      `  )`,
+      `}`,
+    ].filter(l => l !== null)
+    return lines.join('\n')
+  }
+
+  // Actor-backed controller — inner component uses hook, outer wraps with Provider
+  const innerName = `${controllerName}Inner`
+  const actorLines = [
+    `  const [machineState] = ${actor.actorHookName}()`,
+    ...actor.bindings.map(b => `  const ${b.prop} = machineState.context.${b.contextVar}`),
+  ]
+
+  const lines = [
+    ...imports,
     ``,
-    `export function ${controllerName}() {`,
-    ...stateLines,
-    stateLines.length > 0 ? `` : null,
+    `function ${innerName}() {`,
+    ...actorLines,
+    ...(stateLines.length > 0 ? ['', ...stateLines] : []),
+    ``,
     `  return (`,
     jsxTag,
     `  )`,
     `}`,
-  ].filter(l => l !== null)
+    ``,
+    `export function ${controllerName}() {`,
+    `  return (`,
+    `    <${providerName}>`,
+    `      <${innerName} />`,
+    `    </${providerName}>`,
+    `  )`,
+    `}`,
+  ]
 
   return lines.join('\n')
 }
@@ -188,7 +246,7 @@ export function buildMachineTemplate(name) {
 }
 
 /**
- * XState v5 actor context file — generates useFeatureActor() hook.
+ * XState v5 actor context file — generates useFeatureActor() hook (production, no Cockpit bridges).
  * @param {string} name - PascalCase flow name, e.g. "AuthFlow"
  */
 export function buildActorTemplate(name) {
@@ -201,11 +259,143 @@ export function buildActorTemplate(name) {
     ``,
     `export const ${name}Provider = ${name}ActorContext.Provider`,
     ``,
-    `/** Drop-in hook: returns [state, send] for the ${name} machine. */`,
+    `/** Production hook: returns [state, send] for the ${name} machine. */`,
     `export function use${name}Actor() {`,
     `  const actor = ${name}ActorContext.useActorRef()`,
     `  const state = ${name}ActorContext.useSelector(s => s)`,
     `  return [state, actor.send] as const`,
+    `}`,
+  ].join('\n')
+}
+
+/**
+ * XState v5 Cockpit actor context file — same hook interface as the production actor,
+ * but adds the Cockpit simulation bridge (state broadcast + event/invoke intercept).
+ * Lives in the target app alongside the production actor; used during preview simulation.
+ * @param {string} name - PascalCase flow name, e.g. "AuthFlow"
+ */
+export function buildCockpitActorTemplate(name) {
+  const camel = name.charAt(0).toLowerCase() + name.slice(1)
+  return [
+    `import { createActorContext } from '@xstate/react'`,
+    `import { useEffect } from 'react'`,
+    `import { fromPromise } from 'xstate'`,
+    `import { ${camel}Machine } from './${name}.machine'`,
+    ``,
+    `/**`,
+    ` * When running inside Cockpit's preview iframe, pause invokes and let the`,
+    ` * simulation panel decide success/failure via cockpit:invoke-result.`,
+    ` */`,
+    `function cockpitInvoke<T>(actor: string, input: Record<string, unknown>): Promise<T> {`,
+    `  window.parent.postMessage({ type: 'cockpit:invoke-pending', actor, input }, '*')`,
+    `  return new Promise<T>((resolve, reject) => {`,
+    `    function handle(e: MessageEvent) {`,
+    `      if (e.data?.type !== 'cockpit:invoke-result' || e.data?.actor !== actor) return`,
+    `      window.removeEventListener('message', handle)`,
+    `      if (e.data.success) resolve(e.data.value as T)`,
+    `      else reject(new Error(e.data.error ?? 'Simulated error'))`,
+    `    }`,
+    `    window.addEventListener('message', handle)`,
+    `  })`,
+    `}`,
+    ``,
+    `const ${name}CockpitMachine = ${camel}Machine.provide({`,
+    `  actors: {`,
+    `    // TODO: list each invoked actor name and proxy it through cockpitInvoke`,
+    `    // e.g. loginApi: fromPromise(({ input }) => cockpitInvoke('loginApi', input as Record<string, unknown>)),`,
+    `  },`,
+    `})`,
+    ``,
+    `const ${name}ActorContext = createActorContext(${name}CockpitMachine)`,
+    ``,
+    `export const ${name}Provider = ${name}ActorContext.Provider`,
+    ``,
+    `/**`,
+    ` * Cockpit simulation hook — same interface as use${name}Actor() in ${name}.actor.ts.`,
+    ` * Broadcasts machine state to the builder panel and accepts events from it.`,
+    ` */`,
+    `export function use${name}Actor() {`,
+    `  const actor = ${name}ActorContext.useActorRef()`,
+    `  const state = ${name}ActorContext.useSelector(s => s)`,
+    ``,
+    `  // Broadcast current state to the Cockpit builder panel`,
+    `  useEffect(() => {`,
+    `    window.parent?.postMessage({`,
+    `      type: 'cockpit:machine-state',`,
+    `      value: typeof state.value === 'string' ? state.value : JSON.stringify(state.value),`,
+    `      context: state.context,`,
+    `    }, '*')`,
+    `  }, [state])`,
+    ``,
+    `  // Receive events sent from the simulation panel`,
+    `  useEffect(() => {`,
+    `    function handleMessage(e: MessageEvent) {`,
+    `      if (e.data?.type === 'cockpit:machine-event') actor.send(e.data.event)`,
+    `    }`,
+    `    window.addEventListener('message', handleMessage)`,
+    `    return () => window.removeEventListener('message', handleMessage)`,
+    `  }, [actor])`,
+    ``,
+    `  return [state, actor.send] as const`,
+    `}`,
+  ].join('\n')
+}
+
+/**
+ * XState v5 controller file — creates and exposes an actor with injected implementations.
+ * @param {string} name - PascalCase flow name, e.g. "AuthFlow"
+ */
+export function buildFeatureControllerTemplate(name) {
+  const camel = name.charAt(0).toLowerCase() + name.slice(1)
+  return [
+    `import { createActor } from 'xstate'`,
+    `import { ${camel}Machine } from './${name}.machine'`,
+    ``,
+    `// ── Types ──────────────────────────────────────────────────────────────────────`,
+    ``,
+    `export interface ${name}State {`,
+    `  value: string`,
+    `  context: Record<string, unknown>`,
+    `}`,
+    ``,
+    `export type StateListener = (state: ${name}State) => void`,
+    ``,
+    `// ── Controller factory ─────────────────────────────────────────────────────────`,
+    ``,
+    `export function create${name}Controller() {`,
+    `  const actor = createActor(${camel}Machine.provide({`,
+    `    actors: {`,
+    `      // TODO: map invoke sources → real API calls`,
+    `      // e.g. loginApi: () => fetch('/api/auth/login', { method: 'POST' }).then(r => r.json()),`,
+    `    },`,
+    `    actions: {`,
+    `      // TODO: map action names → side effects`,
+    `      // e.g. navigateHome: () => { window.location.href = '/' },`,
+    `    },`,
+    `  }))`,
+    ``,
+    `  const listeners = new Set<StateListener>()`,
+    ``,
+    `  actor.subscribe(snapshot => {`,
+    `    const s: ${name}State = { value: String(snapshot.value), context: snapshot.context as Record<string, unknown> }`,
+    `    listeners.forEach(l => l(s))`,
+    `  })`,
+    ``,
+    `  return {`,
+    `    start() { actor.start() },`,
+    `    stop() { actor.stop() },`,
+    `    subscribe(listener: StateListener) {`,
+    `      listeners.add(listener)`,
+    `      return () => listeners.delete(listener)`,
+    `    },`,
+    `    getState(): ${name}State {`,
+    `      const s = actor.getSnapshot()`,
+    `      return { value: String(s.value), context: s.context as Record<string, unknown> }`,
+    `    },`,
+    `    send(event: Record<string, unknown>) { actor.send(event as never) },`,
+    `    /** Dev mode — remove in production. */`,
+    `    __actor: actor,`,
+    `  }`,
     `}`,
   ].join('\n')
 }

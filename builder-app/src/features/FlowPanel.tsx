@@ -1,6 +1,39 @@
 ﻿import { useEffect, useRef, useState, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import type { FeaturePage } from './types'
+
+// ── Module-level Monaco type cache (loaded once per session) ─────────────────
+let _monacoTypesLoaded = false
+const _monacoTypesQueue: Array<() => void> = []
+async function ensureMonacoTypes(monacoInstance: unknown, projectRoot: string) {
+  if (_monacoTypesLoaded) return
+  _monacoTypesLoaded = true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const m = monacoInstance as any
+  const ts = m.languages.typescript.typescriptDefaults
+  ts.setCompilerOptions({
+    target: m.languages.typescript.ScriptTarget.ES2020,
+    module: m.languages.typescript.ModuleKind.ESNext,
+    moduleResolution: m.languages.typescript.ModuleResolutionKind.NodeJs,
+    jsx: m.languages.typescript.JsxEmit.ReactJSX,
+    allowSyntheticDefaultImports: true,
+    esModuleInterop: true,
+    strict: false,
+  })
+  ts.setDiagnosticsOptions({ noSemanticValidation: true, noSyntaxValidation: false })
+  const packages = ['xstate', '@xstate/react', 'react']
+  for (const pkg of packages) {
+    try {
+      const r = await fetch(`/__source/pkg-types?projectRoot=${encodeURIComponent(projectRoot)}&pkg=${encodeURIComponent(pkg)}`)
+      if (!r.ok) continue
+      const { files } = await r.json() as { files: { path: string; content: string }[] }
+      for (const f of files ?? []) ts.addExtraLib(f.content, f.path)
+    } catch { /* non-fatal */ }
+  }
+  _monacoTypesQueue.forEach(fn => fn())
+  _monacoTypesQueue.length = 0
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,6 +92,10 @@ interface StateTransition {
   target?: string
   hasGuard: boolean
   actionCount: number
+  actions: string[]
+  assignTargets: string[]
+  isInvoke?: boolean
+  invokeActorId?: string | null
 }
 
 interface MachineStateDetail {
@@ -66,6 +103,8 @@ interface MachineStateDetail {
   stateType: string
   entryCount: number
   exitCount: number
+  entryActions: string[]
+  exitActions: string[]
   transitions: StateTransition[]
 }
 
@@ -82,7 +121,12 @@ interface FlowPanelProps {
   width: number
   selectedState?: string | null
   stateEventNames?: string[]
+  linkedPages?: FeaturePage[]
+  iframeWindow?: Window | null
   onClose: () => void
+  onSimStart?: (pageId: string) => void
+  onSimStop?: () => void
+  onSimMockChange?: (data: Record<string, unknown>) => void
 }
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -205,14 +249,55 @@ function PayloadFieldRow({ f, i, onChange, onRemove }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState, stateEventNames, onClose }: FlowPanelProps) {
+export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState, stateEventNames, linkedPages, iframeWindow, onClose, onSimStart, onSimStop, onSimMockChange }: FlowPanelProps) {
   // Machine data
   const [events, setEvents] = useState<MachineEvent[]>([])
+  const [states, setStates] = useState<MachineStateDetail[]>([])
   const [actions, setActions] = useState<MachineAction[]>([])
 
   // Machine accordion + tabs
   const [machineOpen, setMachineOpen] = useState(false)
-  const [machineTab, setMachineTab] = useState<'events' | 'actions'>('events')
+  const [machineTab, setMachineTab] = useState<'events' | 'states' | 'actions'>('events')
+
+  // States tab UI
+  const [expandedStateName, setExpandedStateName] = useState<string | null>(null)
+  type TransitionActionKind = 'assign' | 'raise' | 'sendTo' | 'log' | 'cancel' | 'stopChild' | 'forwardTo' | 'named'
+  const [addTransitionForm, setAddTransitionForm] = useState<{ stateName: string; event: string; target: string; guard: string; actionKind?: TransitionActionKind; actionParams?: Record<string, string>; showAction?: boolean } | null>(null)
+  const [addActionForm, setAddActionForm] = useState<{ stateName: string; kind: 'entry' | 'exit'; value: string } | null>(null)
+  const [addTransitionActionForm, setAddTransitionActionForm] = useState<{
+    stateName: string
+    event: string
+    kind: 'assign' | 'raise' | 'sendTo' | 'log' | 'cancel' | 'stopChild' | 'forwardTo' | 'named'
+    params: Record<string, string>
+  } | null>(null)
+  const [addStateName, setAddStateName] = useState('')
+  const [showAddState, setShowAddState] = useState(false)
+
+  // Snippet toast
+  const [lastSnippet, setLastSnippet] = useState<string | null>(null)
+  const snippetTimerRef = useRef<number | null>(null)
+
+  // Simulation
+  const [simOpen, setSimOpen] = useState(false)
+  const [simActive, setSimActive] = useState(false)
+  // Live actor state (from cockpit:machine-state postMessage bridge)
+  const [simState, setSimState] = useState<string | null>(null)
+  const [simContext, setSimContext] = useState<Record<string, unknown>>({})
+  const [simHistory, setSimHistory] = useState<Array<{ from: string; event: string; to: string }>>([])
+  const prevSimStateRef = useRef<string | null>(null)
+  // Simulation preview: page + mocks
+  const [simPage, setSimPage] = useState<string | null>(null)
+  const [simMocks, setSimMocks] = useState<Array<{ key: string; label: string }>>([])
+  const [simMock, setSimMock] = useState<string | null>(null)
+  const [simMockLabel, setSimMockLabel] = useState<string | null>(null)
+  const [simMockData, setSimMockData] = useState<Record<string, unknown> | null>(null)
+  const [simEventForm, setSimEventForm] = useState<{ event: string; values: Record<string, string> } | null>(null)
+  const [invokePrompt, setInvokePrompt] = useState<{ actor: string; input: Record<string, unknown>; errorMsg: string } | null>(null)
+  const simMocksLoadedFor = useRef<string | null>(null)
+
+  // Actor
+  const [actorOpen, setActorOpen] = useState(false)
+  const [actorSource, setActorSource] = useState<string | null>(null)
 
   // Events UI
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
@@ -257,6 +342,7 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
       .then(r => r.json())
       .then(d => {
         setEvents(d.events ?? [])
+        setStates(d.states ?? [])
         setActions(d.actions ?? [])
       })
       .catch(() => {})
@@ -294,6 +380,188 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
 
   // Reset edits when selected state changes
   useEffect(() => { setSourceEdited(null) }, [selectedState])
+
+  // Load actor source file
+  useEffect(() => {
+    if (!projectRoot || !featureId || !flowId) return
+    const file = `${projectRoot}/src/features/${featureId}/${flowId}.actor.ts`.replace(/\\/g, '/')
+    void fetch(`/__source?file=${encodeURIComponent(file)}`)
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(text => setActorSource(text))
+      .catch(() => setActorSource(null))
+  }, [projectRoot, featureId, flowId])
+
+  // Reset simulation when flow changes
+  useEffect(() => { setSimState(null); setSimHistory([]); setSimActive(false); prevSimStateRef.current = null }, [flowId])
+
+  // Listen for live actor state from the preview iframe via cockpit:machine-state postMessage bridge
+  useEffect(() => {
+    function handleMsg(e: MessageEvent) {
+      if (e.data?.type === 'cockpit:machine-state') {
+        const newState = String(e.data.value)
+        const ctx = (e.data.context ?? {}) as Record<string, unknown>
+        if (prevSimStateRef.current !== null && prevSimStateRef.current !== newState) {
+          setSimHistory(h => [...h, { from: prevSimStateRef.current!, event: '—', to: newState }])
+        }
+        prevSimStateRef.current = newState
+        setSimState(newState)
+        setSimContext(ctx)
+      }
+      if (e.data?.type === 'cockpit:invoke-pending') {
+        const actor = String(e.data.actor ?? '')
+        const input = (e.data.input ?? {}) as Record<string, unknown>
+        setInvokePrompt({ actor, input, errorMsg: '' })
+      }
+      if (e.data?.type === 'cockpit:invoke-done') {
+        setInvokePrompt(null)
+      }
+    }
+    window.addEventListener('message', handleMsg)
+    return () => window.removeEventListener('message', handleMsg)
+  }, [])
+
+  // Auto-select the first linked page (only sets the picker — does NOT start simulation)
+  useEffect(() => {
+    if (simPage) return
+    const first = linkedPages?.[0]?.id ?? null
+    if (first) { setSimPage(first); simMocksLoadedFor.current = null }
+  }, [linkedPages]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load mocks when simPage changes
+  useEffect(() => {
+    if (!simPage || !projectRoot || simMocksLoadedFor.current === simPage) return
+    simMocksLoadedFor.current = simPage
+    void fetch(`/__source/list-states?projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(simPage)}`)
+      .then(r => r.ok ? r.json() : { states: [] })
+      .then(d => {
+        const mocks = (d.states ?? []).map((s: { key: string; label?: string }) => ({ key: s.key, label: s.label ?? s.key }))
+        setSimMocks(mocks)
+        if (mocks.length > 0) setSimMock(mocks[0].key)
+      })
+      .catch(() => {})
+  }, [simPage, projectRoot])
+
+  // Push mock data to iframe when mock changes
+  useEffect(() => {
+    if (!simMock || !simPage || !projectRoot || !onSimMockChange) return
+    void fetch(`/__source/state-data?projectRoot=${encodeURIComponent(projectRoot)}&page=${encodeURIComponent(simPage)}&state=${encodeURIComponent(simMock)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { const props = (d.data ?? d) as Record<string, unknown>; onSimMockChange(props); setSimMockData(props); setSimContext(props) } })
+      .catch(() => {})
+  }, [simMock, simPage, projectRoot, onSimMockChange])
+
+  // Snippet toast helper
+  function showSnippet(snippet: string) {
+    setLastSnippet(snippet)
+    if (snippetTimerRef.current !== null) clearTimeout(snippetTimerRef.current)
+    snippetTimerRef.current = window.setTimeout(() => { setLastSnippet(null); snippetTimerRef.current = null }, 5000)
+  }
+
+  // States tab: toggle initial
+  async function handleSetInitial(stateName: string) {
+    const r = await fetch('/__source/flow-initial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, flowId, stateName }),
+    })
+    const d = await r.json()
+    if (d.ok) { loadMachineData(); if (d.snippet) showSnippet(d.snippet) }
+  }
+
+  // States tab: toggle state type
+  async function handleSetStateType(stateName: string, stateType: string | null) {
+    const r = await fetch('/__source/flow-state-type', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, flowId, stateName, stateType }),
+    })
+    const d = await r.json()
+    if (d.ok) { loadMachineData(); if (d.snippet) showSnippet(d.snippet) }
+  }
+
+  // States tab: add/replace transition
+  async function handleAddTransition(stateName: string, event: string, target: string, guard: string, actionKind?: string, actionParams?: Record<string, string>) {
+    const r = await fetch('/__source/flow-transition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, flowId, stateName, event, target: target || undefined, guard: guard || undefined }),
+    })
+    const d = await r.json()
+    if (d.ok) {
+      if (actionKind && actionParams) {
+        const code = buildActionCode(actionKind as Parameters<typeof buildActionCode>[0], actionParams)
+        if (code) {
+          await fetch('/__source/flow-transition-actions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectRoot, featureId, flowId, stateName, event, actions: [code] }),
+          })
+        }
+      }
+      loadMachineData(); setAddTransitionForm(null); if (d.snippet) showSnippet(d.snippet)
+    }
+  }
+
+  // States tab: remove transition
+  async function handleDeleteTransition(stateName: string, event: string) {
+    const r = await fetch(
+      `/__source/flow-transition?projectRoot=${encodeURIComponent(projectRoot)}&featureId=${encodeURIComponent(featureId)}&flowId=${encodeURIComponent(flowId)}&stateName=${encodeURIComponent(stateName)}&event=${encodeURIComponent(event)}`,
+      { method: 'DELETE' }
+    )
+    const d = await r.json()
+    if (d.ok) loadMachineData()
+  }
+
+  // States tab: save entry/exit actions
+  async function handleSaveStateActions(stateName: string, entry: string[], exit: string[]) {
+    const r = await fetch('/__source/flow-state-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, flowId, stateName, entry, exit }),
+    })
+    const d = await r.json()
+    if (d.ok) { loadMachineData(); if (d.snippet) showSnippet(d.snippet) }
+  }
+
+  // States tab: set actions on a transition event
+  async function handleSetTransitionActions(stateName: string, event: string, actions: string[]) {
+    const r = await fetch('/__source/flow-transition-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot, featureId, flowId, stateName, event, actions }),
+    })
+    const d = await r.json()
+    if (d.ok) { loadMachineData(); setAddTransitionActionForm(null); if (d.snippet) showSnippet(d.snippet) }
+  }
+
+  // Build action code string from form
+  function buildActionCode(kind: string, params: Record<string, string>): string {
+    switch (kind) {
+      case 'assign': {
+        const key = params.key ?? 'value'
+        const val = params.value ?? ''
+        // If value looks like an arrow function or expression, use it directly; otherwise quote it
+        const valCode = val.includes('=>') || val.includes('(') ? val : JSON.stringify(val)
+        return `assign({ ${key}: ${valCode} })`
+      }
+      case 'raise':
+        return `raise({ type: '${params.eventType ?? 'EVENT'}' })`
+      case 'sendTo':
+        return `sendTo('${params.actorId ?? 'actor'}', { type: '${params.eventType ?? 'EVENT'}' })`
+      case 'log':
+        return params.expr ? `log(${params.expr})` : `log('${params.message ?? ''}')`
+      case 'cancel':
+        return `cancel('${params.delayId ?? 'delayedEvent'}')`
+      case 'stopChild':
+        return `stopChild('${params.actorId ?? 'actor'}')`
+      case 'forwardTo':
+        return `forwardTo('${params.actorId ?? 'actor'}')`
+      case 'named':
+        return `'${params.name ?? 'myAction'}'`
+      default:
+        return `'${kind}'`
+    }
+  }
 
   function extractStateBlock(source: string, stateName: string): { text: string; start: number; end: number; startLine: number } | null {
     const pattern = new RegExp(`(?<![\\w])${stateName}\\s*:`)
@@ -443,14 +711,20 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       setSaving(true)
-      await fetch('/__source/flow-context', {
+      const r = await fetch('/__source/flow-context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectRoot, featureId, flowId, fields: nextFields }),
-      }).catch(() => {})
+      }).catch(() => null)
+      if (r?.ok) {
+        const d = await r.json().catch(() => ({})) as { createdControllers?: string[] }
+        if (d.createdControllers?.length) {
+          showSnippet(`Controller created: ${d.createdControllers.map((f: string) => f.split('/').slice(-2).join('/')).join(', ')}`)
+        }
+      }
       setSaving(false)
     }, 400)
-  }, [projectRoot, featureId, flowId])
+  }, [projectRoot, featureId, flowId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function addFromScope(field: FieldDef, src: FieldSource) {
     const next = [...fields, { name: field.name, type: field.type, optional: field.optional, source: src }]
@@ -641,8 +915,8 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
             <div>
               {/* Tab bar */}
               <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
-                {([['events', 'Events', TEAL, events.length], ['actions', 'Actions', PURPLE, actions.length]] as const).map(([tab, label, color, count]) => (
-                  <button key={tab} onClick={() => setMachineTab(tab as 'events' | 'actions')}
+                {([['events', 'Events', TEAL, events.length], ['states', 'States', GREEN, states.length], ['actions', 'Actions', PURPLE, actions.length]] as const).map(([tab, label, color, count]) => (
+                  <button key={tab} onClick={() => setMachineTab(tab as 'events' | 'states' | 'actions')}
                     style={{ flex: 1, padding: '6px 4px', background: 'none', border: 'none', borderBottom: machineTab === tab ? `2px solid ${color}` : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 600, color: machineTab === tab ? color : MUTED }}>{label}</span>
                     {count > 0 && <CountChip n={count} color={machineTab === tab ? color : MUTED} />}
@@ -744,6 +1018,389 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
             </div>
               )}
 
+              {machineTab === 'states' && (
+              <div>
+                {/* States list */}
+                {states.length === 0
+                  ? <div style={{ padding: '10px 14px', color: MUTED, fontSize: 11, fontStyle: 'italic' }}>No states found.</div>
+                  : states.map(st => {
+                    const isExpanded = expandedStateName === st.name
+                    const typeBadgeColor = st.stateType === 'final' ? RED : st.stateType === 'parallel' ? PURPLE : st.stateType === 'history' ? ORANGE : MUTED
+                    return (
+                      <div key={st.name} style={{ borderTop: `1px solid ${BORDER}` }}>
+                        {/* State header row */}
+                        <div
+                          onClick={() => setExpandedStateName(isExpanded ? null : st.name)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', cursor: 'pointer', userSelect: 'none' }}
+                        >
+                          <span style={{ fontSize: 10, color: isExpanded ? TEXT : MUTED, transition: 'color 0.1s' }}>{isExpanded ? '▼' : '▶'}</span>
+                          <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono','Fira Code',monospace", color: TEXT, flex: 1 }}>{st.name}</span>
+                          {/* Initial star */}
+                          <button
+                            title="Set as initial state"
+                            onClick={e => { e.stopPropagation(); void handleSetInitial(st.name) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: ORANGE, opacity: 0.55, padding: 0 }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.opacity = '1'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'}
+                          >★</button>
+                          {/* Type badge */}
+                          {st.stateType && st.stateType !== 'atomic' && (
+                            <span style={{ fontSize: 9, color: typeBadgeColor, background: typeBadgeColor + '18', border: `1px solid ${typeBadgeColor}30`, borderRadius: 3, padding: '1px 5px', fontFamily: 'monospace' }}>{st.stateType}</span>
+                          )}
+                        </div>
+
+                        {isExpanded && (
+                          <div style={{ padding: '0 14px 10px 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* Type selector */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>Type</span>
+                              {(['atomic', 'final', 'parallel', 'history'] as const).map(t => (
+                                <button
+                                  key={t}
+                                  onClick={() => void handleSetStateType(st.name, t === 'atomic' ? null : t)}
+                                  style={{
+                                    padding: '2px 7px', borderRadius: 3, fontSize: 9, cursor: 'pointer', fontFamily: 'monospace',
+                                    background: (st.stateType || 'atomic') === t ? typeBadgeColor + '20' : 'none',
+                                    border: `1px solid ${(st.stateType || 'atomic') === t ? typeBadgeColor : BORDER}`,
+                                    color: (st.stateType || 'atomic') === t ? typeBadgeColor : MUTED,
+                                  }}
+                                >{t}</button>
+                              ))}
+                            </div>
+
+                            {/* Transitions sub-section */}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: TEAL, flex: 1 }}>Transitions</span>
+                                <button
+                                  onClick={() => setAddTransitionForm(f => f?.stateName === st.name ? null : { stateName: st.name, event: '', target: '', guard: '' })}
+                                  style={{ fontSize: 10, background: 'none', border: `1px solid ${TEAL}40`, borderRadius: 3, color: TEAL, cursor: 'pointer', padding: '1px 6px' }}
+                                >+ Add</button>
+                              </div>
+                              {st.transitions.length === 0 && !addTransitionForm
+                                ? <div style={{ fontSize: 10, color: MUTED, fontStyle: 'italic' }}>No transitions.</div>
+                                : st.transitions.map(tr => (
+                                  <div key={tr.event} style={{ marginBottom: 6, padding: '4px 6px', background: '#11111b', borderRadius: 4, border: `1px solid ${BORDER}` }}>
+                                    {/* Transition header: EVENT → target */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'monospace', marginBottom: tr.actions.length > 0 || addTransitionActionForm?.stateName === st.name && addTransitionActionForm.event === tr.event ? 4 : 0 }}>
+                                      <span style={{ color: TEAL, fontWeight: 600 }}>{tr.event}</span>
+                                      {tr.target && <><span style={{ color: MUTED }}>→</span><span style={{ color: GREEN }}>{tr.target}</span></>}
+                                      {tr.hasGuard && <span style={{ color: MUTED, fontSize: 9 }}>[?]</span>}
+                                      <button
+                                        title="Add action"
+                                        onClick={() => setAddTransitionActionForm(f =>
+                                          f?.stateName === st.name && f.event === tr.event ? null
+                                            : { stateName: st.name, event: tr.event, kind: 'assign', params: {} }
+                                        )}
+                                        style={{ marginLeft: 'auto', fontSize: 9, background: 'none', border: `1px solid ${ORANGE}40`, borderRadius: 3, color: ORANGE, cursor: 'pointer', padding: '1px 5px' }}
+                                      >+ action</button>
+                                      <button
+                                        onClick={() => void handleDeleteTransition(st.name, tr.event)}
+                                        style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0 }}
+                                      >×</button>
+                                    </div>
+
+                                    {/* Existing action chips */}
+                                    {tr.actions.length > 0 && (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 4, marginBottom: 3 }}>
+                                        {tr.actions.map((a, ai) => (
+                                          <span key={ai} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontFamily: "'JetBrains Mono','Fira Code',monospace", color: ORANGE, background: ORANGE + '14', border: `1px solid ${ORANGE}30`, borderRadius: 3, padding: '1px 5px' }}>
+                                            {a}
+                                            <button
+                                              onClick={() => void handleSetTransitionActions(st.name, tr.event, tr.actions.filter((_, i) => i !== ai))}
+                                              style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: 0 }}
+                                            >×</button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Add action form */}
+                                    {addTransitionActionForm?.stateName === st.name && addTransitionActionForm.event === tr.event && (() => {
+                                      const f = addTransitionActionForm
+                                      const ACTION_TYPES = [
+                                        { kind: 'assign',     label: 'assign',     color: GREEN,  desc: 'Update context' },
+                                        { kind: 'raise',      label: 'raise',      color: TEAL,   desc: 'Raise an event' },
+                                        { kind: 'sendTo',     label: 'sendTo',     color: BLUE,   desc: 'Send to actor' },
+                                        { kind: 'log',        label: 'log',        color: MUTED,  desc: 'Log value' },
+                                        { kind: 'cancel',     label: 'cancel',     color: ORANGE, desc: 'Cancel delayed event' },
+                                        { kind: 'stopChild',  label: 'stopChild',  color: RED,    desc: 'Stop child actor' },
+                                        { kind: 'forwardTo',  label: 'forwardTo',  color: PURPLE, desc: 'Forward event' },
+                                        { kind: 'named',      label: 'named',      color: MUTED,  desc: 'Custom action string' },
+                                      ] as const
+                                      return (
+                                        <div style={{ marginTop: 4, padding: '6px 6px', background: BG, borderRadius: 4, border: `1px solid ${ORANGE}30` }}>
+                                          {/* Action type selector */}
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
+                                            {ACTION_TYPES.map(at => (
+                                              <button
+                                                key={at.kind}
+                                                title={at.desc}
+                                                onClick={() => setAddTransitionActionForm(prev => prev ? { ...prev, kind: at.kind as typeof f.kind, params: {} } : prev)}
+                                                style={{
+                                                  padding: '2px 7px', borderRadius: 3, fontSize: 9, cursor: 'pointer', fontFamily: 'monospace',
+                                                  background: f.kind === at.kind ? at.color + '22' : 'none',
+                                                  border: `1px solid ${f.kind === at.kind ? at.color : BORDER}`,
+                                                  color: f.kind === at.kind ? at.color : MUTED,
+                                                }}
+                                              >{at.label}</button>
+                                            ))}
+                                          </div>
+
+                                          {/* Param fields per action type */}
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {f.kind === 'assign' && (<>
+                                              <div style={{ display: 'flex', gap: 4 }}>
+                                                <input value={f.params.key ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, key: e.target.value } } : p)} placeholder="context key" style={{ ...inputStyle, flex: 1 }} />
+                                                <input value={f.params.value ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, value: e.target.value } } : p)} placeholder="value / (ctx,evt) => ..." style={{ ...inputStyle, flex: 2 }} />
+                                              </div>
+                                            </>)}
+                                            {f.kind === 'raise' && (
+                                              <input value={f.params.eventType ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, eventType: e.target.value } } : p)} placeholder="Event type, e.g. DONE" style={{ ...inputStyle }} />
+                                            )}
+                                            {f.kind === 'sendTo' && (<>
+                                              <div style={{ display: 'flex', gap: 4 }}>
+                                                <input value={f.params.actorId ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, actorId: e.target.value } } : p)} placeholder="actor ID" style={{ ...inputStyle, flex: 1 }} />
+                                                <input value={f.params.eventType ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, eventType: e.target.value } } : p)} placeholder="event type" style={{ ...inputStyle, flex: 1 }} />
+                                              </div>
+                                            </>)}
+                                            {f.kind === 'log' && (
+                                              <input value={f.params.expr ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, expr: e.target.value } } : p)} placeholder="ctx => ctx.value  or  'message'" style={{ ...inputStyle }} />
+                                            )}
+                                            {f.kind === 'cancel' && (
+                                              <input value={f.params.delayId ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, delayId: e.target.value } } : p)} placeholder="delayed event ID" style={{ ...inputStyle }} />
+                                            )}
+                                            {f.kind === 'stopChild' && (
+                                              <input value={f.params.actorId ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, actorId: e.target.value } } : p)} placeholder="actor ID" style={{ ...inputStyle }} />
+                                            )}
+                                            {f.kind === 'forwardTo' && (
+                                              <input value={f.params.actorId ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, actorId: e.target.value } } : p)} placeholder="actor ID" style={{ ...inputStyle }} />
+                                            )}
+                                            {f.kind === 'named' && (
+                                              <input value={f.params.name ?? ''} onChange={e => setAddTransitionActionForm(p => p ? { ...p, params: { ...p.params, name: e.target.value } } : p)} placeholder="action name string" style={{ ...inputStyle }} />
+                                            )}
+                                          </div>
+
+                                          {/* Preview + Add */}
+                                          <div style={{ display: 'flex', gap: 4, marginTop: 5, alignItems: 'center' }}>
+                                            <span style={{ fontSize: 9, color: MUTED, fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                              {buildActionCode(f.kind, f.params)}
+                                            </span>
+                                            <button
+                                              onClick={() => void handleSetTransitionActions(st.name, tr.event, [...tr.actions, buildActionCode(f.kind, f.params)])}
+                                              style={{ padding: '2px 10px', fontSize: 10, background: ORANGE + '20', border: `1px solid ${ORANGE}50`, borderRadius: 3, color: ORANGE, cursor: 'pointer', flexShrink: 0 }}
+                                            >Add</button>
+                                            <button onClick={() => setAddTransitionActionForm(null)} style={{ padding: '2px 6px', fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer', flexShrink: 0 }}>×</button>
+                                          </div>
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
+                                ))
+                              }
+                              {/* Add transition form */}
+                              {addTransitionForm?.stateName === st.name && (() => {
+                                const tf = addTransitionForm
+                                const ACTION_TYPES_TF = [
+                                  { kind: 'assign', label: 'assign', color: GREEN },
+                                  { kind: 'raise', label: 'raise', color: TEAL },
+                                  { kind: 'sendTo', label: 'sendTo', color: BLUE },
+                                  { kind: 'log', label: 'log', color: MUTED },
+                                  { kind: 'cancel', label: 'cancel', color: ORANGE },
+                                  { kind: 'stopChild', label: 'stopChild', color: RED },
+                                  { kind: 'forwardTo', label: 'forwardTo', color: PURPLE },
+                                  { kind: 'named', label: 'named', color: MUTED },
+                                ] as const
+                                return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, padding: '6px 8px', background: '#11111b', borderRadius: 4, border: `1px solid ${BORDER}` }}>
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <input
+                                      value={tf.event}
+                                      onChange={e => setAddTransitionForm(f => f ? { ...f, event: e.target.value } : f)}
+                                      placeholder="EVENT"
+                                      style={{ ...inputStyle, flex: 1 }}
+                                    />
+                                    <input
+                                      value={tf.target}
+                                      onChange={e => setAddTransitionForm(f => f ? { ...f, target: e.target.value } : f)}
+                                      placeholder="target state (optional)"
+                                      style={{ ...inputStyle, flex: 1 }}
+                                    />
+                                  </div>
+                                  <input
+                                    value={tf.guard}
+                                    onChange={e => setAddTransitionForm(f => f ? { ...f, guard: e.target.value } : f)}
+                                    placeholder="guard (optional)"
+                                    style={{ ...inputStyle }}
+                                  />
+
+                                  {/* Inline action toggle */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <button
+                                      onClick={() => setAddTransitionForm(f => f ? { ...f, showAction: !f.showAction, actionKind: f.showAction ? undefined : 'assign', actionParams: f.showAction ? undefined : {} } : f)}
+                                      style={{ fontSize: 9, padding: '2px 8px', background: tf.showAction ? ORANGE + '20' : 'none', border: `1px solid ${tf.showAction ? ORANGE : BORDER}`, borderRadius: 3, color: tf.showAction ? ORANGE : MUTED, cursor: 'pointer' }}
+                                    >{tf.showAction ? '− action' : '+ action'}</button>
+                                    {tf.showAction && tf.actionKind && (
+                                      <span style={{ fontSize: 9, color: ORANGE, fontFamily: 'monospace' }}>{buildActionCode(tf.actionKind, tf.actionParams ?? {})}</span>
+                                    )}
+                                  </div>
+
+                                  {tf.showAction && (
+                                    <div style={{ padding: '5px 6px', background: BG, borderRadius: 4, border: `1px solid ${ORANGE}30`, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                      {/* Kind selector */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {ACTION_TYPES_TF.map(at => (
+                                          <button key={at.kind} onClick={() => setAddTransitionForm(f => f ? { ...f, actionKind: at.kind, actionParams: {} } : f)}
+                                            style={{ padding: '2px 6px', borderRadius: 3, fontSize: 9, cursor: 'pointer', fontFamily: 'monospace',
+                                              background: tf.actionKind === at.kind ? at.color + '22' : 'none',
+                                              border: `1px solid ${tf.actionKind === at.kind ? at.color : BORDER}`,
+                                              color: tf.actionKind === at.kind ? at.color : MUTED,
+                                            }}>{at.label}</button>
+                                        ))}
+                                      </div>
+                                      {/* Param inputs */}
+                                      {tf.actionKind === 'assign' && (
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                          <input value={tf.actionParams?.key ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, key: e.target.value } } : f)} placeholder="context key" style={{ ...inputStyle, flex: 1 }} />
+                                          <input value={tf.actionParams?.value ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, value: e.target.value } } : f)} placeholder="value / (ctx,evt) => ..." style={{ ...inputStyle, flex: 2 }} />
+                                        </div>
+                                      )}
+                                      {tf.actionKind === 'raise' && <input value={tf.actionParams?.eventType ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, eventType: e.target.value } } : f)} placeholder="Event type" style={{ ...inputStyle }} />}
+                                      {tf.actionKind === 'sendTo' && (
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                          <input value={tf.actionParams?.actorId ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, actorId: e.target.value } } : f)} placeholder="actor ID" style={{ ...inputStyle, flex: 1 }} />
+                                          <input value={tf.actionParams?.eventType ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, eventType: e.target.value } } : f)} placeholder="event type" style={{ ...inputStyle, flex: 1 }} />
+                                        </div>
+                                      )}
+                                      {tf.actionKind === 'log' && <input value={tf.actionParams?.expr ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, expr: e.target.value } } : f)} placeholder="ctx => ctx.value  or  'message'" style={{ ...inputStyle }} />}
+                                      {tf.actionKind === 'cancel' && <input value={tf.actionParams?.delayId ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, delayId: e.target.value } } : f)} placeholder="delayed event ID" style={{ ...inputStyle }} />}
+                                      {(tf.actionKind === 'stopChild' || tf.actionKind === 'forwardTo') && <input value={tf.actionParams?.actorId ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, actorId: e.target.value } } : f)} placeholder="actor ID" style={{ ...inputStyle }} />}
+                                      {tf.actionKind === 'named' && <input value={tf.actionParams?.name ?? ''} onChange={e => setAddTransitionForm(f => f ? { ...f, actionParams: { ...f.actionParams, name: e.target.value } } : f)} placeholder="action name" style={{ ...inputStyle }} />}
+                                    </div>
+                                  )}
+
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <button
+                                      onClick={() => void handleAddTransition(tf.stateName, tf.event, tf.target, tf.guard, tf.showAction ? tf.actionKind : undefined, tf.showAction ? tf.actionParams : undefined)}
+                                      disabled={!tf.event}
+                                      style={{ flex: 1, padding: '3px 0', fontSize: 10, background: TEAL + '20', border: `1px solid ${TEAL}50`, borderRadius: 3, color: TEAL, cursor: 'pointer' }}
+                                    >Save</button>
+                                    <button onClick={() => setAddTransitionForm(null)} style={{ flex: 1, padding: '3px 0', fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer' }}>Cancel</button>
+                                  </div>
+                                </div>
+                                )
+                              })()}
+                            </div>
+
+                            {/* Actions sub-section (entry/exit) */}
+                            <div>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: PURPLE, marginBottom: 6 }}>Actions</div>
+                              {(['entry', 'exit'] as const).map(kind => {
+                                const currentActions = kind === 'entry' ? st.entryActions : st.exitActions
+                                const otherActions = kind === 'entry' ? st.exitActions : st.entryActions
+                                const isAddingThis = addActionForm?.stateName === st.name && addActionForm.kind === kind
+                                return (
+                                  <div key={kind} style={{ marginBottom: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 10, color: MUTED, width: 30, flexShrink: 0 }}>{kind}</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, flex: 1 }}>
+                                        {currentActions.map(a => (
+                                          <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontFamily: "'JetBrains Mono','Fira Code',monospace", color: PURPLE, background: PURPLE + '14', border: `1px solid ${PURPLE}30`, borderRadius: 3, padding: '1px 5px' }}>
+                                            {a}
+                                            <button
+                                              onClick={() => void handleSaveStateActions(
+                                                st.name,
+                                                kind === 'entry' ? currentActions.filter(x => x !== a) : currentActions,
+                                                kind === 'exit' ? currentActions.filter(x => x !== a) : otherActions,
+                                              )}
+                                              style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0, marginLeft: 1 }}
+                                            >×</button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <button
+                                        onClick={() => setAddActionForm(isAddingThis ? null : { stateName: st.name, kind, value: '' })}
+                                        style={{ fontSize: 11, background: 'none', border: `1px solid ${PURPLE}40`, borderRadius: 3, color: PURPLE, cursor: 'pointer', padding: '1px 6px', flexShrink: 0 }}
+                                      >+</button>
+                                    </div>
+                                    {isAddingThis && (
+                                      <div style={{ display: 'flex', gap: 4, paddingLeft: 34, marginTop: 3 }}>
+                                        <input
+                                          value={addActionForm!.value}
+                                          onChange={e => setAddActionForm(f => f ? { ...f, value: e.target.value } : f)}
+                                          placeholder="action name"
+                                          style={{ ...inputStyle, flex: 1 }}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter' && addActionForm!.value.trim()) {
+                                              void handleSaveStateActions(
+                                                st.name,
+                                                kind === 'entry' ? [...currentActions, addActionForm!.value.trim()] : st.entryActions,
+                                                kind === 'exit' ? [...currentActions, addActionForm!.value.trim()] : st.exitActions,
+                                              ).then(() => setAddActionForm(null))
+                                            }
+                                          }}
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            if (!addActionForm!.value.trim()) return
+                                            void handleSaveStateActions(
+                                              st.name,
+                                              kind === 'entry' ? [...currentActions, addActionForm!.value.trim()] : st.entryActions,
+                                              kind === 'exit' ? [...currentActions, addActionForm!.value.trim()] : st.exitActions,
+                                            ).then(() => setAddActionForm(null))
+                                          }}
+                                          disabled={!addActionForm!.value.trim()}
+                                          style={{ padding: '2px 8px', fontSize: 10, background: PURPLE + '20', border: `1px solid ${PURPLE}50`, borderRadius: 3, color: PURPLE, cursor: 'pointer', flexShrink: 0 }}
+                                        >Add</button>
+                                        <button onClick={() => setAddActionForm(null)} style={{ padding: '2px 6px', fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer', flexShrink: 0 }}>×</button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                }
+
+                {/* Add state form */}
+                <div style={{ padding: '8px 14px', borderTop: `1px solid ${BORDER}` }}>
+                  {showAddState
+                    ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input
+                          value={addStateName}
+                          onChange={e => setAddStateName(e.target.value)}
+                          placeholder="State name"
+                          style={{ ...inputStyle, flex: 1 }}
+                        />
+                        <button
+                          onClick={() => {
+                            if (!addStateName.trim()) return
+                            void fetch('/__source/flow-state', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ projectRoot, featureId, flowId, name: addStateName.trim() }),
+                            }).then(() => { loadMachineData(); setAddStateName(''); setShowAddState(false) })
+                          }}
+                          disabled={!addStateName.trim()}
+                          style={{ padding: '3px 10px', fontSize: 10, background: GREEN + '20', border: `1px solid ${GREEN}50`, borderRadius: 3, color: GREEN, cursor: 'pointer', flexShrink: 0 }}
+                        >Add</button>
+                        <button onClick={() => { setShowAddState(false); setAddStateName('') }} style={{ padding: '3px 8px', fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer', flexShrink: 0 }}>×</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowAddState(true)} style={{ fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer', padding: '3px 10px', width: '100%' }}>
+                        + Add State
+                      </button>
+                    )
+                  }
+                </div>
+              </div>
+              )}
+
               {machineTab === 'actions' && (
               <div>
                 {!selectedState && (
@@ -831,6 +1488,323 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
           )}
         </div>
 
+        {/* Simulate */}
+        <div style={{ borderBottom: `1px solid ${BORDER}` }}>
+          <button onClick={() => setSimOpen(o => !o)} style={{ ...sectionHeaderStyle, borderBottom: simOpen ? `1px solid ${BORDER}` : 'none' }}>
+            <span style={chevronStyle}>{simOpen ? '▼' : '▶'}</span>
+            <span style={accordionLabelStyle}>Simulate</span>
+            {simActive && simState && (
+              <span style={{ fontSize: 9, color: ORANGE, background: ORANGE + '18', border: `1px solid ${ORANGE}35`, borderRadius: 3, padding: '1px 6px', marginLeft: 4, fontFamily: 'monospace', letterSpacing: '0.02em' }}>{simState}</span>
+            )}
+            {simActive && !simState && (
+              <span style={{ fontSize: 9, color: MUTED, marginLeft: 4, fontStyle: 'italic' }}>connecting…</span>
+            )}
+          </button>
+          {simOpen && (
+            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* ── Page picker + Start/Stop ── */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {(linkedPages?.length ?? 0) > 0 && (
+                  <select
+                    value={simPage ?? ''}
+                    onChange={e => {
+                      const v = e.target.value || null
+                      setSimPage(v); setSimMock(null); simMocksLoadedFor.current = null
+                      if (v && simActive && onSimStart) onSimStart(v)
+                    }}
+                    style={{ ...inputStyle, flex: 1 }}
+                    disabled={simActive}
+                  >
+                    <option value="">— pick a page —</option>
+                    {(linkedPages ?? []).map(p => (
+                      <option key={p.id} value={p.id}>{p.id}</option>
+                    ))}
+                  </select>
+                )}
+                {!simActive
+                  ? <button
+                      onClick={() => {
+                        if (!simPage) return
+                        setSimState(null); setSimHistory([]); prevSimStateRef.current = null
+                        setSimActive(true)
+                        if (onSimStart) onSimStart(simPage)
+                      }}
+                      disabled={!simPage}
+                      style={{
+                        padding: '5px 14px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                        cursor: simPage ? 'pointer' : 'not-allowed',
+                        background: simPage ? GREEN + '18' : 'none',
+                        border: `1px solid ${simPage ? GREEN + '60' : BORDER}`,
+                        color: simPage ? GREEN : MUTED, flexShrink: 0, letterSpacing: '0.02em',
+                      }}
+                    >▶ Start</button>
+                  : <button
+                      onClick={() => {
+                        setSimActive(false); setSimState(null); setSimHistory([]); prevSimStateRef.current = null
+                        if (onSimStop) onSimStop()
+                      }}
+                      style={{
+                        padding: '5px 14px', borderRadius: 4, fontSize: 11,
+                        cursor: 'pointer', background: RED + '10',
+                        border: `1px solid ${RED}40`, color: RED, flexShrink: 0,
+                      }}
+                    >■ Stop</button>
+                }
+              </div>
+
+              {/* ── Live panel (only once started) ── */}
+              {simActive && (
+                <>
+                  {/* Live state + context card */}
+                  <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden' }}>
+                    {/* State row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: simState && Object.keys(simContext).length > 0 ? `1px solid ${BORDER}` : 'none' }}>
+                      <span style={{ fontSize: 10, color: MUTED, flexShrink: 0, width: 36 }}>state</span>
+                      {simState
+                        ? <span style={{ fontSize: 12, color: ORANGE, fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.02em' }}>{simState}</span>
+                        : <span style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>waiting for actor…</span>
+                      }
+                    </div>
+                    {/* Context rows */}
+                    {simState && Object.keys(simContext).length > 0 && Object.entries(simContext).map(([k, v]) => (
+                      <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '4px 10px', borderBottom: `1px solid ${BORDER}22`, userSelect: 'text' }}>
+                        <span style={{ fontSize: 10, color: MUTED, fontFamily: 'monospace', flexShrink: 0, width: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k}</span>
+                        <span style={{ fontSize: 10, color: v === null || v === undefined || v === '' ? MUTED : GREEN, fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {v === null || v === undefined ? 'null' : v === '' ? <em>empty</em> : typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Invoke resolution prompt ── */}
+                  {invokePrompt && (
+                    <div style={{ borderRadius: 6, border: `2px solid ${ORANGE}60`, background: ORANGE + '08', overflow: 'hidden' }}>
+                      {/* Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: `1px solid ${ORANGE}30`, background: ORANGE + '12' }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: ORANGE, flexShrink: 0, animation: 'pulse 1.5s infinite' }} />
+                        <span style={{ fontSize: 11, color: ORANGE, fontWeight: 600 }}>Invoke pending</span>
+                        <span style={{ fontSize: 10, color: MUTED, fontFamily: 'monospace', marginLeft: 2 }}>{invokePrompt.actor}()</span>
+                      </div>
+                      {/* Input data */}
+                      {Object.keys(invokePrompt.input).length > 0 && (
+                        <div style={{ padding: '5px 10px', borderBottom: `1px solid ${BORDER}` }}>
+                          {Object.entries(invokePrompt.input).map(([k, v]) => (
+                            <div key={k} style={{ display: 'flex', gap: 8, fontSize: 10, lineHeight: '20px' }}>
+                              <span style={{ color: MUTED, fontFamily: 'monospace', width: 72, flexShrink: 0 }}>{k}</span>
+                              <span style={{ color: '#cdd6f4', fontFamily: 'monospace' }}>{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Error message input */}
+                      <div style={{ padding: '6px 10px', borderBottom: `1px solid ${BORDER}` }}>
+                        <input
+                          value={invokePrompt.errorMsg}
+                          onChange={e => setInvokePrompt(p => p ? { ...p, errorMsg: e.target.value } : p)}
+                          placeholder="Error message (leave empty for generic)…"
+                          style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      {/* Resolve buttons */}
+                      <div style={{ display: 'flex', gap: 6, padding: '8px 10px' }}>
+                        <button
+                          onClick={() => {
+                            iframeWindow?.postMessage({ type: 'cockpit:invoke-result', actor: invokePrompt.actor, success: true, value: true }, '*')
+                            setInvokePrompt(null)
+                          }}
+                          style={{ flex: 1, padding: '5px 0', fontSize: 11, fontWeight: 600, background: GREEN + '18', border: `1px solid ${GREEN}50`, borderRadius: 4, color: GREEN, cursor: 'pointer' }}
+                        >✓ Succeed</button>
+                        <button
+                          onClick={() => {
+                            iframeWindow?.postMessage({ type: 'cockpit:invoke-result', actor: invokePrompt.actor, success: false, error: invokePrompt.errorMsg || 'Simulated error' }, '*')
+                            setInvokePrompt(null)
+                          }}
+                          style={{ flex: 1, padding: '5px 0', fontSize: 11, fontWeight: 600, background: RED + '15', border: `1px solid ${RED}50`, borderRadius: 4, color: RED, cursor: 'pointer' }}
+                        >✕ Fail</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── States + event buttons ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {states.filter(s => (s.transitions?.length ?? 0) > 0).map(s => {
+                      const isActive = simState === s.name
+                      return (
+                        <div key={s.name} style={{
+                          borderRadius: 6,
+                          border: `1px solid ${isActive ? ORANGE + '50' : BORDER}`,
+                          background: isActive ? ORANGE + '07' : SURFACE,
+                          overflow: 'hidden',
+                        }}>
+                          {/* State header */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '5px 10px',
+                            borderBottom: `1px solid ${isActive ? ORANGE + '30' : BORDER}`,
+                            background: isActive ? ORANGE + '10' : 'transparent',
+                          }}>
+                            <span style={{
+                              fontSize: 11, fontFamily: 'monospace', fontWeight: 600,
+                              color: isActive ? ORANGE : '#cdd6f4',
+                              letterSpacing: '0.02em',
+                            }}>{s.name}</span>
+                            {isActive && (
+                              <span style={{
+                                fontSize: 9, color: ORANGE, background: ORANGE + '20',
+                                border: `1px solid ${ORANGE}40`, borderRadius: 10,
+                                padding: '1px 6px', marginLeft: 'auto', letterSpacing: '0.03em',
+                              }}>● live</span>
+                            )}
+                          </div>
+                          {/* Event buttons */}
+                          <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {(s.transitions ?? []).map((t, i) => {
+                              const eventDef = events.find(e => e.type === t.event)
+                              const hasPayload = (eventDef?.payload?.length ?? 0) > 0
+                              const isOpen = simEventForm?.event === `${s.name}::${t.event}`
+                              return (
+                                <div key={i}>
+                                  <button
+                                    onClick={() => {
+                                      if (t.isInvoke) {
+                                        // onDone/onError are invoke lifecycle transitions — resolve via cockpit:invoke-result
+                                        const actor = t.invokeActorId ?? invokePrompt?.actor ?? s.name
+                                        if (t.event === 'onDone') {
+                                          iframeWindow?.postMessage({ type: 'cockpit:invoke-result', actor, success: true, value: undefined }, '*')
+                                        } else {
+                                          iframeWindow?.postMessage({ type: 'cockpit:invoke-result', actor, success: false, error: 'Simulated error' }, '*')
+                                        }
+                                        setInvokePrompt(null)
+                                        return
+                                      }
+                                      if (hasPayload) {
+                                        if (isOpen) { setSimEventForm(null); return }
+                                        const defaults: Record<string, string> = {}
+                                        for (const f of (eventDef?.payload ?? [])) defaults[f.name] = ''
+                                        setSimEventForm({ event: `${s.name}::${t.event}`, values: defaults })
+                                      } else {
+                                        iframeWindow?.postMessage({ type: 'cockpit:machine-event', event: { type: t.event } }, '*')
+                                        setSimEventForm(null)
+                                      }
+                                    }}
+                                    title={t.hasGuard ? 'guarded — may not fire if condition not met' : t.isInvoke ? `invoke lifecycle — resolves the actor (${t.invokeActorId ?? s.name})` : undefined}
+                                    style={{
+                                      width: '100%', textAlign: 'left',
+                                      padding: '5px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
+                                      fontFamily: "'JetBrains Mono','Fira Code',monospace",
+                                      background: t.isInvoke
+                                        ? (t.event === 'onDone' ? GREEN + '12' : RED + '10')
+                                        : isOpen ? TEAL + '18' : 'rgba(137,220,235,0.07)',
+                                      border: `1px solid ${t.isInvoke ? (t.event === 'onDone' ? GREEN + '45' : RED + '40') : isOpen ? TEAL + '60' : TEAL + '25'}`,
+                                      color: t.isInvoke ? (t.event === 'onDone' ? GREEN : RED) : TEAL,
+                                      display: 'flex', alignItems: 'center', gap: 6,
+                                    }}
+                                  >
+                                    <span style={{ flex: 1, letterSpacing: '0.01em' }}>{t.event}</span>
+                                    {t.isInvoke && <span style={{ fontSize: 8, color: t.event === 'onDone' ? GREEN : RED, background: (t.event === 'onDone' ? GREEN : RED) + '15', border: `1px solid ${(t.event === 'onDone' ? GREEN : RED)}30`, borderRadius: 3, padding: '1px 4px' }}>invoke</span>}
+                                    {t.hasGuard && <span style={{ fontSize: 8, color: MUTED, background: BORDER, borderRadius: 3, padding: '1px 4px' }}>guard</span>}
+                                    {hasPayload && <span style={{ fontSize: 8, color: ORANGE, background: ORANGE + '15', border: `1px solid ${ORANGE}30`, borderRadius: 3, padding: '1px 4px' }}>payload</span>}
+                                    {t.target && <span style={{ fontSize: 9, color: MUTED }}>→ {t.target}</span>}
+                                  </button>
+
+                                  {isOpen && simEventForm && (
+                                    <div style={{ marginTop: 4, padding: '8px', background: BG, borderRadius: 4, border: `1px solid ${TEAL}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      {(eventDef?.payload ?? []).map(f => (
+                                        <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                          <span style={{ fontSize: 9, color: TEAL, fontFamily: 'monospace', flexShrink: 0, width: 76 }}>evt.{f.name}</span>
+                                          <input
+                                            value={simEventForm.values[f.name] ?? ''}
+                                            onChange={e => setSimEventForm(prev => prev ? { ...prev, values: { ...prev.values, [f.name]: e.target.value } } : prev)}
+                                            placeholder={f.type}
+                                            style={{ ...inputStyle, flex: 1 }}
+                                          />
+                                        </div>
+                                      ))}
+                                      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                                        <button
+                                          onClick={() => {
+                                            const evt: Record<string, unknown> = { type: t.event }
+                                            for (const f of (eventDef?.payload ?? [])) evt[f.name] = simEventForm.values[f.name] ?? ''
+                                            iframeWindow?.postMessage({ type: 'cockpit:machine-event', event: evt }, '*')
+                                            setSimEventForm(null)
+                                          }}
+                                          style={{ flex: 1, padding: '4px 0', fontSize: 10, fontWeight: 600, background: TEAL + '20', border: `1px solid ${TEAL}50`, borderRadius: 4, color: TEAL, cursor: 'pointer' }}
+                                        >Send ↑</button>
+                                        <button onClick={() => setSimEventForm(null)} style={{ padding: '4px 10px', fontSize: 10, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 4, color: MUTED, cursor: 'pointer' }}>✕</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* ── Transition history ── */}
+                  {simHistory.length > 0 && (
+                    <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 10, color: MUTED, padding: '5px 10px', borderBottom: `1px solid ${BORDER}`, letterSpacing: '0.04em', textTransform: 'uppercase' }}>History</div>
+                      <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {[...simHistory].reverse().slice(0, 8).map((h, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, opacity: i === 0 ? 1 : Math.max(0.25, 1 - i * 0.12) }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? GREEN : MUTED, flexShrink: 0 }} />
+                            <span style={{ color: '#cdd6f4', fontFamily: 'monospace' }}>{h.from}</span>
+                            <span style={{ color: MUTED, fontSize: 9 }}>→</span>
+                            <span style={{ color: i === 0 ? GREEN : '#cdd6f4', fontFamily: 'monospace', fontWeight: i === 0 ? 600 : 400 }}>{h.to}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {states.length === 0 && (
+                <div style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>No states found in machine.</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actor */}
+        <div style={{ borderBottom: `1px solid ${BORDER}` }}>
+          <button onClick={() => setActorOpen(o => !o)} style={{ ...sectionHeaderStyle, borderBottom: actorOpen ? `1px solid ${BORDER}` : 'none' }}>
+            <span style={chevronStyle}>{actorOpen ? '▼' : '▶'}</span>
+            <span style={accordionLabelStyle}>Actor</span>
+            <span style={{ fontSize: 10, color: PURPLE, fontFamily: 'monospace', marginLeft: 4 }}>use{flowId}Actor()</span>
+          </button>
+          {actorOpen && (
+            <div>
+              {/* Hook + Provider badges */}
+              <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: PURPLE, background: PURPLE + '14', border: `1px solid ${PURPLE}30`, borderRadius: 3, padding: '2px 8px' }}>
+                  use{flowId}Actor()
+                </span>
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: BLUE, background: BLUE + '14', border: `1px solid ${BLUE}30`, borderRadius: 3, padding: '2px 8px' }}>
+                  {flowId}Provider
+                </span>
+              </div>
+              {actorSource !== null
+                ? <div style={{ height: 200 }}>
+                    <Editor
+                      height="100%"
+                      language="typescript"
+                      theme="vs-dark"
+                      path={`file:///${projectRoot.replace(/\\/g, '/')}/src/features/${featureId}/${flowId}.actor.ts`}
+                      value={actorSource}
+                      options={{ fontSize: 12, minimap: { enabled: false }, scrollBeyondLastLine: false, readOnly: true, lineNumbers: 'on' as const }}
+                    />
+                  </div>
+                : <div style={{ padding: '10px 14px', fontSize: 11, color: MUTED, fontStyle: 'italic' }}>{flowId}.actor.ts not found.</div>
+              }
+            </div>
+          )}
+        </div>
+
         {/* Source */}
         <div style={{ borderBottom: `1px solid ${BORDER}` }}>
           <button onClick={() => setSourceOpen(o => !o)} style={{ ...sectionHeaderStyle, borderBottom: sourceOpen ? `1px solid ${BORDER}` : 'none' }}>
@@ -870,10 +1844,8 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
                       onMount={(ed, monaco) => {
                         sourceEditorRef.current = ed
                         sourceMonacoRef.current = monaco
-                        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-                          noSemanticValidation: true,
-                          noSyntaxValidation: true,
-                        })
+                        // Load xstate / react type defs for IntelliSense (async, non-blocking)
+                        void ensureMonacoTypes(monaco, projectRoot)
                         // Run initial diagnostics
                         if (sourceCode) {
                           const block = selectedState ? extractStateBlock(sourceCode, selectedState) : null
@@ -923,6 +1895,22 @@ export function FlowPanel({ flowId, featureId, projectRoot, width, selectedState
         </div>
 
       </div>
+
+      {/* Snippet toast */}
+      {lastSnippet && (
+        <div style={{
+          position: 'absolute', bottom: 48, left: 12, right: 12,
+          background: SURFACE, border: `1px solid ${TEAL}50`, borderRadius: 6,
+          padding: '8px 10px', zIndex: 300,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: TEAL, flex: 1 }}>Snippet preview</span>
+            <button onClick={() => { setLastSnippet(null); if (snippetTimerRef.current) { clearTimeout(snippetTimerRef.current); snippetTimerRef.current = null } }}
+              style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+          <pre style={{ margin: 0, fontSize: 10, fontFamily: "'JetBrains Mono','Fira Code',monospace", color: TEXT, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 180, overflowY: 'auto' }}>{lastSnippet}</pre>
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{ padding: '6px 14px', borderTop: `1px solid ${BORDER}`, fontSize: 10, color: MUTED, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -15,9 +15,9 @@ import { execSync, spawn } from 'child_process'
 import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
 
-import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig, featuresRoot, listFeatures, addPageToFeature, removePageFromFeature, extractMachineStates, extractMachineContext, extractServiceInterfaces, rewriteMachineContext, rewriteControllerBindings, readLinkedPages, extractMachineEvents, extractMachineStatesDetailed, extractMachineActions, rewriteMachineEvents, addMachineState, deleteMachineState } from './utils.js'
+import { REPO_ROOT, isSafeFile, getDiagnosticsAsync, activeProjectRoot, setActiveProjectRoot, warmDiagnosticsCache, warmOpenFiles, readProjectConfig, writeProjectConfig, featuresRoot, listFeatures, addPageToFeature, removePageFromFeature, extractMachineStates, extractMachineContext, extractServiceInterfaces, rewriteMachineContext, rewriteControllerBindings, readLinkedPages, extractMachineEvents, extractMachineStatesDetailed, extractMachineActions, rewriteMachineEvents, addMachineState, deleteMachineState, readFeatureDefinition, writeFeatureDefinition, addMachineTransition, deleteMachineTransition, setTransitionActions, setMachineInitial, setMachineStateType, setMachineStateActions, collectPackageTypeDefs } from './utils.js'
 import { extractAstInfo } from './astInfo.js'
-import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate, buildServiceTemplate, buildMachineTemplate, buildActorTemplate } from './templates.js'
+import { buildPageTemplate, buildLayoutTemplate, buildComponentTemplate, buildExpressionTemplate, extractExpressionProps, DEFAULT_EXPRESSIONS, buildControllerTemplate, buildNextRoutePageTemplate, buildNextRouteLayoutTemplate, buildServiceTemplate, buildMachineTemplate, buildActorTemplate, buildCockpitActorTemplate, buildFeatureControllerTemplate } from './templates.js'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -1581,6 +1581,110 @@ app.delete('/__source/flow-state', (req, res) => {
   res.json({ ok: true })
 })
 
+// POST /__source/flow-transition  body: { projectRoot, featureId, flowId, stateName, event, target, guard? }
+// Adds or replaces a transition on a state in the machine file.
+app.post('/__source/flow-transition', (req, res) => {
+  const { projectRoot, featureId, flowId, stateName, event, target, guard } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !stateName || !event) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, stateName, event }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  const snippet = addMachineTransition(machineFile, stateName, event, target, guard || undefined)
+  res.json({ ok: true, snippet })
+})
+
+// DELETE /__source/flow-transition?projectRoot=&featureId=&flowId=&stateName=&event=
+app.delete('/__source/flow-transition', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId, stateName, event } = req.query
+  if (!projectRoot || !featureId || !flowId || !stateName || !event) {
+    return res.status(400).json({ error: 'Query must contain projectRoot, featureId, flowId, stateName, event' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  deleteMachineTransition(machineFile, stateName, event)
+  res.json({ ok: true })
+})
+
+// POST /__source/flow-transition-actions  body: { projectRoot, featureId, flowId, stateName, event, actions: string[] }
+app.post('/__source/flow-transition-actions', (req, res) => {
+  const { projectRoot, featureId, flowId, stateName, event, actions } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !stateName || !event || !Array.isArray(actions)) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, stateName, event, actions }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  const snippet = setTransitionActions(machineFile, stateName, event, actions)
+  res.json({ ok: true, snippet })
+})
+
+// POST /__source/flow-initial  body: { projectRoot, featureId, flowId, stateName }
+app.post('/__source/flow-initial', (req, res) => {
+  const { projectRoot, featureId, flowId, stateName } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !stateName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, stateName }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  const snippet = setMachineInitial(machineFile, stateName)
+  res.json({ ok: true, snippet })
+})
+
+// POST /__source/flow-state-type  body: { projectRoot, featureId, flowId, stateName, stateType }
+app.post('/__source/flow-state-type', (req, res) => {
+  const { projectRoot, featureId, flowId, stateName, stateType } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !stateName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, stateName, stateType }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  const snippet = setMachineStateType(machineFile, stateName, stateType || null)
+  res.json({ ok: true, snippet })
+})
+
+// POST /__source/flow-state-actions  body: { projectRoot, featureId, flowId, stateName, entry, exit }
+app.post('/__source/flow-state-actions', (req, res) => {
+  const { projectRoot, featureId, flowId, stateName, entry, exit } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId || !stateName) {
+    return res.status(400).json({ error: 'Body must contain { projectRoot, featureId, flowId, stateName }' })
+  }
+  const machineFile = path.join(featuresRoot(projectRoot), featureId, `${flowId}.machine.ts`)
+  if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(machineFile)) return res.status(404).json({ error: 'Machine file not found' })
+  const snippet = setMachineStateActions(machineFile, stateName, Array.isArray(entry) ? entry : [], Array.isArray(exit) ? exit : [])
+  res.json({ ok: true, snippet })
+})
+
+// GET /__source/pkg-types?projectRoot=<abs>&pkg=<packageName>
+// Returns .d.ts file contents for a package, for Monaco extra libs.
+app.get('/__source/pkg-types', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { pkg } = req.query
+  if (!pkg || typeof pkg !== 'string') return res.status(400).json({ error: 'Missing ?pkg=' })
+  // Validate package name to prevent path traversal
+  if (!/^(?:@[\w.-]+\/)?[\w.-]+$/.test(pkg)) return res.status(400).json({ error: 'Invalid package name' })
+  // Try project node_modules first, then builder's own
+  const candidates = [
+    projectRoot ? path.join(path.resolve(projectRoot), 'node_modules') : null,
+    path.join(REPO_ROOT, 'node_modules'),
+    path.join(REPO_ROOT, 'builder-app', 'node_modules'),
+  ].filter(Boolean)
+  for (const nmDir of candidates) {
+    const pkgDir = path.join(nmDir, ...pkg.split('/'))
+    if (fs.existsSync(pkgDir)) {
+      const files = collectPackageTypeDefs(nmDir, pkg)
+      return res.json({ files })
+    }
+  }
+  res.json({ files: [] })
+})
+
 // GET /__source/feature-scope?projectRoot=<abs>&featureId=<id>
 // Returns all page props and service interfaces for a feature (the 'scope' to bind context fields from).
 app.get('/__source/feature-scope', (req, res) => {
@@ -1634,6 +1738,7 @@ app.post('/__source/flow-context', (req, res) => {
 
   // Update page controllers: replace useState for bound props with machine context reads
   const { pagesDir } = getProjectDirs(path.resolve(projectRoot))
+  const createdControllers = []
   if (pagesDir) {
     const byPage = new Map()
     for (const field of fields) {
@@ -1646,16 +1751,36 @@ app.post('/__source/flow-context', (req, res) => {
     const flowPascal = flowId.charAt(0).toUpperCase() + flowId.slice(1)
     const actorHookName = `use${flowPascal}Actor`
     for (const [pageId, bindings] of byPage) {
-      const controllerFile = path.join(pagesDir, pageId, 'controller.tsx')
-      if (!isSafeFile(controllerFile)) continue
       const controllerDir = path.join(pagesDir, pageId)
-      const relPath = path.relative(controllerDir, featureDir).replace(/\\/g, '/')
-      const actorImportPath = (relPath.startsWith('.') ? relPath : './' + relPath) + `/${flowId}.actor`
-      rewriteControllerBindings(controllerFile, bindings, actorHookName, actorImportPath)
+      const controllerFile = path.join(controllerDir, 'controller.tsx')
+      if (!isSafeFile(controllerFile)) continue
+      // Auto-create controller.tsx if it doesn't exist yet so bindings become real code
+      if (!fs.existsSync(controllerFile)) {
+        const pageFile = findPageFile(pagesDir, pageId)
+        const { componentName, isDefaultExport, props } = pageFile
+          ? extractPageComponentInfo(pageFile)
+          : { componentName: pageId, isDefaultExport: false, props: [] }
+        const finalComponentName = componentName ?? pageId
+        const controllerName = pageId + 'Controller'
+        const pageImportPath = pageFile ? './' + path.basename(pageFile, '.tsx') : './page'
+        const relPath = path.relative(controllerDir, featureDir).replace(/\\/g, '/')
+        const actorImportPath = (relPath.startsWith('.') ? relPath : './' + relPath) + `/${flowId}.cockpit-actor`
+        // Generate controller with actor bindings directly — no useState for bound props
+        const actor = { bindings, actorHookName, actorImportPath }
+        const controllerSource = buildControllerTemplate(controllerName, finalComponentName, pageImportPath, isDefaultExport, props, actor)
+        fs.mkdirSync(controllerDir, { recursive: true })
+        fs.writeFileSync(controllerFile, controllerSource, 'utf-8')
+        createdControllers.push(controllerFile.replace(/\\/g, '/'))
+      } else {
+        // Existing controller: rewrite useState → actor context reads
+        const relPath = path.relative(controllerDir, featureDir).replace(/\\/g, '/')
+        const actorImportPath = (relPath.startsWith('.') ? relPath : './' + relPath) + `/${flowId}.cockpit-actor`
+        rewriteControllerBindings(controllerFile, bindings, actorHookName, actorImportPath)
+      }
     }
   }
 
-  res.json({ ok: true })
+  res.json({ ok: true, createdControllers })
 })
 
 // GET /__source/feature-summary?projectRoot=<abs>&featureId=<id>
@@ -2086,11 +2211,13 @@ app.post('/__source/create-flow', (req, res) => {
   const featureDir = path.join(featuresRoot(projectRoot), featureId)
   const machineFile = path.join(featureDir, `${pascal}.machine.ts`)
   const actorFile = path.join(featureDir, `${pascal}.actor.ts`)
+  const cockpitActorFile = path.join(featureDir, `${pascal}.cockpit-actor.ts`)
   if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
   if (fs.existsSync(machineFile)) return res.status(409).json({ error: `${pascal}.machine.ts already exists` })
   fs.mkdirSync(featureDir, { recursive: true })
   fs.writeFileSync(machineFile, buildMachineTemplate(pascal), 'utf-8')
   fs.writeFileSync(actorFile, buildActorTemplate(pascal), 'utf-8')
+  fs.writeFileSync(cockpitActorFile, buildCockpitActorTemplate(pascal), 'utf-8')
   res.json({ ok: true, id: pascal })
 })
 
@@ -2102,9 +2229,11 @@ app.delete('/__source/flow', (req, res) => {
   const featureDir = path.join(featuresRoot(projectRoot), featureId)
   const machineFile = path.join(featureDir, `${flowId}.machine.ts`)
   const actorFile = path.join(featureDir, `${flowId}.actor.ts`)
+  const cockpitActorFile = path.join(featureDir, `${flowId}.cockpit-actor.ts`)
   if (!isSafeFile(machineFile)) return res.status(403).json({ error: 'Access denied' })
   if (fs.existsSync(machineFile)) fs.unlinkSync(machineFile)
   if (fs.existsSync(actorFile)) fs.unlinkSync(actorFile)
+  if (fs.existsSync(cockpitActorFile)) fs.unlinkSync(cockpitActorFile)
   res.json({ ok: true })
 })
 
@@ -2132,6 +2261,60 @@ app.delete('/__source/feature-page', (req, res) => {
   const featureDir = path.join(featuresRoot(projectRoot), featureId)
   if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
   removePageFromFeature(projectRoot, featureId, pageId)
+  res.json({ ok: true })
+})
+
+// ── Feature definition (apis + navigation, stored in <featureId>.feature.json) ─
+
+// GET /__source/feature-definition?projectRoot=<abs>&featureId=<id>
+app.get('/__source/feature-definition', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId } = req.query
+  if (!projectRoot || !featureId) return res.status(400).json({ error: 'Missing params' })
+  const featureDir = path.join(featuresRoot(projectRoot), String(featureId))
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  res.json(readFeatureDefinition(projectRoot, String(featureId)))
+})
+
+// POST /__source/feature-definition  body: { featureId, apis, navigation }
+app.post('/__source/feature-definition', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, apis, navigation } = req.body ?? {}
+  if (!projectRoot || !featureId) return res.status(400).json({ error: 'Missing params' })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  if (!isSafeFile(featureDir)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(featureDir)) return res.status(404).json({ error: 'Feature not found' })
+  try {
+    writeFeatureDefinition(projectRoot, featureId, { apis: apis ?? [], navigation: navigation ?? [] })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+// POST /__source/create-controller  body: { featureId, flowId }
+app.post('/__source/create-controller', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, flowId } = req.body ?? {}
+  if (!projectRoot || !featureId || !flowId) return res.status(400).json({ error: 'featureId and flowId required' })
+  const featureDir = path.join(featuresRoot(projectRoot), featureId)
+  const controllerFile = path.join(featureDir, `${flowId}.controller.ts`)
+  if (!isSafeFile(controllerFile)) return res.status(403).json({ error: 'Access denied' })
+  if (fs.existsSync(controllerFile)) return res.status(409).json({ error: `${flowId}.controller.ts already exists` })
+  fs.mkdirSync(featureDir, { recursive: true })
+  fs.writeFileSync(controllerFile, buildFeatureControllerTemplate(flowId), 'utf-8')
+  res.json({ ok: true, id: flowId })
+})
+
+// DELETE /__source/controller?projectRoot=<abs>&featureId=<id>&controllerId=<id>
+app.delete('/__source/controller', (req, res) => {
+  const projectRoot = getProjectRoot(req)
+  const { featureId, controllerId } = req.query
+  if (!projectRoot || !featureId || !controllerId) return res.status(400).json({ error: 'Missing params' })
+  const controllerFile = path.join(featuresRoot(projectRoot), String(featureId), `${controllerId}.controller.ts`)
+  if (!isSafeFile(controllerFile)) return res.status(403).json({ error: 'Access denied' })
+  if (!fs.existsSync(controllerFile)) return res.status(404).json({ error: 'Controller not found' })
+  fs.unlinkSync(controllerFile)
   res.json({ ok: true })
 })
 

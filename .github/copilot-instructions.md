@@ -52,7 +52,7 @@ cockpit/
 │   │       └── ExpressionTester.tsx       ← expression testing sandbox
 │   └── vite.config.ts
 │
-├── login-app/            ← example target app (Vite 5 + React 18, port 5173)
+├── login-app/            ← example target app (Vite 5 + React 18, port 5173, not required)
 │   └── src/
 │       ├── pages/        ← full-page components (*Page.tsx)
 │       ├── components/   ← shared UI components
@@ -65,8 +65,8 @@ cockpit/
 
 ```bash
 npm install
-# Terminal 1: target app
-npm run dev:login
+# Terminal 1: example target app (optional)
+npm run dev:example
 # Terminal 2: builder UI + source API
 npm run dev:builder
 ```

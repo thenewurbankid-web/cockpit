@@ -279,6 +279,30 @@ export function removePageFromFeature(projectRoot, featureId, pageId) {
  * Returns Feature-shaped objects: { id, name, services[], flows[], pages[] }
  * No config files are read or written.
  */
+/**
+ * Read a feature's JSON definition file ({ apis, navigation }).
+ * File: <featureDir>/<featureId>.feature.json
+ */
+export function readFeatureDefinition(projectRoot, featureId) {
+  const defFile = path.join(featuresRoot(projectRoot), featureId, `${featureId}.feature.json`)
+  if (!fs.existsSync(defFile)) return { apis: [], navigation: [] }
+  try {
+    const raw = JSON.parse(fs.readFileSync(defFile, 'utf-8'))
+    return { apis: raw.apis ?? [], navigation: raw.navigation ?? [] }
+  } catch {
+    return { apis: [], navigation: [] }
+  }
+}
+
+/**
+ * Write a feature's JSON definition file.
+ */
+export function writeFeatureDefinition(projectRoot, featureId, def) {
+  const defFile = path.join(featuresRoot(projectRoot), featureId, `${featureId}.feature.json`)
+  if (!isSafeFile(defFile)) throw new Error('Access denied')
+  fs.writeFileSync(defFile, JSON.stringify(def, null, 2) + '\n', 'utf-8')
+}
+
 export function listFeatures(projectRoot) {
   const root = featuresRoot(projectRoot)
   if (!fs.existsSync(root)) return []
@@ -291,24 +315,31 @@ export function listFeatures(projectRoot) {
         let files = []
         try { files = fs.readdirSync(featureDir) } catch { /* ignore */ }
         const services = files
-          .filter(f => /\.(ts|tsx)$/.test(f) && !f.endsWith('.machine.ts') && !f.endsWith('.actor.ts') && f !== 'pages.ts')
+          .filter(f => /\.(ts|tsx)$/.test(f) && !f.endsWith('.machine.ts') && !f.endsWith('.actor.ts') && !f.endsWith('.controller.ts') && f !== 'pages.ts')
           .map(f => f.replace(/\.(tsx?)$/, ''))
         const flows = files
           .filter(f => f.endsWith('.machine.ts'))
           .map(f => f.replace(/\.machine\.ts$/, ''))
+        const controllers = files
+          .filter(f => f.endsWith('.controller.ts'))
+          .map(f => f.replace(/\.controller\.ts$/, ''))
         const summaryFile = path.join(featureDir, 'summary.md')
         let summary = ''
         try { summary = fs.readFileSync(summaryFile, 'utf-8') } catch { /* no summary yet */ }
         const nameFile = path.join(featureDir, 'name.txt')
         let name = formatFeatureName(featureId)
         try { const n = fs.readFileSync(nameFile, 'utf-8').trim(); if (n) name = n } catch { /* use default */ }
+        const def = readFeatureDefinition(projectRoot, featureId)
         return {
           id: featureId,
           name,
           summary,
           services,
           flows,
+          controllers,
           pages: readLinkedPages(projectRoot, featureId),
+          apis: def.apis,
+          navigation: def.navigation,
         }
       })
   } catch {
@@ -761,12 +792,69 @@ export function extractMachineStatesDetailed(machineFilePath) {
     return 1
   }
 
+  function getActionNames(node) {
+    if (!node) return []
+    if (node.type === 'ArrayExpression')
+      return node.elements.filter(Boolean).map(e => e.value ?? e.name ?? '?')
+    if (node.type === 'StringLiteral') return [node.value]
+    if (node.type === 'Identifier') return [node.name]
+    return []
+  }
+
+  function getActionLabel(node) {
+    if (!node) return '?'
+    if (node.type === 'StringLiteral') return node.value
+    if (node.type === 'Identifier') return node.name
+    if (node.type === 'CallExpression') {
+      const callee = node.callee?.name ?? node.callee?.property?.name ?? '?'
+      return `${callee}(...)`
+    }
+    return '?'
+  }
+
+  function getTransitionActionLabels(actionsNode) {
+    if (!actionsNode) return []
+    if (actionsNode.type === 'ArrayExpression')
+      return actionsNode.elements.filter(Boolean).map(getActionLabel)
+    return [getActionLabel(actionsNode)]
+  }
+
+  /** Extract keys from assign({ key: ... }) call nodes */
+  function getAssignTargetKeys(actionsNode) {
+    const keys = []
+    function collectAssign(n) {
+      if (!n || typeof n !== 'object') return
+      if (
+        n.type === 'CallExpression' &&
+        (n.callee?.name === 'assign' || n.callee?.property?.name === 'assign') &&
+        n.arguments?.length > 0
+      ) {
+        const arg = n.arguments[0]
+        if (arg?.type === 'ObjectExpression') {
+          for (const prop of arg.properties) {
+            const k = prop.key?.name ?? prop.key?.value
+            if (k) keys.push(k)
+          }
+        }
+        return
+      }
+      for (const key of Object.keys(n)) {
+        if (['loc', 'start', 'end', 'type', 'extra', 'tokens'].includes(key)) continue
+        const child = n[key]
+        if (Array.isArray(child)) child.forEach(collectAssign)
+        else if (child && typeof child === 'object' && child.type) collectAssign(child)
+      }
+    }
+    collectAssign(actionsNode)
+    return keys
+  }
+
   function getTransitions(onProp) {
     if (!onProp?.value || onProp.value.type !== 'ObjectExpression') return []
     return onProp.value.properties.map(p => {
       const event = p.key?.name ?? p.key?.value ?? '?'
       const val = p.value
-      let target, hasGuard = false, actionCount = 0
+      let target, hasGuard = false, actionCount = 0, actions = [], assignTargets = []
       if (val?.type === 'StringLiteral') {
         target = val.value
       } else if (val?.type === 'ObjectExpression') {
@@ -775,8 +863,10 @@ export function extractMachineStatesDetailed(machineFilePath) {
         hasGuard = !!val.properties.find(x => x.key?.name === 'guard' || x.key?.value === 'guard')
         const actionsProp = val.properties.find(x => x.key?.name === 'actions' || x.key?.value === 'actions')
         actionCount = getActionCount(actionsProp?.value)
+        actions = getTransitionActionLabels(actionsProp?.value)
+        assignTargets = getAssignTargetKeys(actionsProp?.value)
       }
-      return { event, target, hasGuard, actionCount }
+      return { event, target, hasGuard, actionCount, actions, assignTargets }
     })
   }
 
@@ -800,7 +890,7 @@ export function extractMachineStatesDetailed(machineFilePath) {
               if (!name) continue
               const stateConfig = sp.value
               if (!stateConfig || stateConfig.type !== 'ObjectExpression') {
-                result.push({ name, stateType: 'normal', entryCount: 0, exitCount: 0, transitions: [] })
+                result.push({ name, stateType: 'normal', entryCount: 0, exitCount: 0, entryActions: [], exitActions: [], transitions: [] })
                 continue
               }
               const typeProp = stateConfig.properties.find(p => p.key?.name === 'type' || p.key?.value === 'type')
@@ -808,11 +898,53 @@ export function extractMachineStatesDetailed(machineFilePath) {
               const entryProp = stateConfig.properties.find(p => p.key?.name === 'entry' || p.key?.value === 'entry')
               const exitProp = stateConfig.properties.find(p => p.key?.name === 'exit' || p.key?.value === 'exit')
               const onProp = stateConfig.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+              const invokeProp = stateConfig.properties.find(p => p.key?.name === 'invoke' || p.key?.value === 'invoke')
+              // Extract invoke transitions (onDone / onError)
+              const invokeTransitions = []
+              if (invokeProp) {
+                // invoke can be a single object or an array of objects
+                const invArr = invokeProp.value?.type === 'ArrayExpression'
+                  ? invokeProp.value.elements
+                  : invokeProp.value?.type === 'ObjectExpression'
+                    ? [invokeProp.value]
+                    : []
+                for (const inv of invArr) {
+                  if (!inv || inv.type !== 'ObjectExpression') continue
+                  // Extract actor id: prefer explicit `id:` prop, then `src:` string/identifier
+                  let invokeActorId = null
+                  const idProp = inv.properties?.find(x => x.key?.name === 'id' || x.key?.value === 'id')
+                  if (idProp?.value?.type === 'StringLiteral') {
+                    invokeActorId = idProp.value.value
+                  } else {
+                    const srcProp = inv.properties?.find(x => x.key?.name === 'src' || x.key?.value === 'src')
+                    if (srcProp?.value?.type === 'StringLiteral') invokeActorId = srcProp.value.value
+                    else if (srcProp?.value?.type === 'Identifier') invokeActorId = srcProp.value.name
+                  }
+                  for (const key of ['onDone', 'onError']) {
+                    const p = inv.properties?.find(x => x.key?.name === key || x.key?.value === key)
+                    if (!p) continue
+                    const val = p.value
+                    let target, assignTargets = [], actions = []
+                    if (val?.type === 'StringLiteral') { target = val.value }
+                    else if (val?.type === 'ObjectExpression') {
+                      const tgt = val.properties.find(x => x.key?.name === 'target' || x.key?.value === 'target')
+                      if (tgt?.value?.type === 'StringLiteral') target = tgt.value.value
+                      const act = val.properties.find(x => x.key?.name === 'actions' || x.key?.value === 'actions')
+                      assignTargets = getAssignTargetKeys(act?.value)
+                      actions = getTransitionActionLabels(act?.value)
+                    }
+                    invokeTransitions.push({ event: key, target, hasGuard: false, actionCount: actions.length, actions, assignTargets, isInvoke: true, invokeActorId })
+                  }
+                }
+              }
               result.push({
                 name, stateType,
                 entryCount: getActionCount(entryProp?.value),
                 exitCount: getActionCount(exitProp?.value),
-                transitions: getTransitions(onProp),
+                entryActions: getActionNames(entryProp?.value),
+                exitActions: getActionNames(exitProp?.value),
+                transitions: [...getTransitions(onProp), ...invokeTransitions],
+                hasInvoke: invokeTransitions.length > 0,
               })
             }
           }
@@ -1024,8 +1156,9 @@ export function addMachineState(machineFilePath, name, stateType) {
   const props = statesObj.properties
   if (props.length > 0) {
     const lastProp = props[props.length - 1]
-    let insertPos = lastProp.end
-    if (source[insertPos] === ',') insertPos++
+    const insertPos = lastProp.end
+    // Insert immediately after the last prop's AST end (before any trailing comma).
+    // This avoids a double-comma when the source already has a trailing comma.
     source = source.slice(0, insertPos) + `,\n    ${name}: ${body}` + source.slice(insertPos)
   } else {
     source = source.slice(0, statesObj.end - 1) + `\n    ${name}: ${body},\n  ` + source.slice(statesObj.end - 1)
@@ -1090,4 +1223,441 @@ export function deleteMachineState(machineFilePath, name) {
 
   source = source.slice(0, lineStart) + source.slice(lineEnd)
   fs.writeFileSync(machineFilePath, source, 'utf-8')
+}
+
+// ─── Machine builder helpers ───────────────────────────────────────────────
+
+/** Helper: find the `states:` ObjectExpression inside createMachine. */
+function findMachineStatesObj(ast) {
+  function walk(node) {
+    if (!node || typeof node !== 'object') return null
+    if (node.type === 'CallExpression') {
+      const { callee } = node
+      if (
+        (callee.type === 'Identifier' && callee.name === 'createMachine') ||
+        (callee.type === 'MemberExpression' && callee.property?.name === 'createMachine')
+      ) {
+        const config = node.arguments[0]
+        if (config?.type === 'ObjectExpression') {
+          const sp = config.properties.find(p => p.key?.name === 'states' || p.key?.value === 'states')
+          if (sp?.value?.type === 'ObjectExpression') return { config, statesObj: sp.value }
+        }
+        return null
+      }
+    }
+    for (const key of Object.keys(node)) {
+      if (['loc','start','end','type','extra','tokens'].includes(key)) continue
+      const child = node[key]
+      if (Array.isArray(child)) { for (const c of child) { const r = walk(c); if (r) return r } }
+      else if (child && typeof child === 'object' && child.type) { const r = walk(child); if (r) return r }
+    }
+    return null
+  }
+  for (const stmt of ast.program.body) { const r = walk(stmt); if (r) return r }
+  return null
+}
+
+/** Helper: find a named state's ObjectExpression in statesObj. */
+function findStateProp(statesObj, stateName) {
+  return statesObj.properties.find(p => (p.key?.name ?? p.key?.value) === stateName) ?? null
+}
+
+/** Helper: parse source + reuse pattern for machine file functions. */
+function parseMachineFile(machineFilePath) {
+  let source
+  try { source = fs.readFileSync(machineFilePath, 'utf-8') } catch { return null }
+  let ast
+  try { ast = babelParse(source, { sourceType: 'module', plugins: ['typescript','jsx'], errorRecovery: true }) } catch { return null }
+  return { source, ast }
+}
+
+/**
+ * Add (or replace) a transition in a state's `on:` block.
+ * Returns the XState snippet string that was written.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @param {string} event
+ * @param {string} target
+ * @param {string|undefined} guard
+ */
+export function addMachineTransition(machineFilePath, stateName, event, target, guard) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return ''
+  let { source, ast } = parsed
+
+  const found = findMachineStatesObj(ast)
+  if (!found) return ''
+  const stateProp = findStateProp(found.statesObj, stateName)
+  if (!stateProp || stateProp.value?.type !== 'ObjectExpression') return ''
+
+  const stateConfig = stateProp.value
+
+  const snippet = guard
+    ? `{ type: '${event}', target: '${target}', guard: '${guard}' }`
+    : target ? `{ type: '${event}', target: '${target}' }` : `{ type: '${event}' }`
+  const transitionCode = (() => {
+    if (target && guard) return `{ target: '${target}', guard: '${guard}' }`
+    if (target) return `'${target}'`
+    if (guard) return `{ guard: '${guard}' }`
+    return '{}'
+  })()
+
+  const onProp = stateConfig.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+  if (onProp && onProp.value?.type === 'ObjectExpression') {
+    // Check if event already exists
+    const existing = onProp.value.properties.find(p => (p.key?.name ?? p.key?.value) === event)
+    if (existing) {
+      // Replace existing transition
+      source = source.slice(0, existing.value.start) + transitionCode + source.slice(existing.value.end)
+    } else {
+      // Append to on block
+      const onObj = onProp.value
+      const props = onObj.properties
+      if (props.length > 0) {
+        const last = props[props.length - 1]
+        let ins = last.end
+        if (source[ins] === ',') ins++
+        source = source.slice(0, ins) + `,\n        ${event}: ${transitionCode}` + source.slice(ins)
+      } else {
+        // Empty on: {} block
+        source = source.slice(0, onObj.end - 1) + `\n        ${event}: ${transitionCode},\n      ` + source.slice(onObj.end - 1)
+      }
+    }
+  } else {
+    // No `on:` block — add one before closing brace of state
+    const ins = stateConfig.end - 1
+    const comma = stateConfig.properties.length > 0 ? ',' : ''
+    source = source.slice(0, ins) + `${comma}\n      on: {\n        ${event}: ${transitionCode},\n      }` + source.slice(ins)
+  }
+
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+  return guard
+    ? `${stateName}: {\n  on: { ${event}: { target: '${target}', guard: '${guard}' } }\n}`
+    : `${stateName}: {\n  on: { ${event}: '${target}' }\n}`
+}
+
+/**
+ * Remove a specific event key from a state's `on:` block.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @param {string} event
+ */
+/** Remove a property node from an object, keeping surrounding commas/whitespace tidy. */
+function spliceProperty(source, props, node) {
+  const idx = props.indexOf(node)
+  if (idx === -1) return source
+
+  let start = node.start
+  let end = node.end
+  if (source[end] === ',') end++
+
+  if (props.length === 1) {
+    // Only prop — eat surrounding whitespace (but not the enclosing braces)
+    while (start > 0 && (source[start - 1] === ' ' || source[start - 1] === '\t' || source[start - 1] === '\n' || source[start - 1] === '\r')) start--
+    while (source[end] === ' ' || source[end] === '\t' || source[end] === '\n' || source[end] === '\r') end++
+  } else if (idx === 0) {
+    // First of many — eat up to start of next prop
+    end = props[1].start
+  } else {
+    // Not first — eat whitespace/newline back to (but not including) the separator comma
+    let s = start - 1
+    while (s >= 0 && (source[s] === ' ' || source[s] === '\t' || source[s] === '\n' || source[s] === '\r')) s--
+    if (s >= 0 && source[s] === ',') start = s
+  }
+
+  return source.slice(0, start) + source.slice(end)
+}
+
+export function deleteMachineTransition(machineFilePath, stateName, event) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return
+  let { source, ast } = parsed
+
+  const found = findMachineStatesObj(ast)
+  if (!found) return
+  const stateProp = findStateProp(found.statesObj, stateName)
+  if (!stateProp || stateProp.value?.type !== 'ObjectExpression') return
+
+  const onProp = stateProp.value.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+  if (!onProp || onProp.value?.type !== 'ObjectExpression') return
+
+  const onObj = onProp.value
+  const evProp = onObj.properties.find(p => (p.key?.name ?? p.key?.value) === event)
+  if (!evProp) return
+
+  // Remove the event property using AST-range-based splice (handles inline and multiline)
+  source = spliceProperty(source, onObj.properties, evProp)
+
+  // Re-parse: if on: {} is now empty, remove the entire on: property too
+  try {
+    const ast2 = babelParse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true })
+    const found2 = findMachineStatesObj(ast2)
+    if (found2) {
+      const stateProp2 = findStateProp(found2.statesObj, stateName)
+      if (stateProp2?.value?.type === 'ObjectExpression') {
+        const onProp2 = stateProp2.value.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+        if (onProp2?.value?.type === 'ObjectExpression' && onProp2.value.properties.length === 0) {
+          source = spliceProperty(source, stateProp2.value.properties, onProp2)
+        }
+      }
+    }
+  } catch { /* leave as-is */ }
+
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+}
+
+/**
+ * Set the `actions` array on a specific event transition inside a state's `on:` block.
+ * Handles conversion from string form (`'target'`) to object form if needed.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @param {string} event
+ * @param {string[]} actionCodes  Already-serialized action expressions, e.g. ["assign({ count: (ctx) => ctx.count + 1 })", "raise({ type: 'DONE' })"]
+ * @returns {string} snippet
+ */
+export function setTransitionActions(machineFilePath, stateName, event, actionCodes) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return ''
+  let { source, ast } = parsed
+
+  const found = findMachineStatesObj(ast)
+  if (!found) return ''
+  const stateProp = findStateProp(found.statesObj, stateName)
+  if (!stateProp || stateProp.value?.type !== 'ObjectExpression') return ''
+
+  const onProp = stateProp.value.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+  if (!onProp || onProp.value?.type !== 'ObjectExpression') return ''
+
+  const evProp = onProp.value.properties.find(p => (p.key?.name ?? p.key?.value) === event)
+  if (!evProp) return ''
+
+  const actionsStr = actionCodes.length === 0
+    ? null
+    : actionCodes.length === 1
+      ? actionCodes[0]
+      : `[\n          ${actionCodes.join(',\n          ')},\n        ]`
+
+  if (evProp.value.type === 'StringLiteral') {
+    const target = evProp.value.value
+    const newVal = actionsStr
+      ? `{ target: '${target}', actions: ${actionsStr} }`
+      : `'${target}'`
+    source = source.slice(0, evProp.value.start) + newVal + source.slice(evProp.value.end)
+  } else if (evProp.value.type === 'ObjectExpression') {
+    // Re-parse to get fresh positions after potential prior edits
+    const reparsed = parseMachineFile(machineFilePath)
+    if (reparsed) { source = reparsed.source; ast = reparsed.ast }
+    const found2 = findMachineStatesObj(ast)
+    if (!found2) return ''
+    const stateProp2 = findStateProp(found2.statesObj, stateName)
+    if (!stateProp2) return ''
+    const onProp2 = stateProp2.value.properties.find(p => p.key?.name === 'on' || p.key?.value === 'on')
+    if (!onProp2) return ''
+    const evProp2 = onProp2.value.properties.find(p => (p.key?.name ?? p.key?.value) === event)
+    if (!evProp2 || evProp2.value.type !== 'ObjectExpression') return ''
+
+    const actionsProp = evProp2.value.properties.find(p => p.key?.name === 'actions' || p.key?.value === 'actions')
+    if (actionsProp) {
+      if (actionsStr) {
+        source = source.slice(0, actionsProp.value.start) + actionsStr + source.slice(actionsProp.value.end)
+      } else {
+        // Remove actions property
+        let start = actionsProp.start
+        let end = actionsProp.end
+        if (source[end] === ',') end++
+        if (source[start - 1] === ',') start--
+        source = source.slice(0, start) + source.slice(end)
+      }
+    } else if (actionsStr) {
+      // Append actions property
+      const props = evProp2.value.properties
+      const ins = props.length > 0 ? props[props.length - 1].end : evProp2.value.end - 1
+      const sep = props.length > 0 ? ', ' : '\n        '
+      source = source.slice(0, ins) + `${sep}actions: ${actionsStr}` + source.slice(ins)
+    }
+  }
+
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+  return `${stateName}.on.${event}: { actions: ${actionsStr ?? '[]'} }`
+}
+
+/**
+ * Set the machine's top-level `initial:` property.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @returns {string} snippet
+ */
+export function setMachineInitial(machineFilePath, stateName) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return ''
+  let { source, ast } = parsed
+
+  const found = findMachineStatesObj(ast)
+  if (!found) return ''
+  const { config } = found
+
+  const initialProp = config.properties.find(p => p.key?.name === 'initial' || p.key?.value === 'initial')
+  if (initialProp) {
+    source = source.slice(0, initialProp.value.start) + `'${stateName}'` + source.slice(initialProp.value.end)
+  } else {
+    // Insert initial: after id: if present, else at start of config
+    const idProp = config.properties[0]
+    const ins = idProp ? idProp.end : config.start + 1
+    const sep = idProp ? ',\n  ' : '\n  '
+    source = source.slice(0, ins) + `${sep}initial: '${stateName}'` + source.slice(ins)
+  }
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+  return `initial: '${stateName}'`
+}
+
+/**
+ * Set the `type:` property on a named state. Pass null/undefined to remove it.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @param {'final'|'parallel'|'history'|null} stateType
+ * @returns {string} snippet
+ */
+export function setMachineStateType(machineFilePath, stateName, stateType) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return ''
+  let { source, ast } = parsed
+
+  const found = findMachineStatesObj(ast)
+  if (!found) return ''
+  const stateProp = findStateProp(found.statesObj, stateName)
+  if (!stateProp || stateProp.value?.type !== 'ObjectExpression') return ''
+
+  const stateConfig = stateProp.value
+  const typeProp = stateConfig.properties.find(p => p.key?.name === 'type' || p.key?.value === 'type')
+
+  if (!stateType) {
+    // Remove type prop if present
+    if (typeProp) {
+      let ls = typeProp.start; while (ls > 0 && source[ls - 1] !== '\n') ls--
+      let le = typeProp.end
+      if (source[le] === ',') le++
+      if (source[le] === '\r') le++
+      if (source[le] === '\n') le++
+      source = source.slice(0, ls) + source.slice(le)
+      fs.writeFileSync(machineFilePath, source, 'utf-8')
+    }
+    return `${stateName}: { /* atomic */ }`
+  }
+
+  if (typeProp) {
+    source = source.slice(0, typeProp.value.start) + `'${stateType}'` + source.slice(typeProp.value.end)
+  } else {
+    const ins = stateConfig.start + 1
+    const sep = stateConfig.properties.length > 0 ? '\n      ' : '\n      '
+    source = source.slice(0, ins) + `${sep}type: '${stateType}',` + source.slice(ins)
+  }
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+  return `${stateName}: { type: '${stateType}' }`
+}
+
+/**
+ * Set `entry:` and `exit:` action arrays on a named state.
+ * @param {string} machineFilePath
+ * @param {string} stateName
+ * @param {string[]} entry  - action names
+ * @param {string[]} exit   - action names
+ * @returns {string} snippet
+ */
+export function setMachineStateActions(machineFilePath, stateName, entry, exit) {
+  const parsed = parseMachineFile(machineFilePath)
+  if (!parsed) return ''
+  let { source, ast } = parsed
+
+  function buildActionVal(names) {
+    if (!names || names.length === 0) return null
+    return names.length === 1 ? `'${names[0]}'` : `[${names.map(n => `'${n}'`).join(', ')}]`
+  }
+
+  function applyProp(src, stateConfig, keyName, val) {
+    // Re-parse to get fresh positions after prior mutations
+    let freshAst
+    try { freshAst = babelParse(src, { sourceType: 'module', plugins: ['typescript','jsx'], errorRecovery: true }) } catch { return src }
+    const freshFound = findMachineStatesObj(freshAst)
+    if (!freshFound) return src
+    const freshStateProp = findStateProp(freshFound.statesObj, stateName)
+    if (!freshStateProp || freshStateProp.value?.type !== 'ObjectExpression') return src
+    const freshConfig = freshStateProp.value
+    const existingProp = freshConfig.properties.find(p => p.key?.name === keyName || p.key?.value === keyName)
+
+    if (existingProp) {
+      if (val === null) {
+        let ls = existingProp.start; while (ls > 0 && src[ls - 1] !== '\n') ls--
+        let le = existingProp.end
+        if (src[le] === ',') le++
+        if (src[le] === '\r') le++
+        if (src[le] === '\n') le++
+        return src.slice(0, ls) + src.slice(le)
+      }
+      return src.slice(0, existingProp.value.start) + val + src.slice(existingProp.value.end)
+    } else if (val !== null) {
+      const ins = freshConfig.start + 1
+      return src.slice(0, ins) + `\n      ${keyName}: ${val},` + src.slice(ins)
+    }
+    return src
+  }
+
+  const entryVal = buildActionVal(entry)
+  const exitVal = buildActionVal(exit)
+  source = applyProp(source, null, 'entry', entryVal)
+  source = applyProp(source, null, 'exit', exitVal)
+  fs.writeFileSync(machineFilePath, source, 'utf-8')
+
+  const parts = []
+  if (entryVal) parts.push(`entry: ${entryVal}`)
+  if (exitVal) parts.push(`exit: ${exitVal}`)
+  return `${stateName}: { ${parts.join(', ')} }`
+}
+
+/**
+ * Collect all .d.ts files from an installed npm package for Monaco extra libs.
+ * Returns Array<{ path: string (file:/// URI), content: string }>.
+ *
+ * @param {string} nodeModulesDir  - absolute path to a node_modules directory
+ * @param {string} packageName     - e.g. 'xstate' or '@xstate/react'
+ */
+export function collectPackageTypeDefs(nodeModulesDir, packageName) {
+  if (!/^(?:@[\w.-]+\/)?[\w.-]+$/.test(packageName)) return []
+  const pkgDir = path.join(nodeModulesDir, ...packageName.split('/'))
+  if (!fs.existsSync(pkgDir)) return []
+
+  let typesEntry = 'index.d.ts'
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'))
+    const raw = pkgJson.types || pkgJson.typings || ''
+    if (raw) { typesEntry = (raw.endsWith('.d.ts') ? raw : raw + '.d.ts').replace(/^\.\//, '') }
+  } catch { /* use default */ }
+
+  const packagePrefix = `file:///node_modules/${packageName}`
+  const files = []
+
+  if (typesEntry !== 'index.d.ts') {
+    const shimTarget = typesEntry.replace(/\.d\.ts$/, '')
+    files.push({
+      path: `${packagePrefix}/index.d.ts`,
+      content: `export * from './${shimTarget}';\nexport { default } from './${shimTarget}';`,
+    })
+  }
+
+  function walk(dir, depth) {
+    if (depth > 6 || files.length > 200) return
+    let entries
+    try { entries = fs.readdirSync(dir) } catch { return }
+    for (const entry of entries) {
+      if (entry === 'node_modules') continue
+      const full = path.join(dir, entry)
+      let stat; try { stat = fs.statSync(full) } catch { continue }
+      if (stat.isDirectory()) { walk(full, depth + 1) }
+      else if (entry.endsWith('.d.ts')) {
+        const rel = path.relative(pkgDir, full).replace(/\\/g, '/')
+        try { files.push({ path: `${packagePrefix}/${rel}`, content: fs.readFileSync(full, 'utf-8') }) } catch { /* skip */ }
+      }
+    }
+  }
+  walk(pkgDir, 0)
+  return files
 }

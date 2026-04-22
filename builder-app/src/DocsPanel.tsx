@@ -123,8 +123,8 @@ cd cockpit`}</pre>
       </p>
 
       <h2 style={s.h2}>3. Start the Dev Environment</h2>
-      <pre style={s.pre}>{`# Terminal 1 — start a target app (e.g. the included login-app)
-npm run dev:login
+      <pre style={s.pre}>{`# Terminal 1 — start the example target app (optional)
+npm run dev:example
 
 # Terminal 2 — start the builder UI + source API
 npm run dev:builder`}</pre>

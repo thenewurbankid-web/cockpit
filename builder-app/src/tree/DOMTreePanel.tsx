@@ -514,7 +514,7 @@ export function DOMTreePanel({
         return
       }
       if (node.file) {
-        if (node.usageFile && node.usageLine) {
+        if (node.usageFile && node.usageLine && !node.isPageRoot) {
           // Navigate to the usage site (page/parent file) and show the parent JSX container.
           onLocate(node.usageFile, node.usageLine, 'component-usage', node.name)
         } else {

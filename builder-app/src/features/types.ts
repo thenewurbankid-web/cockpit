@@ -1,3 +1,16 @@
+/** An API endpoint defined in a feature's .feature.json. */
+export interface ApiDef {
+  id: string
+  url: string
+  method: string
+}
+
+/** A state→route mapping defined in a feature's .feature.json. */
+export interface NavEntry {
+  state: string
+  route: string
+}
+
 /** A single prop extracted from a page's *Props interface. */
 export interface PropDef {
   name: string
@@ -25,8 +38,14 @@ export interface Feature {
   services: string[]
   /** Flow stems (e.g. "AuthFlow" for AuthFlow.machine.ts + AuthFlow.actor.ts). */
   flows: string[]
+  /** Controller stems (e.g. "AuthFlow" for AuthFlow.controller.ts). */
+  controllers: string[]
   /** Pages explicitly linked to this feature (stored in pages.ts). */
   pages: FeaturePage[]
+  /** Plain-English requirement from .feature.json. */
+  apis: ApiDef[]
+  /** State→route navigation mappings from .feature.json. */
+  navigation: NavEntry[]
 }
 
 /** Tracks which service, flow, or page is currently selected in the left panel. */
