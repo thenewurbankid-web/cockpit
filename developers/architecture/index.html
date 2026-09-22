@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture · Developer Docs</title>
+<meta name="description" content="Layers, rules, policy and how validation works.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Architecture · Developer Docs">
+<meta property="og:description" content="Layers, rules, policy and how validation works.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/architecture/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/architecture/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/">Guide</a><a href="../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../developers/architecture/" aria-current="page">Architecture</a></li><li><a href="../../developers/repository-layout/">Repository layout</a></li><li><a href="../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../developers/ast/">The AST package</a></li><li><a href="../../developers/workflows/">Workflow narrator</a></li><li><a href="../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../developers/cli-reference/">CLI reference</a></li><li><a href="../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../developers/extending/">Extending Construct</a></li><li><a href="../../developers/testing/">Testing</a></li><li><a href="../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../developers/api/">All packages</a></li><li><a href="../../developers/api/core/">Core engine</a></li><li><a href="../../developers/api/engine/">Engine</a></li><li><a href="../../developers/api/ast/">AST</a></li><li><a href="../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../developers/api/tools/">Tools</a></li><li><a href="../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>Architecture</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<p class="kicker">Overview</p><h1>Architecture</h1><p class="lede">Layers, rules, policy and how validation works.</p><div class="prose"><p>This page covers the architecture Construct <strong>enforces on target projects</strong>: layers, rules and policy. For how Construct itself is organised as code, see the <a href="../../developers/repository-layout/">repository layout</a>.</p>
+<h2 id="philosophy">Philosophy<a class="anchor" href="#philosophy" aria-label="Link to this section">#</a></h2>
+<p>Construct is intentionally <strong>opinionated out of the box but modifiable by policy</strong>. A convention is valuable when a team can understand it, enforce it, and deliberately change it.</p>
+<h2 id="feature-ownership">Feature ownership<a class="anchor" href="#feature-ownership" aria-label="Link to this section">#</a></h2>
+<p>A feature owns behavior, state, UI, services, domain rules, types and its public API. Internal files are private. Cross-feature consumers use <code>index.ts</code>.</p>
+<h2 id="layer-contracts">Layer contracts<a class="anchor" href="#layer-contracts" aria-label="Link to this section">#</a></h2>
+<h3 id="route">Route<a class="anchor" href="#route" aria-label="Link to this section">#</a></h3>
+<p>Navigation entry point. Delegates to a controller. No business logic or effects.</p>
+<h3 id="controller">Controller<a class="anchor" href="#controller" aria-label="Link to this section">#</a></h3>
+<p>Application composition boundary. Connects application behavior to presentation.</p>
+<h3 id="workflow">Workflow<a class="anchor" href="#workflow" aria-label="Link to this section">#</a></h3>
+<p>Application flow and state. XState is the default implementation; Stately is the visual modeling/editor layer.</p>
+<h3 id="hook">Hook<a class="anchor" href="#hook" aria-label="Link to this section">#</a></h3>
+<p>React-aware business/application logic when React context is genuinely required.</p>
+<h3 id="domain">Domain<a class="anchor" href="#domain" aria-label="Link to this section">#</a></h3>
+<p>Pure feature-specific business rules. No network, storage, DOM, or hidden effects.</p>
+<h3 id="service">Service<a class="anchor" href="#service" aria-label="Link to this section">#</a></h3>
+<p>External I/O, API calls, SDKs and side effects.</p>
+<h3 id="page">Page<a class="anchor" href="#page" aria-label="Link to this section">#</a></h3>
+<p>Props to JSX. No business logic, workflow, service, API, fetch, or domain imports.</p>
+<h3 id="component">Component<a class="anchor" href="#component" aria-label="Link to this section">#</a></h3>
+<p>Reusable presentation. Local UI state is allowed; application/business dependencies are not.</p>
+<h2 id="frozen-externally-authored-presentation">Frozen, externally-authored presentation<a class="anchor" href="#frozen-externally-authored-presentation" aria-label="Link to this section">#</a></h2>
+<p>A design tool (Subframe, Figma-to-code, a shared design system) may own some markup. Declare it under <code>frozen:</code> in <code>architecture.yml</code> (globs relative to the project root, allowed to reach outside it). The supported pattern is <strong>controller wraps frozen component</strong>: the controller imports the externally-authored component and forwards props; hooks/workflows/domain own data and state. Construct never writes into frozen paths, and <code>PAGE-007</code> / <code>COMPONENT-004</code> / <code>CONTROLLER-002</code> (default <code>warning</code>) flag pages, components and controllers that re-author markup already present in a frozen source instead of importing it. Projects without <code>frozen:</code> are unaffected. See the README section &quot;Wrapping frozen, externally-authored UI&quot;.</p>
+<h2 id="enforcement">Enforcement<a class="anchor" href="#enforcement" aria-label="Link to this section">#</a></h2>
+<p>Construct combines project policy with static validation and dependency boundaries. The goal is not to create a second compiler; it is to make architectural intent executable and useful to AI agents.</p>
+<h2 id="shared-building-blocks">Shared building blocks<a class="anchor" href="#shared-building-blocks" aria-label="Link to this section">#</a></h2>
+<p>Construct&#39;s own implementation reuses small deterministic packages rather than re-implementing them: see <code>docs/capabilities.md</code> for the maintained inventory, and <code>src/ast/README.md</code> for the AST package (parse, walk, extract, generate) used by both the CLI and <code>ui/server</code>.</p>
+<h2 id="the-default-layer-graph">The default layer graph<a class="anchor" href="#the-default-layer-graph" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-text">Route → Controller → Workflow → Service → API
+             └────→ Page → Component
+
+Workflow → Domain
+Service  → Domain
+Hook     → Workflow / Service / Domain
+</code></pre>
+<p>This layer graph — and every rule in <code>rules:</code> — is identical regardless of <code>project.framework</code>. The one thing that differs per framework is what a <strong>Route</strong> physically is and how a <strong>Controller</strong> gets wired into it; see <a href="#framework-targets">Framework targets</a>.</p>
+<h2 id="framework-targets">Framework targets<a class="anchor" href="#framework-targets" aria-label="Link to this section">#</a></h2>
+<p>Construct&#39;s feature-internal architecture (everything from Controller down: Workflow/Service/Domain, Controller → Page → Component) never changes based on <code>project.framework</code> — only the <strong>route layer</strong> does, because that&#39;s the one place a real difference in how the two kinds of app actually route requests shows up.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>nextjs</code> (default)</th>
+<th><code>react-spa</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Route layer pattern</td>
+<td><code>app/**/page.tsx</code> — one file per route folder (Next.js App Router file-system routing: route groups <code>(name)</code>, dynamic segments <code>[name]</code>)</td>
+<td><code>src/App.tsx</code> — one centralized react-router table for the whole app</td>
+</tr>
+<tr>
+<td>How a controller gets registered as a route</td>
+<td>A physical <code>app/&lt;route&gt;/page.tsx</code> imports the controller and renders it as the page&#39;s default export</td>
+<td>A <code>&lt;Route path=&quot;...&quot; element={&lt;XController /&gt;} /&gt;</code> entry inside <code>src/App.tsx</code></td>
+</tr>
+<tr>
+<td><code>construct init [--framework ...]</code> scaffold</td>
+<td><code>app/page.tsx</code></td>
+<td><code>src/main.tsx</code> (a real bootstrap: <code>BrowserRouter</code> + <code>createRoot</code>) + <code>src/App.tsx</code>, with the <code>core</code> feature&#39;s controller already registered as a route</td>
+</tr>
+<tr>
+<td><code>construct import --route &lt;url&gt;</code> entry resolution</td>
+<td>Walks <code>app/</code> for the folder owning <code>page.tsx</code>, matching route groups/dynamic segments (<code>src/route-resolver.mjs</code>)</td>
+<td>Parses <code>src/App.tsx</code>&#39;s <code>&lt;Route&gt;</code> table for the controller name registered at that URL, then locates it under <code>features/*/controllers/</code></td>
+</tr>
+</tbody></table>
+<p>Everything else — every generator, every rule, the controller&#39;s own composition (it still imports and renders a same-named <code>Page</code> from the feature&#39;s <code>pages/</code> folder either way, since that&#39;s Construct&#39;s own convention, not Next.js&#39;s) — is identical between the two targets. Set it in <code>architecture.yml</code>:</p>
+<pre><code class="language-yaml">project:
+  framework: react-spa   # or nextjs (default)
+  language: typescript
+</code></pre>
+<p><code>fixtures/architecture-valid-react-spa/</code> is a complete, real, checked-in worked example — <code>construct validate</code> passes against it with zero errors — showing the shape end to end: <code>architecture.yml</code>, <code>src/main.tsx</code> + <code>src/App.tsx</code>, and a full <code>widget</code> feature slice.</p>
+<h2 id="how-construct-validate-works">How <code>construct validate</code> works<a class="anchor" href="#how-construct-validate-works" aria-label="Link to this section">#</a></h2>
+<p><code>validate</code> loads <code>architecture.yml</code> (<code>src/config.mjs</code>), then runs a fixed list of enforcers (<code>src/engine/defaultEnforcers.mjs</code>) and merges their findings:</p>
+<table>
+<thead>
+<tr>
+<th>Enforcer</th>
+<th>Module</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>architecture</code></td>
+<td><code>src/architecture-enforcer.mjs</code></td>
+<td>who may import whom, per layer; import resolution; frozen-markup rules</td>
+</tr>
+<tr>
+<td><code>separation-of-concerns</code></td>
+<td><code>src/soc-enforcer.mjs</code></td>
+<td>responsibilities that do not belong together (<code>SOC-001</code>)</td>
+</tr>
+<tr>
+<td><code>readability</code></td>
+<td><code>src/readability-enforcer.mjs</code></td>
+<td>naming, file length, public-API documentation (<code>READ-*</code>)</td>
+</tr>
+<tr>
+<td><code>public-api-drift</code></td>
+<td><code>src/api-composer.mjs</code></td>
+<td>a feature&#39;s <code>index.ts</code> matching what it should export</td>
+</tr>
+</tbody></table>
+<p>Every finding is a violation object built by <code>makeViolation</code> (<code>src/diagnostics.mjs</code>) with a fixed shape: <code>rule</code>, <code>module</code>, <code>severity</code>, <code>file</code>, <code>line</code>, <code>message</code>, <code>why</code>, <code>expected</code>, <code>suggestedFix</code> and optionally <code>docsUrl</code>. <code>--format json</code> prints them as <code>{ status, violations }</code>. The process exits with <code>0</code> (no errors), <code>1</code> (violations), <code>2</code> (usage error) or <code>3</code> (internal error). Severity comes from <code>architecture.yml</code>; a scoped, time-boxed <code>exceptions:</code> entry can silence a rule for a path.</p>
+<p>The layer graph itself (<code>src/architecture-graph.mjs</code>) is data, not code: which layer may import which. The enforcers and the generators both read it, so they cannot disagree.</p>
+<p>Because the same enforcers run inside generators (<code>src/engine/transactionalWriter.mjs</code> validates a shadow copy before committing), generated output is held to the rules it will later be checked against.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../developers/"><span>Previous</span>Overview</a><a class="next" href="../../developers/repository-layout/"><span>Next</span>Repository layout</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#philosophy">Philosophy</a></li><li><a href="#feature-ownership">Feature ownership</a></li><li><a href="#layer-contracts">Layer contracts</a></li><li><a href="#frozen-externally-authored-presentation">Frozen, externally-authored presentation</a></li><li><a href="#enforcement">Enforcement</a></li><li><a href="#shared-building-blocks">Shared building blocks</a></li><li><a href="#the-default-layer-graph">The default layer graph</a></li><li><a href="#framework-targets">Framework targets</a></li><li><a href="#how-construct-validate-works">How construct validate works</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/developers/architecture.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

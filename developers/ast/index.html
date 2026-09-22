@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The AST package · Developer Docs</title>
+<meta name="description" content="Parse, walk, extract and generate TypeScript and JSX.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The AST package · Developer Docs">
+<meta property="og:description" content="Parse, walk, extract and generate TypeScript and JSX.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/ast/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/ast/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/">Guide</a><a href="../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../developers/architecture/">Architecture</a></li><li><a href="../../developers/repository-layout/">Repository layout</a></li><li><a href="../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../developers/ast/" aria-current="page">The AST package</a></li><li><a href="../../developers/workflows/">Workflow narrator</a></li><li><a href="../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../developers/cli-reference/">CLI reference</a></li><li><a href="../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../developers/extending/">Extending Construct</a></li><li><a href="../../developers/testing/">Testing</a></li><li><a href="../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../developers/api/">All packages</a></li><li><a href="../../developers/api/core/">Core engine</a></li><li><a href="../../developers/api/engine/">Engine</a></li><li><a href="../../developers/api/ast/">AST</a></li><li><a href="../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../developers/api/tools/">Tools</a></li><li><a href="../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>The AST package</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<p class="kicker">Internals</p><h1>The AST package</h1><p class="lede">Parse, walk, extract and generate TypeScript and JSX.</p><div class="prose"><p>Every deterministic (non-LLM) way Construct reads, walks and generates TypeScript/JSX source, behind one
+entry point: <code>src/ast/index.mjs</code>. Both the CLI (<code>src/</code>) and the UI backend (<code>ui/server</code>) import from it.</p>
+<pre><code class="language-js">// from src/*.mjs:            import { extractImports } from &#39;./ast/index.mjs&#39;;
+// from ui/server/src/*.mjs:  import { extractImports } from &#39;../../../src/ast/index.mjs&#39;;
+</code></pre>
+<p>Relative imports are deliberate: <code>ui/server</code> already imports <code>../../../src/*</code>, and <code>typescript</code> /
+<code>estree-walker</code> / <code>@typescript-eslint/typescript-estree</code> resolve from the repo-root <code>node_modules</code>. No npm
+workspace is used, so the four separate <code>npm install</code> locations are unchanged. <code>package.json</code> here carries
+the <code>exports</code> map (<code>.</code>, <code>./parse</code>, <code>./walk</code>, <code>./extract</code>, <code>./ts</code>) for a future move to a real package.</p>
+<h2 id="api">API<a class="anchor" href="#api" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Function</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>parse</td>
+<td><code>parseToAst(source)</code></td>
+<td>typescript-estree AST (comments/ranges/loc), JSX first then non-JSX; single-slot memo on the last source</td>
+</tr>
+<tr>
+<td>parse</td>
+<td><code>parseTsSource(source, fileName?)</code></td>
+<td>TypeScript-compiler-API <code>SourceFile</code> (parents set, TSX) for type-system questions</td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>walkAst(ast, {enter, leave})</code></td>
+<td>estree-walker&#39;s <code>walk</code></td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>walkForUsage(ast, visit)</code></td>
+<td>walk skipping non-usage positions (import bindings, re-export specifiers, non-computed member/key names)</td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>collectCalls(ast, names:Set)</code></td>
+<td>real <code>name(...)</code> calls, sorted, <code>{name, index}</code></td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>collectBareIdentifierUsages(ast, names:Set)</code></td>
+<td>real identifier references, sorted</td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>collectControlFlowNodes(ast)</code></td>
+<td>if/for/while/switch/try nodes; <code>CONTROL_FLOW_TYPES</code> is the set</td>
+</tr>
+<tr>
+<td>walk</td>
+<td><code>isNonUsagePosition(node, parent, key)</code></td>
+<td>the predicate behind <code>walkForUsage</code></td>
+</tr>
+<tr>
+<td>extract</td>
+<td><code>extractImports(source)</code></td>
+<td>static + dynamic import specifiers, source order</td>
+</tr>
+<tr>
+<td>extract</td>
+<td><code>extractExports(source)</code></td>
+<td><code>[{name, index}]</code> for every export form</td>
+</tr>
+<tr>
+<td>extract</td>
+<td><code>extractJsdoc(source, index)</code></td>
+<td>the JSDoc block for the export at <code>index</code> (decorator-aware), or <code>null</code></td>
+</tr>
+<tr>
+<td>extract</td>
+<td><code>staticImportEntries(ast)</code></td>
+<td><code>[{value, index}]</code> for top-level <code>import</code> declarations only</td>
+</tr>
+<tr>
+<td>extract</td>
+<td><code>lineOf(source, index)</code></td>
+<td>1-based line of a character offset</td>
+</tr>
+<tr>
+<td>ts</td>
+<td><code>ts</code></td>
+<td>the <code>typescript</code> module (use <code>ts.factory</code> to build nodes)</td>
+</tr>
+<tr>
+<td>ts</td>
+<td><code>findNode(root, pred)</code> / <code>findAllNodes(root, pred)</code></td>
+<td>depth-first search of a <code>ts.Node</code> tree</td>
+</tr>
+<tr>
+<td>ts</td>
+<td><code>printNode(node)</code></td>
+<td>print a <code>ts.factory</code> node as source (LF newlines)</td>
+</tr>
+</tbody></table>
+<p><code>src/parser.mjs</code> re-exports <code>parseToAst</code>, <code>extractImports/Exports/Jsdoc</code> and <code>lineOf</code> so older imports keep
+working; new code should import from <code>src/ast</code>.</p>
+<h2 id="runnable-example">Runnable example<a class="anchor" href="#runnable-example" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-js">import { parseToAst, extractImports, collectCalls, lineOf } from &#39;./src/ast/index.mjs&#39;;
+
+const source = `import { a } from &#39;./a&#39;;\nexport function Page() { return fetch(&#39;/x&#39;); }\n// fetch(&#39;/ignored&#39;)`;
+console.log(extractImports(source));                                    // [ &#39;./a&#39; ]
+const [hit] = collectCalls(parseToAst(source), new Set([&#39;fetch&#39;]));
+console.log(hit.name, &#39;on line&#39;, lineOf(source, hit.index));            // fetch on line 2
+</code></pre>
+<p>(A comment or string containing <code>fetch(</code> is never reported — only real calls.)</p>
+<h2 id="jsx-edit-analysis-family-typescript-estree">JSX edit/analysis family (typescript-estree)<a class="anchor" href="#jsx-edit-analysis-family-typescript-estree" aria-label="Link to this section">#</a></h2>
+<p>The Pages Editor and the visual composer used to parse/edit JSX with Babel (a third parser stack). Those
+operations now live here, on typescript-estree, and <code>ui/server/src/pagesEditor.mjs</code> keeps only the glue
+(HTTP error wording/statuses, the hash guard, the enforcement gate, path scoping, cross-file import lookup).
+<code>@babel/*</code> is gone from <code>ui/server</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Functions</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>jsxParse.mjs</code></td>
+<td><code>parseJsx(source)</code>, <code>jsxParseError(source)</code>, <code>checkJsxReplacement(snippet)</code></td>
+</tr>
+<tr>
+<td><code>jsxTree.mjs</code></td>
+<td><code>parseJsxTree(source)</code> -&gt; <code>{roots, byId, ast}</code> (ids <code>n0..</code> in document order), <code>jsxAttributes</code>, <code>jsxNameToString</code>, <code>findParentRecord</code></td>
+</tr>
+<tr>
+<td><code>jsxEdit.mjs</code></td>
+<td>offset-exact text edits: <code>setAttributeText</code>, <code>setSpreadText</code>, <code>removeAttributeText</code>, <code>removeNodeText</code>, <code>swapNodesText</code>, <code>addChildText</code>, <code>spliceNode</code>, <code>renderAttrValue</code></td>
+</tr>
+<tr>
+<td><code>jsxScope.mjs</code></td>
+<td><code>collectComponentScopeNames(ast)</code>, <code>findImportOfName(ast, name)</code>, <code>declaredPropNames(childSource, tag, isDefault)</code>, <code>findTypeMembers(source, typeName)</code></td>
+</tr>
+</tbody></table>
+<pre><code class="language-js">import { parseJsxTree, setAttributeText, jsxParseError } from &#39;./src/ast/index.mjs&#39;;
+const src = &#39;&lt;Card title=&quot;a&quot; /&gt;&#39;;
+const { byId } = parseJsxTree(src);
+const next = setAttributeText(src, byId.get(&#39;n0&#39;), &#39;title&#39;, &#39;string&#39;, &#39;b&#39;);   // &#39;&lt;Card title=&quot;b&quot; /&gt;&#39;
+console.log(next, jsxParseError(next));                                          // ... null
+</code></pre>
+<p>Every edit is a splice of the original text (bytes outside the edited range never change); callers re-parse
+the result with <code>jsxParseError</code>. Parity with the former Babel implementation is proven by
+<code>ui/server/src/pagesEditor.golden.test.mjs</code> (golden outputs captured from Babel before the migration).</p>
+<p>Known, deliberate differences from Babel: (1) the <em>text</em> of parser error details differs (the operation
+still fails in the same cases); (2) TypeScript&#39;s parser rejects a bare <code>&gt;</code>/<code>}</code> in JSX text, so <code>parseJsx</code>
+blanks that one character (same length) in the copy it parses and retries -- offsets are unchanged;
+(3) <code>&lt;a b={} /&gt;</code> is re-rejected explicitly (TS treats it as a checker error); (4) Babel&#39;s semantic early
+errors (<code>const a; const a;</code>, top-level <code>return</code>) and its acceptance of <code>&lt;a.b-c /&gt;</code> are not replicated.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../developers/context-envelope/"><span>Previous</span>Context Envelope and pipeline</a><a class="next" href="../../developers/workflows/"><span>Next</span>Workflow narrator</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#api">API</a></li><li><a href="#runnable-example">Runnable example</a></li><li><a href="#jsx-edit-analysis-family-typescript-estree">JSX edit/analysis family (typescript-estree)</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/ast/README.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

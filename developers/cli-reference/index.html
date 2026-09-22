@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI reference · Developer Docs</title>
+<meta name="description" content="Every command and flag, generated from the CLI itself.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="CLI reference · Developer Docs">
+<meta property="og:description" content="Every command and flag, generated from the CLI itself.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/cli-reference/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/cli-reference/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/">Guide</a><a href="../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../developers/architecture/">Architecture</a></li><li><a href="../../developers/repository-layout/">Repository layout</a></li><li><a href="../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../developers/ast/">The AST package</a></li><li><a href="../../developers/workflows/">Workflow narrator</a></li><li><a href="../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../developers/cli-reference/" aria-current="page">CLI reference</a></li><li><a href="../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../developers/extending/">Extending Construct</a></li><li><a href="../../developers/testing/">Testing</a></li><li><a href="../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../developers/api/">All packages</a></li><li><a href="../../developers/api/core/">Core engine</a></li><li><a href="../../developers/api/engine/">Engine</a></li><li><a href="../../developers/api/ast/">AST</a></li><li><a href="../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../developers/api/tools/">Tools</a></li><li><a href="../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>CLI reference</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<p class="kicker">Reference</p><h1>CLI reference</h1><p class="lede">Every command and flag, generated from the CLI itself.</p><div class="prose"><p>This page is generated from the CLI&#39;s own usage text (<code>src/usage.mjs</code>), which is exactly what <code>construct</code> prints with no arguments, so it always matches the installed version.</p>
+<h2 id="usage-text">Usage text<a class="anchor" href="#usage-text" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-text">Construct
+
+Run &#39;construct repl&#39; for an interactive shell with detailed built-in help
+(&#39;help&#39;, &#39;help &lt;topic&gt;&#39;) — no need to retype &#39;node .../construct.mjs&#39; or
+--dir on every line.
+
+Four capabilities, one CLI:
+  construct create ...    scaffold a feature, a layer, or a whole vertical slice
+  construct refactor ...  mechanical, LLM-free moves/renames within the architecture
+  construct research ...  read-only: summarize a feature, explain its workflows in English, compute a change&#39;s impact, or check environment/tooling
+  construct import ...    scaffold layers for an existing, non-Construct file + a breadcrumb to it
+
+  construct create feature &lt;name&gt; [--dir &lt;path&gt;]
+  construct create layer &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct create &lt;layer&gt; &lt;name&gt; --feature &lt;feature&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct refactor move &lt;name&gt; --feature &lt;feature&gt; --from &lt;layer&gt; --to &lt;layer&gt; [--dir &lt;path&gt;]
+  construct refactor rename &lt;name&gt; &lt;newName&gt; --feature &lt;feature&gt; --layer &lt;layer&gt; [--dir &lt;path&gt;]
+  construct summarize &lt;unit-ref&gt; [--kind &lt;k&gt;] [--detail brief|standard|full] [--include a,b] [--format json|markdown] [--dir &lt;path&gt;]
+  construct summarize --list [--kind &lt;k&gt;] | --usage   (structured, LLM-free summaries of any feature/file/hook/route/rule/package)
+  construct research summarize [--feature &lt;name&gt;] [--format json|md|compact|prose] [--since &lt;ref&gt;] [--dir &lt;path&gt;]
+  construct research workflow &lt;feature&gt; [&lt;file&gt;] [--format prose|md|json|scenarios] [--dir &lt;path&gt;]
+  construct research doctor [--dir &lt;path&gt;]
+  construct research impact &lt;unit-ref&gt;... [--files a,b] [--since &lt;ref&gt;] [--ticket &lt;text&gt;] [--ticket-file &lt;path&gt;] [--depth N] [--max-files N] [--format json|markdown] [--dir &lt;path&gt;]
+  construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
+  construct review &lt;base&gt; &lt;head&gt; [--plan &lt;file&gt;] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir &lt;path&gt;]
+  construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)
+  construct test run &lt;feature&gt; [--name &lt;file&gt; --area generated|yours] [--base-url &lt;url&gt;] [--format json|text] [--dir &lt;path&gt;]
+    (runs the feature&#39;s Playwright tests against the project&#39;s own running app (default http://localhost:3000, this machine
+    only) and says per failure whether the test harness or the app is at fault; read-only, no LLM; exit 1 on any failure)
+  construct template list|show &lt;name&gt;|instantiate &lt;name&gt; [--param key=value]... [--params-json &lt;json&gt;] --templates &lt;dir&gt;
+  construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates &lt;dir&gt; or CONSTRUCT_TEMPLATES_DIR, none are bundled)
+  construct import &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; --from &lt;path&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct import --plan &lt;path&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct import --route &lt;path&gt;  (standalone interactive wizard, run directly — not inside repl)
+
+&#39;construct import&#39; scaffolds the requested layers and drops a TODO(import)
+comment in each pointing at the source file, then by default stops there —
+reading that file and writing the real ported logic is left to you (or
+whichever LLM you choose) as an explicit next step. &#39;--plan &lt;path&gt;&#39; is the
+whole-feature form: given a plan ({ feature, units: [{ name, layers, from },
+...] }) produced by whichever LLM analyzed the old feature and approved by
+you, it runs the same step once per unit, in one command.
+
+Pass --llm &lt;provider&gt; (currently: claude, ollama) to have import do the
+writing for you instead: it calls that provider once per generated file —
+never once for the whole batch — with that file&#39;s layer constraints and the
+old source, and writes the result directly. Review LLM-written output
+before trusting it.
+
+&#39;construct create&#39;/&#39;construct generate&#39; accept the same --llm &lt;provider&gt;
+flag: when given, that provider writes a real implementation into each
+generated file in place of the plain template stub — one call per file,
+that file&#39;s layer constraints included, same as import&#39;s fill above. Which
+layers/files get created is still always decided deterministically; --llm
+only changes what ends up inside the file(s) that were already going to be
+created. Omit --llm and every generated file is the exact same plain
+template stub as before. Locating files, scaffolding, and deciding feature
+shape never involve an LLM either way.
+
+&#39;construct import --route &lt;path&gt;&#39; is the guided, whole-feature form. &lt;path&gt;
+is a real router route — a URL like /v2/home, or the folder that owns its
+page.tsx — and seeds the first one; it then asks for as many more as the
+old feature actually spans (e.g. /v2/home and /v2/home/details), traces
+each one&#39;s real import graph (page -&gt; Client -&gt; hooks/components, stopping
+at known external boundaries) rather than reading a hand-picked directory,
+auto-creates the destination feature if it doesn&#39;t exist yet (never touches
+it if it does), analyzes everything with ONE combined &quot;claude&quot; call, shows
+you the plan, and on approval builds it, then immediately runs validate and
+tells you exactly what&#39;s left — a TODO(import) count to fill in, or a
+reminder to review LLM-written output. A URL-style route needs to know
+where your app/ directory is; it asks once and reuses it for every further
+route this session. It manages its own input, so run it directly from your
+shell — not typed inside &#39;construct repl&#39;, which is already reading input.
+
+Each of the above has a flat equivalent (unchanged, still supported):
+
+Commands:
+  construct init [dir] [--framework nextjs|react-spa]
+  construct feature create &lt;name&gt; [--dir &lt;path&gt;]
+  construct generate &lt;layer&gt; &lt;name&gt; --feature &lt;feature&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct generate page &lt;name&gt; --feature &lt;feature&gt; --from &lt;path&gt; [--dir &lt;path&gt;]
+    (ingests an externally-authored JSX file — e.g. a Subframe export — as a
+    pristine, presentation-only page + an explicit &lt;Name&gt;PageProps.ts interface,
+    instead of scaffolding the usual stub template; &#39;construct create page ... --from
+    &lt;path&gt;&#39; is the equivalent under the create/refactor/research/import grouping)
+  construct generate workflow &lt;name&gt; --feature &lt;feature&gt; --from &lt;path-to-json&gt; [--dir &lt;path&gt;]
+    (compiles a JSON state-graph descriptor into a real XState v5 machine file
+    instead of the usual stub template; &#39;construct create workflow ... --from &lt;path&gt;&#39;
+    is the equivalent under the create/refactor/research/import grouping)
+  construct generate controller &lt;name&gt; --feature &lt;feature&gt; --bind [--envelope &lt;path&gt;] [--dir &lt;path&gt;]
+    (auto-wires an already-generated hook into an already-generated pristine page&#39;s
+    Props interface via exact + fuzzy AST signature matching, instead of the usual
+    same-named-page-only stub template; &#39;construct create controller ... --bind&#39; is
+    the equivalent under the create/refactor/research/import grouping)
+  construct generate layer &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; [--llm &lt;provider&gt;] [--dir &lt;path&gt;]
+  construct generate tests &lt;feature&gt; [--dry-run] [--prune] [--dir &lt;path&gt;]
+    (one LOCKED Playwright spec per workflow scenario into features/&lt;feature&gt;/tests/generated/;
+    needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
+  construct sync [--dir &lt;path&gt;]
+  construct validate [--format json] [--dir &lt;path&gt;]
+  construct summarize [--feature &lt;name&gt;] [--format json|md|compact|prose] [--since &lt;ref&gt;] [--dir &lt;path&gt;]
+  construct doctor [--dir &lt;path&gt;]
+  construct pipeline run [--dir &lt;path&gt;]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
+
+--dir &lt;path&gt; targets a Construct project nested in a subdirectory (e.g. one
+created with &#39;construct init &lt;path&gt;&#39; inside a larger, unrelated project)
+without requiring you to cd into it first.
+
+Generation/refactor order is enforced for real by IMPORT-001, not left as a
+convention: a layer whose template references a sibling layer&#39;s file (e.g. a
+controller importing its page) fails immediately if that file doesn&#39;t exist
+yet — so &#39;construct generate layer&#39; always builds requested layers in
+dependency order regardless of how you list them, and a refactor move/rename
+that leaves a naming mismatch in its new layer is reported right away.
+
+Externally-authored UI (a design tool&#39;s output): list its globs under &#39;frozen:&#39;
+in architecture.yml (relative to the project root; may reach outside it). Every
+create/generate/import/refactor/pipeline write into a matching path is refused,
+and PAGE-007 / COMPONENT-004 / CONTROLLER-002 (warnings by default) flag pages,
+components and controllers that re-author markup already in a frozen source
+instead of a controller importing it and forwarding props. See the README.
+
+&#39;construct refactor&#39; never rewrites a file&#39;s own content or exported
+identifier — only its location/name and every other file&#39;s import of it.
+Whether the result is valid in its new layer (naming, purity, etc.) is
+construct validate&#39;s job, reported immediately after the move.
+</code></pre>
+<h2 id="commands-at-a-glance">Commands at a glance<a class="anchor" href="#commands-at-a-glance" aria-label="Link to this section">#</a></h2>
+<p>Three capabilities, each with its own namespace — a friendlier grouping over the same underlying commands, not a second implementation:</p>
+<pre><code class="language-bash"># create — scaffold a feature, a layer, or a whole vertical slice
+construct create feature &lt;name&gt; [--dir &lt;path&gt;]
+construct create layer &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; [--dir &lt;path&gt;]
+construct create &lt;layer&gt; &lt;name&gt; --feature &lt;feature&gt; [--dir &lt;path&gt;]
+construct create service &lt;name&gt; --feature &lt;feature&gt; --openapi &lt;spec&gt; [--dir &lt;path&gt;]
+
+# refactor — mechanical, LLM-free moves/renames within the architecture
+construct refactor move &lt;name&gt; --feature &lt;feature&gt; --from &lt;layer&gt; --to &lt;layer&gt; [--dir &lt;path&gt;]
+construct refactor rename &lt;name&gt; &lt;newName&gt; --feature &lt;feature&gt; --layer &lt;layer&gt; [--dir &lt;path&gt;]
+
+# research — read-only: summarize a feature, or check environment/tooling
+construct research summarize [--feature &lt;name&gt;] [--format json|md|compact|prose] [--since &lt;ref&gt;] [--dir &lt;path&gt;]
+construct research impact &lt;unit-ref&gt;... [--files a,b] [--since &lt;ref&gt;] [--ticket &lt;text&gt;] [--depth N] [--format json|markdown] [--dir &lt;path&gt;]
+construct research doctor [--dir &lt;path&gt;]
+</code></pre>
+<p><code>construct research workflow &lt;feature&gt; [&lt;file&gt;] [--format prose|md|json|scenarios]</code> explains a feature&#39;s XState workflows in plain English (each state, every start-to-end scenario, health findings), derived from the real source every time with no LLM — see <code>docs/workflow-narrator.md</code>.</p>
+<p><code>construct summarize &lt;ref&gt; [--detail brief|standard|full] [--format json|markdown]</code> (and <code>--list</code>, <code>--usage</code>) returns a deterministic, LLM-free summary of any project, feature, layer, file, hook, workflow, route, rule or package, sized for a bot or a teammate — see <code>docs/unit-summary.md</code>.</p>
+<p><code>construct research impact &lt;ref&gt;... [--files a,b] [--since &lt;ref&gt;] [--ticket &lt;text&gt;] [--depth N] [--format json|markdown]</code> computes the blast radius of a change: which features and layers it touches, why each file is implicated, what is shared across features, and what your rules already say about those files. Every entry is marked <code>derived</code> (computed from the graph) or <code>inferred</code> (reached only from a seed that was guessed from ticket text or proposed by a model), so you can see exactly where judgement entered — see <code>docs/impact-analysis.md</code>.</p>
+<p><code>construct review &lt;base&gt; &lt;head&gt; [--plan &lt;file&gt;] [--features a,b] [--format json|markdown]</code> reports pull request health between two git refs with no model: what changed by feature and layer, changes nobody explained, rule regressions, public-surface changes and the flow diff, with findings split into mechanical fixes and conversations — see <code>docs/pr-health.md</code>. <code>construct template list|show|instantiate</code> prints named, reusable plans from a folder you point at with <code>--templates &lt;dir&gt;</code>; none are bundled.</p>
+<p><code>construct refactor</code> never rewrites a file&#39;s own logic or exported identifier — only its location/name and every other file&#39;s import of it (including the moved file&#39;s own same-layer imports, re-resolved for its new home). Whether the result is <em>valid</em> in its new layer — naming convention, purity, everything else — is <code>construct validate</code>&#39;s job, reported immediately after the move so a mismatch shows up right away. There&#39;s no persistent activity log: each command prints one clear, scannable line for what it did (<code>Created ...</code>, <code>Moved ... -&gt; ...</code>), and that line <strong>is</strong> the record — a file that changed without one wasn&#39;t done by the tool.</p>
+<p>The flat commands below are unchanged and still work — <code>create</code>/<code>refactor</code>/<code>research</code> are just a grouping on top:</p>
+<pre><code class="language-bash">construct init [dir]
+construct feature create &lt;name&gt; [--dir &lt;path&gt;]
+construct generate &lt;layer&gt; &lt;name&gt; --feature &lt;feature&gt; [--dir &lt;path&gt;]
+construct generate layer &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; [--dir &lt;path&gt;]
+construct sync [--dir &lt;path&gt;]
+construct validate [--dir &lt;path&gt;]
+construct validate --format json [--dir &lt;path&gt;]
+construct doctor [--dir &lt;path&gt;]
+</code></pre>
+<h2 id="exit-codes">Exit codes<a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>Success (warnings do not fail a run)</td>
+</tr>
+<tr>
+<td>1</td>
+<td>One or more error-level violations</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Usage error: unknown command, missing or invalid arguments</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Internal error, including a model reply that was rejected or a provider call that failed</td>
+</tr>
+</tbody></table>
+<h2 id="output-conventions">Output conventions<a class="anchor" href="#output-conventions" aria-label="Link to this section">#</a></h2>
+<p>Every <code>create</code>, <code>refactor</code>, <code>research</code> and <code>import</code> action ends with one attribution line, <code>[tool: ...] [llm: ...]</code>, that states what was done and how many model calls were made. <code>validate --format json</code> and <code>research summarize --format json</code> print pure JSON that can be piped. <code>pipeline run</code> takes a Context Envelope on standard input; see <a href="../../developers/context-envelope/">Context Envelope and pipeline</a>.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../developers/building-blocks/"><span>Previous</span>Building blocks</a><a class="next" href="../../developers/rules-reference/"><span>Next</span>Rule reference</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#usage-text">Usage text</a></li><li><a href="#commands-at-a-glance">Commands at a glance</a></li><li><a href="#exit-codes">Exit codes</a></li><li><a href="#output-conventions">Output conventions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/usage.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

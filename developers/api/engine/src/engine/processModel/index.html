@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/processModel · Developer Docs</title>
+<meta name="description" content="#287 — the process record: what a running plan actually is, as JSON.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/processModel · Developer Docs">
+<meta property="og:description" content="#287 — the process record: what a running plan actually is, as JSON.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processModel/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processModel/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../">Home</a><a href="../../../../../../user-guide/">Guide</a><a href="../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/processModel</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/processModel</h1><div class="prose"><p>#287 — the process record: what a running plan actually is, as JSON.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processModel.mjs" rel="noopener"><code>src/engine/processModel.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="artifactchanges">ARTIFACT_CHANGES<a class="anchor" href="#artifactchanges" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>ARTIFACT_CHANGES</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L64" rel="noopener">src/engine/processModel.mjs:64</a></p>
+<p>How an artifact changed a file. A subset of the plan&#39;s TOUCH_CHANGES —
+<code>read</code> and <code>move</code> are not artifacts: nothing was written.</p>
+<hr>
+<h3 id="logprovenance">LOG_PROVENANCE<a class="anchor" href="#logprovenance" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>LOG_PROVENANCE</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L60" rel="noopener">src/engine/processModel.mjs:60</a></p>
+<p>Log provenance — the exact three badges <code>docs/design/cockpit-layout.md</code> §5
+names, and a closed set on purpose:</p>
+<ul>
+<li><code>ok</code>   a deterministic block did this and it succeeded. No model.</li>
+<li><code>llm</code>  a model was involved, whatever the outcome. Filtering the log to
+   this one value must always answer &quot;where did a model touch my
+   project?&quot; — that is the Vision-level requirement, so it is keyed
+   to involvement, not to success.</li>
+<li><code>warn</code> something wants a human&#39;s attention, including a step failing.</li>
+</ul>
+<p>There is deliberately no separate <code>error</code> provenance: a failure is not only
+a log line, it is <code>steps[].status === &#39;failed&#39;</code> with <code>steps[].error</code>, which
+is the authoritative record. The log badge stays the design&#39;s three.</p>
+<hr>
+<h3 id="maxlogentries">MAX_LOG_ENTRIES<a class="anchor" href="#maxlogentries" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>MAX_LOG_ENTRIES</strong>: <code>2000</code> = <code>2000</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L72" rel="noopener">src/engine/processModel.mjs:72</a></p>
+<p>Oldest entries are dropped past this, and <code>logDropped</code> counts them, so a
+long-running process cannot grow its state file without bound.</p>
+<hr>
+<h3 id="pendingcontrols">PENDING_CONTROLS<a class="anchor" href="#pendingcontrols" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PENDING_CONTROLS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L68" rel="noopener">src/engine/processModel.mjs:68</a></p>
+<p>Control a caller has asked for but that has not taken effect yet, because
+a step in flight cannot be torn down mid-syscall.</p>
+<hr>
+<h3 id="processactionnames">PROCESS_ACTION_NAMES<a class="anchor" href="#processactionnames" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PROCESS_ACTION_NAMES</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L447" rel="noopener">src/engine/processModel.mjs:447</a></p>
+<p>The action names the machine declares, for the drift test.</p>
+<hr>
+<h3 id="processerrorcodes">PROCESS_ERROR_CODES<a class="anchor" href="#processerrorcodes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PROCESS_ERROR_CODES</strong>: <code>Readonly</code>&lt;{ <code>ARTIFACT_CHANGE_INVALID</code>: <code>&quot;ARTIFACT_CHANGE_INVALID&quot;</code>; <code>ARTIFACT_PATH_ABSOLUTE</code>: <code>&quot;ARTIFACT_PATH_ABSOLUTE&quot;</code>; <code>ARTIFACT_STEP_UNKNOWN</code>: <code>&quot;ARTIFACT_STEP_UNKNOWN&quot;</code>; <code>EVENT_REJECTED</code>: <code>&quot;EVENT_REJECTED&quot;</code>; <code>LOG_PROVENANCE_INVALID</code>: <code>&quot;LOG_PROVENANCE_INVALID&quot;</code>; <code>LOG_STEP_UNKNOWN</code>: <code>&quot;LOG_STEP_UNKNOWN&quot;</code>; <code>PENDING_CONTROL_INVALID</code>: <code>&quot;PENDING_CONTROL_INVALID&quot;</code>; <code>PROCESS_FIELD_TYPE</code>: <code>&quot;PROCESS_FIELD_TYPE&quot;</code>; <code>PROCESS_MISSING_FIELD</code>: <code>&quot;PROCESS_MISSING_FIELD&quot;</code>; <code>PROCESS_NOT_OBJECT</code>: <code>&quot;PROCESS_NOT_OBJECT&quot;</code>; <code>PROCESS_PLAN_INVALID</code>: <code>&quot;PROCESS_PLAN_INVALID&quot;</code>; <code>PROCESS_STATE_INVALID</code>: <code>&quot;PROCESS_STATE_INVALID&quot;</code>; <code>PROCESS_UNKNOWN_FIELD</code>: <code>&quot;PROCESS_UNKNOWN_FIELD&quot;</code>; <code>PROCESS_VERSION_INVALID</code>: <code>&quot;PROCESS_VERSION_INVALID&quot;</code>; <code>STEP_LLM_UNRECORDED</code>: <code>&quot;STEP_LLM_UNRECORDED&quot;</code>; <code>STEP_MISSING</code>: <code>&quot;STEP_MISSING&quot;</code>; <code>STEP_STATUS_INVALID</code>: <code>&quot;STEP_STATUS_INVALID&quot;</code>; <code>STEP_UNKNOWN</code>: <code>&quot;STEP_UNKNOWN&quot;</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L74" rel="noopener">src/engine/processModel.mjs:74</a></p>
+<hr>
+<h3 id="processrequiredfields">PROCESS_REQUIRED_FIELDS<a class="anchor" href="#processrequiredfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PROCESS_REQUIRED_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L99" rel="noopener">src/engine/processModel.mjs:99</a></p>
+<hr>
+<h3 id="processtoplevelfields">PROCESS_TOP_LEVEL_FIELDS<a class="anchor" href="#processtoplevelfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PROCESS_TOP_LEVEL_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L95" rel="noopener">src/engine/processModel.mjs:95</a></p>
+<hr>
+<h3 id="processversion">PROCESS_VERSION<a class="anchor" href="#processversion" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PROCESS_VERSION</strong>: <code>1</code> = <code>1</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L34" rel="noopener">src/engine/processModel.mjs:34</a></p>
+<hr>
+<h3 id="stepstatuses">STEP_STATUSES<a class="anchor" href="#stepstatuses" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>STEP_STATUSES</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L44" rel="noopener">src/engine/processModel.mjs:44</a></p>
+<p>Per-step status, keyed by the plan step&#39;s <code>id</code>.</p>
+<ul>
+<li><code>pending</code>       not reached yet</li>
+<li><code>running</code>       in flight</li>
+<li><code>awaiting-user</code> a <code>user</code>-executor step has been reached; the process
+            pauses and waits for the person</li>
+<li><code>done</code> / <code>failed</code></li>
+<li><code>skipped</code>       never run, because the process was cancelled or an
+            earlier step it depends on failed</li>
+</ul>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="appendlog">appendLog()<a class="anchor" href="#appendlog" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>appendLog</strong>(<code>process</code>, <code>__namedParameters</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L196" rel="noopener">src/engine/processModel.mjs:196</a></p>
+<p>Append a log entry. <code>provenance</code> is required and closed (LOG_PROVENANCE) —
+there is no default, because a default is how &quot;was a model involved?&quot;
+quietly stops being answerable.</p>
+<p>Returns a new process. Throws TypeError on an unknown provenance.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>__namedParameters</h5>
+<h6>detail?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>message</h6>
+<p><code>any</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h6>provenance</h6>
+<p><code>any</code></p>
+<h6>stepId?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="applyevent">applyEvent()<a class="anchor" href="#applyevent" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>applyEvent</strong>(<code>process</code>, <code>eventType</code>, <code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L458" rel="noopener">src/engine/processModel.mjs:458</a></p>
+<p>Send a lifecycle event. The single entry point for state changes: it runs
+the machine, applies the declared actions, and logs the move.</p>
+<p>Returns <code>{ process, accepted, error }</code>. <code>accepted: false</code> leaves the
+process untouched and names why — &quot;you cannot resume a process that is not
+paused&quot; is a refusal with a code, not a silent no-op, so an API can answer
+a bad request honestly.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>eventType</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>message?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>accepted</h5>
+<blockquote>
+<p><strong>accepted</strong>: <code>boolean</code> = <code>false</code></p>
+</blockquote>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>object</code></p>
+</blockquote>
+<h6>error.code</h6>
+<blockquote>
+<p><strong>code</strong>: <code>&quot;EVENT_REJECTED&quot;</code> = <code>PROCESS_ERROR_CODES.EVENT_REJECTED</code></p>
+</blockquote>
+<h6>error.message</h6>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<h5>process</h5>
+<blockquote>
+<p><strong>process</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="completestep">completeStep()<a class="anchor" href="#completestep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>completeStep</strong>(<code>process</code>, <code>stepId</code>, <code>options?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L400" rel="noopener">src/engine/processModel.mjs:400</a></p>
+<p>Finish a step successfully. <code>llm</code> is required: <code>null</code> for a deterministic
+step, <code>{ provider, calls }</code> when a model wrote something.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>string</code></p>
+<h5>options?</h5>
+<h6>llm?</h6>
+<p>{ <code>calls?</code>: <code>number</code>; <code>provider?</code>: <code>string</code>; }</p>
+<h6>llm.calls?</h6>
+<p><code>number</code></p>
+<h6>llm.provider?</h6>
+<p><code>string</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="createprocess">createProcess()<a class="anchor" href="#createprocess" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createProcess</strong>(<code>plan</code>, <code>options?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L139" rel="noopener">src/engine/processModel.mjs:139</a></p>
+<p>Build a process for <code>plan</code>. The plan is stored verbatim so the record is
+self-contained: a process file read a week later still knows exactly what
+it was running, even if the plan that produced it is long gone.</p>
+<p>Throws TypeError on an invalid plan — a process must never be created
+around a plan that cannot execute. Validate with <code>validatePlan()</code> and show
+the errors before getting here.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>plan</h5>
+<p><code>any</code></p>
+<p>a valid plan.v1 object</p>
+<h5>options?</h5>
+<h6>id?</h6>
+<p><code>string</code> = <code>...</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h6>projectRoot?</h6>
+<p><code>string</code></p>
+<h6>title?</h6>
+<p><code>string</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>A new <code>process.v1</code> record in its initial state, with the plan stored verbatim.</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>When the plan is invalid or <code>projectRoot</code> is missing.</p>
+<hr>
+<h3 id="createprocessid">createProcessId()<a class="anchor" href="#createprocessid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createProcessId</strong>(): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L111" rel="noopener">src/engine/processModel.mjs:111</a></p>
+<p>A fresh process id. Random by design — a process is an event in time, not
+a derivation of the plan, and two runs of the same plan are two processes.
+Callers that need determinism (tests, replay) pass their own <code>id</code>.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="dependenciessatisfied">dependenciesSatisfied()<a class="anchor" href="#dependenciessatisfied" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>dependenciesSatisfied</strong>(<code>process</code>, <code>stepId</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L337" rel="noopener">src/engine/processModel.mjs:337</a></p>
+<p>True when every step this one <code>dependsOn</code> finished successfully.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>any</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="failstep">failStep()<a class="anchor" href="#failstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>failStep</strong>(<code>process</code>, <code>stepId</code>, <code>options?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L414" rel="noopener">src/engine/processModel.mjs:414</a></p>
+<p>Finish a step as failed. <code>llm</code> is required for the same reason — a step
+that failed <em>after</em> calling a model still called a model.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>string</code></p>
+<h5>options?</h5>
+<h6>error?</h6>
+<p><code>unknown</code></p>
+<h6>llm?</h6>
+<p>{ <code>calls?</code>: <code>number</code>; <code>provider?</code>: <code>string</code>; }</p>
+<h6>llm.calls?</h6>
+<p><code>number</code></p>
+<h6>llm.provider?</h6>
+<p><code>string</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="formatprocesserrors">formatProcessErrors()<a class="anchor" href="#formatprocesserrors" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>formatProcessErrors</strong>(<code>errors</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L654" rel="noopener">src/engine/processModel.mjs:654</a></p>
+<p>One human-readable line per structured error, matching
+<code>formatPlanErrors()</code>.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>errors</h5>
+<p><code>any</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="migrateprocess">migrateProcess()<a class="anchor" href="#migrateprocess" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>migrateProcess</strong>(<code>record</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L538" rel="noopener">src/engine/processModel.mjs:538</a></p>
+<p>Bring a stored process record up to the current schema version before
+validation. v1 is the only version, so this is the identity (the embedded
+plan goes through migratePlan). A v2 adds a step here; see docs/VERSIONING.md. *</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>record</h5>
+<p><code>any</code></p>
+<p>A parsed stored process record, any supported version.</p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The record at the current schema version.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">migrateProcess(JSON.parse(text));
+</code></pre>
+<hr>
+<h3 id="modellog">modelLog()<a class="anchor" href="#modellog" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>modelLog</strong>(<code>process</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L221" rel="noopener">src/engine/processModel.mjs:221</a></p>
+<p>Every log entry a model produced — the one-call answer to &quot;where did a
+model touch this?&quot;, which is why <code>llm</code> is provenance and not severity.</p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h4 id="returns-10">Returns<a class="anchor" href="#returns-10" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="nextrunnablestep">nextRunnableStep()<a class="anchor" href="#nextrunnablestep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>nextRunnableStep</strong>(<code>process</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L332" rel="noopener">src/engine/processModel.mjs:332</a></p>
+<p>The next step to run: the first <code>pending</code> step in plan array order. #286
+guarantees <code>dependsOn</code> only points at EARLIER steps, so array order is
+already a valid execution order and no topological sort is needed here.
+Returns undefined when nothing is left to run.</p>
+<p>A step whose dependency failed or was skipped is not runnable; the engine
+skips it rather than running it into a broken precondition.</p>
+<h4 id="parameters-10">Parameters<a class="anchor" href="#parameters-10" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h4 id="returns-11">Returns<a class="anchor" href="#returns-11" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="pendingapproval">pendingApproval()<a class="anchor" href="#pendingapproval" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>pendingApproval</strong>(<code>process</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L278" rel="noopener">src/engine/processModel.mjs:278</a></p>
+<p>Artifacts still waiting for a human verdict.</p>
+<h4 id="parameters-11">Parameters<a class="anchor" href="#parameters-11" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h4 id="returns-12">Returns<a class="anchor" href="#returns-12" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="planstep">planStep()<a class="anchor" href="#planstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>planStep</strong>(<code>process</code>, <code>stepId</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L319" rel="noopener">src/engine/processModel.mjs:319</a></p>
+<p>The plan step (not the status record) for <code>stepId</code>, or undefined — what a
+runner hands to <code>planToCommand()</code>.</p>
+<h4 id="parameters-12">Parameters<a class="anchor" href="#parameters-12" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>any</code></p>
+<h4 id="returns-13">Returns<a class="anchor" href="#returns-13" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="processsummary">processSummary()<a class="anchor" href="#processsummary" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>processSummary</strong>(<code>process</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L497" rel="noopener">src/engine/processModel.mjs:497</a></p>
+<p>What a list of processes shows: enough to render a row without
+shipping the whole plan, the whole log and every artifact to a client.</p>
+<h4 id="parameters-13">Parameters<a class="anchor" href="#parameters-13" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<p>A process record.</p>
+<h4 id="returns-14">Returns<a class="anchor" href="#returns-14" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The row a process list shows: id, title, project root, top-level state, pending control, step counts and current step.</p>
+<hr>
+<h3 id="recordartifact">recordArtifact()<a class="anchor" href="#recordartifact" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>recordArtifact</strong>(<code>process</code>, <code>__namedParameters</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L239" rel="noopener">src/engine/processModel.mjs:239</a></p>
+<p>Record a file this process changed. <code>before</code>/<code>after</code> are optional file
+contents: pass them and the artifact carries the hashes and byte counts a
+Diff tab needs without re-reading a tree that may have moved on; omit them
+and the artifact is still a truthful record of what was touched.</p>
+<p><code>approved</code> starts null — collected, not accepted. The approval gate itself
+is #291&#39;s (the runner must not accept model output on its own); this is the
+place it records its verdict.</p>
+<h4 id="parameters-14">Parameters<a class="anchor" href="#parameters-14" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>__namedParameters</h5>
+<h6>after</h6>
+<p><code>any</code></p>
+<h6>before</h6>
+<p><code>any</code></p>
+<h6>change</h6>
+<p><code>any</code></p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h6>path</h6>
+<p><code>any</code></p>
+<h6>stepId?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h4 id="returns-15">Returns<a class="anchor" href="#returns-15" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="setapproval">setApproval()<a class="anchor" href="#setapproval" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>setApproval</strong>(<code>process</code>, <code>approved</code>, <code>paths?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L289" rel="noopener">src/engine/processModel.mjs:289</a></p>
+<p>Set the approval verdict on artifacts. <code>paths</code> omitted means &quot;every
+artifact still awaiting a verdict&quot; — deliberately NOT &quot;every artifact&quot;:
+an Approve-all or Reject-all button must not quietly overturn a decision
+the user already made on a specific file. Naming a path always wins, so an
+explicit change of mind is still possible.</p>
+<h4 id="parameters-15">Parameters<a class="anchor" href="#parameters-15" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>approved</h5>
+<p><code>any</code></p>
+<h5>paths?</h5>
+<p><code>any</code> = <code>null</code></p>
+<h4 id="returns-16">Returns<a class="anchor" href="#returns-16" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="skipstep">skipStep()<a class="anchor" href="#skipstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>skipStep</strong>(<code>process</code>, <code>stepId</code>, <code>__namedParameters?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L419" rel="noopener">src/engine/processModel.mjs:419</a></p>
+<p>Mark a step as never-going-to-run.</p>
+<h4 id="parameters-16">Parameters<a class="anchor" href="#parameters-16" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h6>reason?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h4 id="returns-17">Returns<a class="anchor" href="#returns-17" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="startstep">startStep()<a class="anchor" href="#startstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>startStep</strong>(<code>process</code>, <code>stepId</code>, <code>__namedParameters?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L353" rel="noopener">src/engine/processModel.mjs:353</a></p>
+<p>Mark a step as started. <code>awaiting-user</code> instead of <code>running</code> for a <code>user</code>
+step, which is a thing a person does, not a thing the runner is doing.</p>
+<h4 id="parameters-17">Parameters<a class="anchor" href="#parameters-17" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<h4 id="returns-18">Returns<a class="anchor" href="#returns-18" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="stepstatus">stepStatus()<a class="anchor" href="#stepstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>stepStatus</strong>(<code>process</code>, <code>stepId</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L313" rel="noopener">src/engine/processModel.mjs:313</a></p>
+<p>The step record for <code>stepId</code>, or undefined.</p>
+<h4 id="parameters-18">Parameters<a class="anchor" href="#parameters-18" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h5>stepId</h5>
+<p><code>any</code></p>
+<h4 id="returns-19">Returns<a class="anchor" href="#returns-19" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="unreachablesteps">unreachableSteps()<a class="anchor" href="#unreachablesteps" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>unreachableSteps</strong>(<code>process</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L345" rel="noopener">src/engine/processModel.mjs:345</a></p>
+<p>Steps that can never run now, because something they depend on did not
+finish. The engine marks them <code>skipped</code> rather than leaving them <code>pending</code>
+forever, so a failed process&#39;s step list is honest.</p>
+<h4 id="parameters-19">Parameters<a class="anchor" href="#parameters-19" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h4 id="returns-20">Returns<a class="anchor" href="#returns-20" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="validateprocess">validateProcess()<a class="anchor" href="#validateprocess" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>validateProcess</strong>(<code>process</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processModel.mjs#L553" rel="noopener">src/engine/processModel.mjs:553</a></p>
+<p>Structural check of a process record, mirroring <code>validatePlan()</code>&#39;s
+contract: <code>{ valid, errors }</code>, never throws, never mutates, never prints,
+and reports every problem rather than stopping at the first. The store runs
+it on every load, so a hand-edited or truncated state file is rejected with
+a named code instead of crashing a server on a missing field.</p>
+<h4 id="parameters-20">Parameters<a class="anchor" href="#parameters-20" aria-label="Link to this section">#</a></h4>
+<h5>process</h5>
+<p><code>any</code></p>
+<h4 id="returns-21">Returns<a class="anchor" href="#returns-21" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>errors</h5>
+<blockquote>
+<p><strong>errors</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>valid</h5>
+<blockquote>
+<p><strong>valid</strong>: <code>boolean</code></p>
+</blockquote>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processModel.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

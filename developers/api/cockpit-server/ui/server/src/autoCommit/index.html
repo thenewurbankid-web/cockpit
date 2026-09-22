@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/server/src/autoCommit · Developer Docs</title>
+<meta name="description" content="Commit-on-save for the Cockpit (#283) — the trigger half, which is `ui/` (proprietary-future) because it is policy and lifecycle, not computation.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/server/src/autoCommit · Developer Docs">
+<meta property="og:description" content="Commit-on-save for the Cockpit (#283) — the trigger half, which is `ui/` (proprietary-future) because it is policy and lifecycle, not computation.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/autoCommit/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/autoCommit/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/server/src/autoCommit</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/server/src/autoCommit</h1><div class="prose"><p>Commit-on-save for the Cockpit — the trigger half, which is <code>ui/</code> (proprietary-future) because it is policy and lifecycle, not computation.</p>
+<p><em>Cockpit server, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/server/src/autoCommit.mjs" rel="noopener"><code>ui/server/src/autoCommit.mjs</code></a>.</em></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="autocommiterror">AutoCommitError<a class="anchor" href="#autocommiterror" aria-label="Link to this section">#</a></h3>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L38" rel="noopener">ui/server/src/autoCommit.mjs:38</a></p>
+<h4 id="extends">Extends<a class="anchor" href="#extends" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><code>Error</code></li>
+</ul>
+<h4 id="constructors">Constructors<a class="anchor" href="#constructors" aria-label="Link to this section">#</a></h4>
+<h5>Constructor</h5>
+<blockquote>
+<p><strong>new AutoCommitError</strong>(<code>message</code>, <code>status?</code>): <a href="#autocommiterror"><code>AutoCommitError</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L39" rel="noopener">ui/server/src/autoCommit.mjs:39</a></p>
+<h6>Parameters</h6>
+<h6>message</h6>
+<p><code>any</code></p>
+<h6>status?</h6>
+<p><code>number</code> = <code>400</code></p>
+<h6>Returns</h6>
+<p><a href="#autocommiterror"><code>AutoCommitError</code></a></p>
+<h6>Overrides</h6>
+<p><code>Error.constructor</code></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L41" rel="noopener">ui/server/src/autoCommit.mjs:41</a></p>
+<h6>Inherited from</h6>
+<p><code>Error.name</code></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L42" rel="noopener">ui/server/src/autoCommit.mjs:42</a></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="dirtyanswers">DIRTY_ANSWERS<a class="anchor" href="#dirtyanswers" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DIRTY_ANSWERS</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L33" rel="noopener">ui/server/src/autoCommit.mjs:33</a></p>
+<hr>
+<h3 id="maxcoalescems">MAX_COALESCE_MS<a class="anchor" href="#maxcoalescems" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>MAX_COALESCE_MS</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L36" rel="noopener">ui/server/src/autoCommit.mjs:36</a></p>
+<p>Upper bound on the coalescing window: a day-long window is indistinguishable from <code>manual</code>
+and would quietly lose the audit trail the feature exists to produce.</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="answerdirtyprompt">answerDirtyPrompt()<a class="anchor" href="#answerdirtyprompt" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>answerDirtyPrompt</strong>(<code>root</code>, <code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L201" rel="noopener">ui/server/src/autoCommit.mjs:201</a></p>
+<p>Answer the dirty-tree prompt. <code>remember</code> stores it for this project until the server restarts.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>remember?</h6>
+<p><code>boolean</code> = <code>false</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>committed</h5>
+<blockquote>
+<p><strong>committed</strong>: <code>boolean</code> = <code>false</code></p>
+</blockquote>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>any</code> = <code>reason</code></p>
+</blockquote>
+<hr>
+<h3 id="endsession">endSession()<a class="anchor" href="#endsession" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>endSession</strong>(<code>root</code>): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L94" rel="noopener">ui/server/src/autoCommit.mjs:94</a></p>
+<p>Forget the session for one project (e.g. the user switched projectDir). Never touches git.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="flushsession">flushSession()<a class="anchor" href="#flushsession" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>flushSession</strong>(<code>root</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L235" rel="noopener">ui/server/src/autoCommit.mjs:235</a></p>
+<p>Commit now: the Commit button in <code>manual</code>, and the &quot;don&#39;t wait for the window&quot; action.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>committed</h5>
+<blockquote>
+<p><strong>committed</strong>: <code>boolean</code> = <code>false</code></p>
+</blockquote>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>any</code> = <code>reason</code></p>
+</blockquote>
+<hr>
+<h3 id="getcommitconfig">getCommitConfig()<a class="anchor" href="#getcommitconfig" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>getCommitConfig</strong>(): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L54" rel="noopener">ui/server/src/autoCommit.mjs:54</a></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>branchPrefix</h5>
+<blockquote>
+<p><strong>branchPrefix</strong>: <code>&quot;cockpit&quot;</code> = <code>&#39;cockpit&#39;</code></p>
+</blockquote>
+<h5>branchSuffix</h5>
+<blockquote>
+<p><strong>branchSuffix</strong>: <code>&quot;&quot;</code> = <code>&#39;&#39;</code></p>
+</blockquote>
+<h5>coalesceMs</h5>
+<blockquote>
+<p><strong>coalesceMs</strong>: <code>30000</code> = <code>DEFAULT_COALESCE_MS</code></p>
+</blockquote>
+<h5>enabled</h5>
+<blockquote>
+<p><strong>enabled</strong>: <code>true</code> = <code>true</code></p>
+</blockquote>
+<h5>maxCoalesceMs</h5>
+<blockquote>
+<p><strong>maxCoalesceMs</strong>: <code>number</code> = <code>MAX_COALESCE_MS</code></p>
+</blockquote>
+<h5>messagePrefix</h5>
+<blockquote>
+<p><strong>messagePrefix</strong>: <code>&quot;CON&quot;</code> = <code>&#39;CON&#39;</code></p>
+</blockquote>
+<h5>mode</h5>
+<blockquote>
+<p><strong>mode</strong>: <code>&quot;coalesce&quot;</code> = <code>&#39;coalesce&#39;</code></p>
+</blockquote>
+<h5>modes</h5>
+<blockquote>
+<p><strong>modes</strong>: <code>string</code>[]</p>
+</blockquote>
+<hr>
+<h3 id="getsessionstatus">getSessionStatus()<a class="anchor" href="#getsessionstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>getSessionStatus</strong>(<code>root</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L316" rel="noopener">ui/server/src/autoCommit.mjs:316</a></p>
+<p>Everything the Cockpit needs to render the auto-commit indicator and the dirty-tree prompt.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>branch</h5>
+<blockquote>
+<p><strong>branch</strong>: <code>any</code></p>
+</blockquote>
+<h5>config</h5>
+<blockquote>
+<p><strong>config</strong>: <code>object</code></p>
+</blockquote>
+<h6>config.branchPrefix</h6>
+<blockquote>
+<p><strong>branchPrefix</strong>: <code>&quot;cockpit&quot;</code> = <code>&#39;cockpit&#39;</code></p>
+</blockquote>
+<h6>config.branchSuffix</h6>
+<blockquote>
+<p><strong>branchSuffix</strong>: <code>&quot;&quot;</code> = <code>&#39;&#39;</code></p>
+</blockquote>
+<h6>config.coalesceMs</h6>
+<blockquote>
+<p><strong>coalesceMs</strong>: <code>30000</code> = <code>DEFAULT_COALESCE_MS</code></p>
+</blockquote>
+<h6>config.enabled</h6>
+<blockquote>
+<p><strong>enabled</strong>: <code>true</code> = <code>true</code></p>
+</blockquote>
+<h6>config.maxCoalesceMs</h6>
+<blockquote>
+<p><strong>maxCoalesceMs</strong>: <code>number</code> = <code>MAX_COALESCE_MS</code></p>
+</blockquote>
+<h6>config.messagePrefix</h6>
+<blockquote>
+<p><strong>messagePrefix</strong>: <code>&quot;CON&quot;</code> = <code>&#39;CON&#39;</code></p>
+</blockquote>
+<h6>config.mode</h6>
+<blockquote>
+<p><strong>mode</strong>: <code>&quot;coalesce&quot;</code> = <code>&#39;coalesce&#39;</code></p>
+</blockquote>
+<h6>config.modes</h6>
+<blockquote>
+<p><strong>modes</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code> = <code>true</code></p>
+</blockquote>
+<h5>remembered</h5>
+<blockquote>
+<p><strong>remembered</strong>: <code>any</code></p>
+</blockquote>
+<h5>repo</h5>
+<blockquote>
+<p><strong>repo</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>session</h5>
+<blockquote>
+<p><strong>session</strong>: <code>object</code></p>
+</blockquote>
+<h6>session.adopted</h6>
+<blockquote>
+<p><strong>adopted</strong>: <code>any</code> = <code>s.adopted</code></p>
+</blockquote>
+<h6>session.awaitingDecision</h6>
+<blockquote>
+<p><strong>awaitingDecision</strong>: <code>any</code> = <code>s.awaitingDecision</code></p>
+</blockquote>
+<h6>session.branch</h6>
+<blockquote>
+<p><strong>branch</strong>: <code>any</code> = <code>s.branch</code></p>
+</blockquote>
+<h6>session.commits</h6>
+<blockquote>
+<p><strong>commits</strong>: <code>any</code> = <code>s.commits</code></p>
+</blockquote>
+<h6>session.dirtyAnswer</h6>
+<blockquote>
+<p><strong>dirtyAnswer</strong>: <code>any</code> = <code>s.dirtyAnswer</code></p>
+</blockquote>
+<h6>session.dueInMs</h6>
+<blockquote>
+<p><strong>dueInMs</strong>: <code>number</code></p>
+</blockquote>
+<h6>session.lastCommit</h6>
+<blockquote>
+<p><strong>lastCommit</strong>: <code>any</code></p>
+</blockquote>
+<h6>session.pending</h6>
+<blockquote>
+<p><strong>pending</strong>: <code>any</code>[]</p>
+</blockquote>
+<h6>session.sessionId</h6>
+<blockquote>
+<p><strong>sessionId</strong>: <code>any</code> = <code>s.sessionId</code></p>
+</blockquote>
+<h6>session.stash</h6>
+<blockquote>
+<p><strong>stash</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="recordsave">recordSave()<a class="anchor" href="#recordsave" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>recordSave</strong>(<code>root</code>, <code>relPaths</code>, <code>opts?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L177" rel="noopener">ui/server/src/autoCommit.mjs:177</a></p>
+<p>Tell the auto-committer that the Cockpit just wrote a file. This is the single entry point every
+save route calls; it never throws for a non-git or non-project directory, because a save must
+succeed whether or not it can be committed.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>project root</p>
+<h5>relPaths</h5>
+<p><code>string</code> | <code>string</code>[]</p>
+<p>project-relative path(s) just written</p>
+<h5>opts?</h5>
+<h6>kind?</h6>
+<p><code>&quot;add&quot;</code> | <code>&quot;update&quot;</code> | <code>&quot;delete&quot;</code> = <code>&#39;update&#39;</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>one of: <code>{status:&#39;disabled&#39;|&#39;not-a-repo&#39;}</code>, <code>{status:&#39;manual&#39;|&#39;coalescing&#39;, pending}</code>,
+  <code>{status:&#39;needs-decision&#39;, dirty}</code>, or <code>{committed:true, commit}</code>.</p>
+<hr>
+<h3 id="resetautocommit">resetAutoCommit()<a class="anchor" href="#resetautocommit" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resetAutoCommit</strong>(): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L86" rel="noopener">ui/server/src/autoCommit.mjs:86</a></p>
+<p>Test seam, and the reset a project switch performs.</p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="setsessionplan">setSessionPlan()<a class="anchor" href="#setsessionplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>setSessionPlan</strong>(<code>root</code>, <code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L139" rel="noopener">ui/server/src/autoCommit.mjs:139</a></p>
+<p>Attach the plan/ticket a session is working from, which names the branch and lets the
+commit body state what was planned versus not. Optional — a session without one still works.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>plan?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>planTitle?</h6>
+<p><code>string</code> = <code>&#39;&#39;</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>branch</h5>
+<blockquote>
+<p><strong>branch</strong>: <code>any</code></p>
+</blockquote>
+<h5>config</h5>
+<blockquote>
+<p><strong>config</strong>: <code>object</code></p>
+</blockquote>
+<h6>config.branchPrefix</h6>
+<blockquote>
+<p><strong>branchPrefix</strong>: <code>&quot;cockpit&quot;</code> = <code>&#39;cockpit&#39;</code></p>
+</blockquote>
+<h6>config.branchSuffix</h6>
+<blockquote>
+<p><strong>branchSuffix</strong>: <code>&quot;&quot;</code> = <code>&#39;&#39;</code></p>
+</blockquote>
+<h6>config.coalesceMs</h6>
+<blockquote>
+<p><strong>coalesceMs</strong>: <code>30000</code> = <code>DEFAULT_COALESCE_MS</code></p>
+</blockquote>
+<h6>config.enabled</h6>
+<blockquote>
+<p><strong>enabled</strong>: <code>true</code> = <code>true</code></p>
+</blockquote>
+<h6>config.maxCoalesceMs</h6>
+<blockquote>
+<p><strong>maxCoalesceMs</strong>: <code>number</code> = <code>MAX_COALESCE_MS</code></p>
+</blockquote>
+<h6>config.messagePrefix</h6>
+<blockquote>
+<p><strong>messagePrefix</strong>: <code>&quot;CON&quot;</code> = <code>&#39;CON&#39;</code></p>
+</blockquote>
+<h6>config.mode</h6>
+<blockquote>
+<p><strong>mode</strong>: <code>&quot;coalesce&quot;</code> = <code>&#39;coalesce&#39;</code></p>
+</blockquote>
+<h6>config.modes</h6>
+<blockquote>
+<p><strong>modes</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code> = <code>true</code></p>
+</blockquote>
+<h5>remembered</h5>
+<blockquote>
+<p><strong>remembered</strong>: <code>any</code></p>
+</blockquote>
+<h5>repo</h5>
+<blockquote>
+<p><strong>repo</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>session</h5>
+<blockquote>
+<p><strong>session</strong>: <code>object</code></p>
+</blockquote>
+<h6>session.adopted</h6>
+<blockquote>
+<p><strong>adopted</strong>: <code>any</code> = <code>s.adopted</code></p>
+</blockquote>
+<h6>session.awaitingDecision</h6>
+<blockquote>
+<p><strong>awaitingDecision</strong>: <code>any</code> = <code>s.awaitingDecision</code></p>
+</blockquote>
+<h6>session.branch</h6>
+<blockquote>
+<p><strong>branch</strong>: <code>any</code> = <code>s.branch</code></p>
+</blockquote>
+<h6>session.commits</h6>
+<blockquote>
+<p><strong>commits</strong>: <code>any</code> = <code>s.commits</code></p>
+</blockquote>
+<h6>session.dirtyAnswer</h6>
+<blockquote>
+<p><strong>dirtyAnswer</strong>: <code>any</code> = <code>s.dirtyAnswer</code></p>
+</blockquote>
+<h6>session.dueInMs</h6>
+<blockquote>
+<p><strong>dueInMs</strong>: <code>number</code></p>
+</blockquote>
+<h6>session.lastCommit</h6>
+<blockquote>
+<p><strong>lastCommit</strong>: <code>any</code></p>
+</blockquote>
+<h6>session.pending</h6>
+<blockquote>
+<p><strong>pending</strong>: <code>any</code>[]</p>
+</blockquote>
+<h6>session.sessionId</h6>
+<blockquote>
+<p><strong>sessionId</strong>: <code>any</code> = <code>s.sessionId</code></p>
+</blockquote>
+<h6>session.stash</h6>
+<blockquote>
+<p><strong>stash</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="updatecommitconfig">updateCommitConfig()<a class="anchor" href="#updatecommitconfig" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>updateCommitConfig</strong>(<code>patch?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/autoCommit.mjs#L59" rel="noopener">ui/server/src/autoCommit.mjs:59</a></p>
+<p>Validate and apply a config patch. Throws (never silently ignores) on a bad value.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>patch?</h5>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>branchPrefix</h5>
+<blockquote>
+<p><strong>branchPrefix</strong>: <code>&quot;cockpit&quot;</code> = <code>&#39;cockpit&#39;</code></p>
+</blockquote>
+<h5>branchSuffix</h5>
+<blockquote>
+<p><strong>branchSuffix</strong>: <code>&quot;&quot;</code> = <code>&#39;&#39;</code></p>
+</blockquote>
+<h5>coalesceMs</h5>
+<blockquote>
+<p><strong>coalesceMs</strong>: <code>30000</code> = <code>DEFAULT_COALESCE_MS</code></p>
+</blockquote>
+<h5>enabled</h5>
+<blockquote>
+<p><strong>enabled</strong>: <code>true</code> = <code>true</code></p>
+</blockquote>
+<h5>maxCoalesceMs</h5>
+<blockquote>
+<p><strong>maxCoalesceMs</strong>: <code>number</code> = <code>MAX_COALESCE_MS</code></p>
+</blockquote>
+<h5>messagePrefix</h5>
+<blockquote>
+<p><strong>messagePrefix</strong>: <code>&quot;CON&quot;</code> = <code>&#39;CON&#39;</code></p>
+</blockquote>
+<h5>mode</h5>
+<blockquote>
+<p><strong>mode</strong>: <code>&quot;coalesce&quot;</code> = <code>&#39;coalesce&#39;</code></p>
+</blockquote>
+<h5>modes</h5>
+<blockquote>
+<p><strong>modes</strong>: <code>string</code>[]</p>
+</blockquote>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#classes">Classes</a></li><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/server/src/autoCommit.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

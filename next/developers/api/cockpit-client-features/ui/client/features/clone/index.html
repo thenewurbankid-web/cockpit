@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/clone · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/clone.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/clone · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/clone.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/clone/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/clone/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/clone</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/clone</h1><div class="prose"><p><em>Cockpit client (features), next. Source: n/a.</em></p>
+<h2 id="references">References<a class="anchor" href="#references" aria-label="Link to this section">#</a></h2>
+<h3 id="branchproblem">branchProblem<a class="anchor" href="#branchproblem" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFieldHints/#branchproblem">branchProblem</a></p>
+<hr>
+<h3 id="buildjobview">buildJobView<a class="anchor" href="#buildjobview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneJobView/#buildjobview">buildJobView</a></p>
+<hr>
+<h3 id="buildrecentrows">buildRecentRows<a class="anchor" href="#buildrecentrows" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFormView/#buildrecentrows">buildRecentRows</a></p>
+<hr>
+<h3 id="cloneaction">CloneAction<a class="anchor" href="#cloneaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Clone/#cloneaction">CloneAction</a></p>
+<hr>
+<h3 id="clonecontroller">CloneController<a class="anchor" href="#clonecontroller" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/controllers/CloneController/#clonecontroller">CloneController</a></p>
+<hr>
+<h3 id="cloneformreading">CloneFormReading<a class="anchor" href="#cloneformreading" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFormView/#cloneformreading">CloneFormReading</a></p>
+<hr>
+<h3 id="cloneformstate">CloneFormState<a class="anchor" href="#cloneformstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Clone/#cloneformstate">CloneFormState</a></p>
+<hr>
+<h3 id="cloneid">CloneId<a class="anchor" href="#cloneid" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#cloneid">CloneId</a></p>
+<hr>
+<h3 id="cloneinput">CloneInput<a class="anchor" href="#cloneinput" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneInput/#cloneinput">CloneInput</a></p>
+<hr>
+<h3 id="cloneinputsource">CloneInputSource<a class="anchor" href="#cloneinputsource" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneInput/#cloneinputsource">CloneInputSource</a></p>
+<hr>
+<h3 id="clonejob">CloneJob<a class="anchor" href="#clonejob" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonejob">CloneJob</a></p>
+<hr>
+<h3 id="clonejobscontroller">CloneJobsController<a class="anchor" href="#clonejobscontroller" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/controllers/CloneJobsController/#clonejobscontroller">CloneJobsController</a></p>
+<hr>
+<h3 id="clonejobview">CloneJobView<a class="anchor" href="#clonejobview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonejobview">CloneJobView</a></p>
+<hr>
+<h3 id="clonepreview">ClonePreview<a class="anchor" href="#clonepreview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonepreview">ClonePreview</a></p>
+<hr>
+<h3 id="clonereadresult">CloneReadResult<a class="anchor" href="#clonereadresult" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonereadresult">CloneReadResult</a></p>
+<hr>
+<h3 id="clonereducer">cloneReducer<a class="anchor" href="#clonereducer" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Clone/#clonereducer">cloneReducer</a></p>
+<hr>
+<h3 id="clonestartinput">CloneStartInput<a class="anchor" href="#clonestartinput" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonestartinput">CloneStartInput</a></p>
+<hr>
+<h3 id="clonestartresult">CloneStartResult<a class="anchor" href="#clonestartresult" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonestartresult">CloneStartResult</a></p>
+<hr>
+<h3 id="clonestate">CloneState<a class="anchor" href="#clonestate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#clonestate">CloneState</a></p>
+<hr>
+<h3 id="connectremotecontroller">ConnectRemoteController<a class="anchor" href="#connectremotecontroller" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/controllers/ConnectRemoteController/#connectremotecontroller">ConnectRemoteController</a></p>
+<hr>
+<h3 id="describesource">describeSource<a class="anchor" href="#describesource" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneInput/#describesource">describeSource</a></p>
+<hr>
+<h3 id="foldernameproblem">folderNameProblem<a class="anchor" href="#foldernameproblem" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFieldHints/#foldernameproblem">folderNameProblem</a></p>
+<hr>
+<h3 id="formatbytes">formatBytes<a class="anchor" href="#formatbytes" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneProgress/#formatbytes">formatBytes</a></p>
+<hr>
+<h3 id="initialclonestate">initialCloneState<a class="anchor" href="#initialclonestate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Clone/#initialclonestate">initialCloneState</a></p>
+<hr>
+<h3 id="initialrecentstate">initialRecentState<a class="anchor" href="#initialrecentstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Recent/#initialrecentstate">initialRecentState</a></p>
+<hr>
+<h3 id="initialremotestate">initialRemoteState<a class="anchor" href="#initialremotestate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Remote/#initialremotestate">initialRemoteState</a></p>
+<hr>
+<h3 id="islivejob">isLiveJob<a class="anchor" href="#islivejob" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneJobView/#islivejob">isLiveJob</a></p>
+<hr>
+<h3 id="normalizecloneinput">normalizeCloneInput<a class="anchor" href="#normalizecloneinput" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneInput/#normalizecloneinput">normalizeCloneInput</a></p>
+<hr>
+<h3 id="percentof">percentOf<a class="anchor" href="#percentof" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneProgress/#percentof">percentOf</a></p>
+<hr>
+<h3 id="pullresult">PullResult<a class="anchor" href="#pullresult" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#pullresult">PullResult</a></p>
+<hr>
+<h3 id="readcloneform">readCloneForm<a class="anchor" href="#readcloneform" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFormView/#readcloneform">readCloneForm</a></p>
+<hr>
+<h3 id="recentaction">RecentAction<a class="anchor" href="#recentaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Recent/#recentaction">RecentAction</a></p>
+<hr>
+<h3 id="recentclone">RecentClone<a class="anchor" href="#recentclone" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#recentclone">RecentClone</a></p>
+<hr>
+<h3 id="recentclonerow">RecentCloneRow<a class="anchor" href="#recentclonerow" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#recentclonerow">RecentCloneRow</a></p>
+<hr>
+<h3 id="recentreducer">recentReducer<a class="anchor" href="#recentreducer" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Recent/#recentreducer">recentReducer</a></p>
+<hr>
+<h3 id="recentstate">RecentState<a class="anchor" href="#recentstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Recent/#recentstate">RecentState</a></p>
+<hr>
+<h3 id="remoteaction">RemoteAction<a class="anchor" href="#remoteaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Remote/#remoteaction">RemoteAction</a></p>
+<hr>
+<h3 id="remoteformstate">RemoteFormState<a class="anchor" href="#remoteformstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Remote/#remoteformstate">RemoteFormState</a></p>
+<hr>
+<h3 id="remotereducer">remoteReducer<a class="anchor" href="#remotereducer" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/workflows/Remote/#remotereducer">remoteReducer</a></p>
+<hr>
+<h3 id="remoteresult">RemoteResult<a class="anchor" href="#remoteresult" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#remoteresult">RemoteResult</a></p>
+<hr>
+<h3 id="remotestatus">RemoteStatus<a class="anchor" href="#remotestatus" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/types/#remotestatus">RemoteStatus</a></p>
+<hr>
+<h3 id="suggestfoldername">suggestFolderName<a class="anchor" href="#suggestfoldername" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneUrl/#suggestfoldername">suggestFolderName</a></p>
+<hr>
+<h3 id="tokenproblem">tokenProblem<a class="anchor" href="#tokenproblem" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneFieldHints/#tokenproblem">tokenProblem</a></p>
+<hr>
+<h3 id="urlproblem">urlProblem<a class="anchor" href="#urlproblem" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/domain/CloneUrl/#urlproblem">urlProblem</a></p>
+<hr>
+<h3 id="useclone">useClone<a class="anchor" href="#useclone" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/hooks/useClone/#useclone">useClone</a></p>
+<hr>
+<h3 id="useclonejobs">useCloneJobs<a class="anchor" href="#useclonejobs" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/hooks/useCloneJobs/#useclonejobs">useCloneJobs</a></p>
+<hr>
+<h3 id="userecentclones">useRecentClones<a class="anchor" href="#userecentclones" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/hooks/useRecentClones/#userecentclones">useRecentClones</a></p>
+<hr>
+<h3 id="useremote">useRemote<a class="anchor" href="#useremote" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/clone/hooks/useRemote/#useremote">useRemote</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/package.json">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

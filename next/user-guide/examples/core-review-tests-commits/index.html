@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review, tests and commit messages as an API · User Guide</title>
+<meta name="description" content="The functions the CLI and the Cockpit both call.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Review, tests and commit messages as an API · User Guide">
+<meta property="og:description" content="The functions the CLI and the Cockpit both call.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/core-review-tests-commits/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/core-review-tests-commits/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../">Home</a><a href="../../../user-guide/" aria-current="page">Guide</a><a href="../../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../../user-guide/getting-started/">Getting started</a></li><li><a href="../../../user-guide/line/">What Line is</a></li><li><a href="../../../user-guide/concepts/">The five ideas</a></li><li><a href="../../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../../user-guide/construct/">What Construct is</a></li><li><a href="../../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../../user-guide/examples/core-review-tests-commits/" aria-current="page"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../../user-guide/cli/">Using the command line</a></li><li><a href="../../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Review, tests and commit messages as an API</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Construct</p><h1>Review, tests and commit messages as an API</h1><p class="lede">The functions the CLI and the Cockpit both call.</p><div class="prose"><p><strong>Problem.</strong> Reviewing a change, keeping tests honest and writing a commit message are all judgement-shaped chores that get delegated to a model by default. Each run gives a different answer and costs tokens, and none of it can be checked.</p>
+<p>Each is a small function that reads a project and returns JSON. The Cockpit and the CLI call these same functions; a script or an agent can call them directly.</p>
+<p>This page is the core API only. The terminal versions are in the <a href="../../../user-guide/examples/cli-impact-and-review/">CLI examples</a> and the screens are in the <a href="../../../user-guide/examples/cockpit-review/">Cockpit examples</a>.</p>
+<h2 id="do-this">Do this<a class="anchor" href="#do-this" aria-label="Link to this section">#</a></h2>
+<h3 id="1-review-two-refs">1. Review two refs<a class="anchor" href="#1-review-two-refs" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-js">import { prHealth } from &#39;./src/engine/prHealth.mjs&#39;;
+
+const report = prHealth(root, { base: &#39;main&#39;, head: &#39;feature/invoice-fetch&#39; /*, expected: plan */ });
+report.summary;
+// &quot;1 file changed across 1 feature (billing): 1 finding (0 mechanical, 1 for a conversation).&quot;
+report.indicators.map((i) =&gt; [i.id, i.status, i.measured]);
+// [[&quot;blast-radius&quot;,&quot;not-measured&quot;,false], [&quot;unexplained&quot;,&quot;clear&quot;,true],
+//  [&quot;rule-regressions&quot;,&quot;attention&quot;,true], [&quot;public-surface&quot;,&quot;info&quot;,true], [&quot;flow-diff&quot;,&quot;clear&quot;,true]]
+</code></pre>
+<p>Every indicator carries the sentence, its evidence, where the number comes from, and <code>repeatable: true</code>. Findings are <code>mechanical</code> (a Construct block resolves it, with the command) or <code>conversation</code> (a human decides); the engine classifies and never fixes. Bad input comes back as data, not an exception:</p>
+<pre><code class="language-text">prHealth(root, { base: &#39;main&#39;, head: &#39;--upload-pack=x&#39; })
+{&quot;schemaVersion&quot;:1,&quot;ok&quot;:false,&quot;error&quot;:{&quot;code&quot;:&quot;INVALID_ARGUMENT&quot;,&quot;message&quot;:&quot;head \&quot;--upload-pack=x\&quot; is not a valid ref: refs cannot start with \&quot;-\&quot;.&quot;}}
+</code></pre>
+<p>It is read-only by construction: git is spawned with argument arrays (never a shell) against temporary detached checkouts that are removed afterwards. Contract: <code>schemas/pr-health.v1.json</code>.</p>
+<h3 id="2-generate-clone-and-edit-tests">2. Generate, clone and edit tests<a class="anchor" href="#2-generate-clone-and-edit-tests" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-js">import { generateFeatureTests } from &#39;./src/engine/testGenerator.mjs&#39;;
+import { cloneGeneratedTest } from &#39;./src/engine/testClone.mjs&#39;;
+import { readStepDocument, previewStepEdit, applyStepEdit } from &#39;./src/engine/testSteps.mjs&#39;;
+
+generateFeatureTests(root, &#39;login&#39;, { dryRun: false });          // one locked spec per route
+cloneGeneratedTest(root, { feature: &#39;login&#39;, source: &#39;login--happy-path.spec.ts&#39;, name: &#39;login-mine&#39; });
+const doc = readStepDocument(root, { feature: &#39;login&#39;, name: &#39;login-mine.spec.ts&#39; });
+const preview = previewStepEdit(root, { feature: &#39;login&#39;, name: &#39;login-mine.spec.ts&#39;, baseHash: doc.hash, steps });
+applyStepEdit(root, { feature: &#39;login&#39;, name: &#39;login-mine.spec.ts&#39;, baseHash: doc.hash, resultSha: preview.resultSha, steps });
+</code></pre>
+<p>The safety contract is part of the API: generation writes only under a feature&#39;s <code>tests/generated/</code> folder and refuses symlinks; a clone never overwrites; a step edit is applied only if you hand back the hash of the file you read and the fingerprint of the diff you previewed, and a stale file is refused. Field values (events, states, URLs, text) are validated against what the flow really has before they become code.</p>
+<h3 id="3-write-a-commit-message-the-same-way-every-time">3. Write a commit message, the same way every time<a class="anchor" href="#3-write-a-commit-message-the-same-way-every-time" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-js">import { buildCommitMessage, nextSerialFrom, newSessionId } from &#39;./src/engine/commitMessage.mjs&#39;;
+
+const built = buildCommitMessage(root, {
+  changedFiles: [&#39;features/billing/domain/billingRules.ts&#39;],
+  changes: { &#39;features/billing/domain/billingRules.ts&#39;: &#39;update&#39; },
+  sessionId, serial: nextSerialFrom(subjectsOnThisBranch, { sessionId }), prefix: &#39;CON&#39;,
+});
+built.message;   // subject and body, ready for `git commit -F -`
+</code></pre>
+<p>Impact counts come from the impact report and the prose from the unit summarizer. A test asserts that this module&#39;s import graph cannot reach the model provider code, so &quot;no model&quot; is enforced, not promised.</p>
+<h3 id="4-where-a-bot-39-s-output-lands">4. Where a bot&#39;s output lands<a class="anchor" href="#4-where-a-bot-39-s-output-lands" aria-label="Link to this section">#</a></h3>
+<p>Two more building blocks sit behind the Cockpit&#39;s Plan screen and are equally callable: the bot runner (each plan runs in its own git its own copy of the repository, one commit per successful step, on branch <code>construct/bot/&lt;process id&gt;</code>, with a repeatable step run with no model reachable) and the approval gate, whose <code>review</code> reads each artifact&#39;s diff and every reason it cannot apply, and whose <code>decide</code> is the only call that writes into your tree, for named files only, quoting the diff fingerprint. Both return JSON and never throw on bad input.</p>
+<h2 id="you-get">You get<a class="anchor" href="#you-get" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>You get</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Review, tests and commit messages without a model</td>
+<td>none of these modules can reach one</td>
+</tr>
+<tr>
+<td>The same input gives the same output</td>
+<td>assembled from the import graph, the rules and git</td>
+</tr>
+<tr>
+<td>Safe by construction</td>
+<td>validated refs, locked regions, hash-checked writes</td>
+</tr>
+<tr>
+<td>A stable contract</td>
+<td>JSON in and out, versioned schemas</td>
+</tr>
+</tbody></table>
+<p>The full inventory is in <a href="../../../developers/building-blocks/">Building blocks</a>.</p>
+<h2 id="why-it-matters">Why it matters<a class="anchor" href="#why-it-matters" aria-label="Link to this section">#</a></h2>
+<p>Review, tests and commit messages come out identical every run, at no model cost.</p>
+<p>Checked against commit <code>081150b</code> on 2026-09-20 (wording revised for plain language on the same day).</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../../user-guide/examples/core-plans-and-impact/"><span>Previous</span>Plans and impact as an API</a><a class="next" href="../../../user-guide/cockpit/"><span>Next</span>Using the Cockpit</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#do-this">Do this</a></li><li><a href="#you-get">You get</a></li><li><a href="#why-it-matters">Why it matters</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/examples/core-review-tests-commits.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

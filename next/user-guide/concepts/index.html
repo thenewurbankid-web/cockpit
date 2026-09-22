@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The five ideas · User Guide</title>
+<meta name="description" content="Tools, features, parts, rules and records, one sentence each.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The five ideas · User Guide">
+<meta property="og:description" content="Tools, features, parts, rules and records, one sentence each.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/concepts/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/concepts/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/" aria-current="page">Guide</a><a href="../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../user-guide/getting-started/">Getting started</a></li><li><a href="../../user-guide/line/">What Line is</a></li><li><a href="../../user-guide/concepts/" aria-current="page">The five ideas</a></li><li><a href="../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../user-guide/construct/">What Construct is</a></li><li><a href="../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../user-guide/cli/">Using the command line</a></li><li><a href="../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>The five ideas</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Start</p><h1>The five ideas</h1><p class="lede">Tools, features, parts, rules and records, one sentence each.</p><div class="prose"><p>Construct is a set of small commands that each do one mechanical job on a React and TypeScript app. Five ideas explain all of them.</p>
+<p><strong>1. Small tools, same answer every time.</strong> Every command gives the same result for the same input and tells you what it did. Where an AI model helps (writing the body of a function, proposing how to split an old page), you must ask with <code>--llm</code>, and the command reports how many model calls it made. See <a href="../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a>.</p>
+<p><strong>2. A feature is a folder that owns one part of your app.</strong> Its logic, state, screens and network calls live under <code>features/</code>. Other features reach it only through its <code>index.ts</code>, so parts of your app do not tangle.</p>
+<p><strong>3. Inside a feature, every file has one job.</strong> Each file is one of eight parts, and the allowed direction of dependencies is fixed, so you always know where code belongs.</p>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Its job</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Route</strong></td>
+<td>The entry point for a URL. It hands off to a controller.</td>
+</tr>
+<tr>
+<td><strong>Controller</strong></td>
+<td>Connects the app&#39;s behaviour to what is shown.</td>
+</tr>
+<tr>
+<td><strong>Workflow</strong></td>
+<td>The flow and state of a task, as a state machine.</td>
+</tr>
+<tr>
+<td><strong>Hook</strong></td>
+<td>React-aware logic, only where React needs it.</td>
+</tr>
+<tr>
+<td><strong>Domain</strong></td>
+<td>Pure business rules. No network, storage or screen.</td>
+</tr>
+<tr>
+<td><strong>Service</strong></td>
+<td>Talks to the outside world: APIs and anything with side effects.</td>
+</tr>
+<tr>
+<td><strong>Page</strong></td>
+<td>Turns props into markup. No logic.</td>
+</tr>
+<tr>
+<td><strong>Component</strong></td>
+<td>Reusable pieces of markup.</td>
+</tr>
+</tbody></table>
+<p><strong>4. Rules you can read and change.</strong> The conventions are rules with ids such as <code>PAGE-003</code> (&quot;pages cannot import services&quot;). <code>construct validate</code> reports each violation with the file and line, why the rule exists and how to fix it. Your <code>architecture.yml</code> sets each rule to <code>error</code>, <code>warning</code> or <code>off</code>, and can grant time-limited exceptions with a reason and an owner. See <a href="../../user-guide/how-to/tune-rules/">Tune the rules</a> and the <a href="../../developers/rules-reference/">rule reference</a>.</p>
+<p><strong>5. Every action leaves a record.</strong> Each command ends with a line such as <code>[tool: scaffolded the file(s) above from templates] [llm: 0 calls]</code>. That line is the record of what happened and whether a model was involved.</p>
+<h2 id="more-detail">More detail<a class="anchor" href="#more-detail" aria-label="Link to this section">#</a></h2>
+<p><strong>Order is enforced.</strong> Files import each other, so they are created in dependency order (<code>domain</code>, <code>service</code>, <code>workflow</code>, <code>hook</code>, <code>component</code>, <code>page</code>, <code>controller</code>), and rule <code>IMPORT-001</code> fails validation if a relative import points at a file that does not exist.</p>
+<p><strong>Two targets.</strong> Next.js App Router (the default) and client-routed single-page apps (<code>react-spa</code>). Only the route part differs. Set it with <code>project.framework</code> in <code>architecture.yml</code> or <code>construct init --framework</code>.</p>
+<p><strong>Two ways to drive it.</strong> The command line is the complete interface. The Cockpit is a browser front end over the same commands, for when you would rather click than type, or want to watch. It adds no logic and makes no model calls of its own.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../user-guide/line/"><span>Previous</span>What Line is</a><a class="next" href="../../user-guide/construct/"><span>Next</span>What Construct is</a></nav>
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/concepts.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

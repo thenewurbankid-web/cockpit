@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/workflows/types · Developer Docs</title>
+<meta name="description" content="Mirrors src/engine/workflowExtractor.mjs's output (served by ui/server's GET /api/workflows/machines) — extracted fresh from the real source on">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/workflows/types · Developer Docs">
+<meta property="og:description" content="Mirrors src/engine/workflowExtractor.mjs's output (served by ui/server's GET /api/workflows/machines) — extracted fresh from the real source on">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/workflows/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/workflows/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/workflows/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/workflows/types</h1><div class="prose"><p>Mirrors src/engine/workflowExtractor.mjs&#39;s output (served by ui/server&#39;s GET /api/workflows/machines) — extracted fresh from the real source on</p>
+<p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/workflows/types.ts" rel="noopener"><code>ui/client/features/workflows/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="diffhunk">DiffHunk<a class="anchor" href="#diffhunk" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiffHunk</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L101" rel="noopener">ui/client/features/workflows/types.ts:101</a></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>added?</h5>
+<blockquote>
+<p><code>optional</code> <strong>added?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L101" rel="noopener">ui/client/features/workflows/types.ts:101</a></p>
+<h5>removed?</h5>
+<blockquote>
+<p><code>optional</code> <strong>removed?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L101" rel="noopener">ui/client/features/workflows/types.ts:101</a></p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L101" rel="noopener">ui/client/features/workflows/types.ts:101</a></p>
+<hr>
+<h3 id="inlinesegment">InlineSegment<a class="anchor" href="#inlinesegment" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>InlineSegment</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L88" rel="noopener">ui/client/features/workflows/types.ts:88</a></p>
+<p>A sentence split into plain text, <em>state</em> names and <code>code</code> names.</p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;text&quot;</code> | <code>&quot;state&quot;</code> | <code>&quot;code&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L88" rel="noopener">ui/client/features/workflows/types.ts:88</a></p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L88" rel="noopener">ui/client/features/workflows/types.ts:88</a></p>
+<hr>
+<h3 id="narrativefinding">NarrativeFinding<a class="anchor" href="#narrativefinding" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeFinding</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L72" rel="noopener">ui/client/features/workflows/types.ts:72</a></p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L72" rel="noopener">ui/client/features/workflows/types.ts:72</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L72" rel="noopener">ui/client/features/workflows/types.ts:72</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <code>&quot;warning&quot;</code> | <code>&quot;info&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L72" rel="noopener">ui/client/features/workflows/types.ts:72</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L72" rel="noopener">ui/client/features/workflows/types.ts:72</a></p>
+<hr>
+<h3 id="narrativemachine">NarrativeMachine<a class="anchor" href="#narrativemachine" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeMachine</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L74" rel="noopener">ui/client/features/workflows/types.ts:74</a></p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>context?</h5>
+<blockquote>
+<p><code>optional</code> <strong>context?</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L77" rel="noopener">ui/client/features/workflows/types.ts:77</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L82" rel="noopener">ui/client/features/workflows/types.ts:82</a></p>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <a href="#narrativefinding"><code>NarrativeFinding</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L81" rel="noopener">ui/client/features/workflows/types.ts:81</a></p>
+<h5>machine</h5>
+<blockquote>
+<p><strong>machine</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L75" rel="noopener">ui/client/features/workflows/types.ts:75</a></p>
+<h5>scenarios</h5>
+<blockquote>
+<p><strong>scenarios</strong>: <a href="#narrativescenario"><code>NarrativeScenario</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L79" rel="noopener">ui/client/features/workflows/types.ts:79</a></p>
+<h5>states</h5>
+<blockquote>
+<p><strong>states</strong>: <a href="#narrativestate"><code>NarrativeState</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L78" rel="noopener">ui/client/features/workflows/types.ts:78</a></p>
+<h5>summary</h5>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L76" rel="noopener">ui/client/features/workflows/types.ts:76</a></p>
+<h5>truncated</h5>
+<blockquote>
+<p><strong>truncated</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L80" rel="noopener">ui/client/features/workflows/types.ts:80</a></p>
+<hr>
+<h3 id="narrativemachineview">NarrativeMachineView<a class="anchor" href="#narrativemachineview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeMachineView</strong> = <code>Omit</code>&lt;<a href="#narrativemachine"><code>NarrativeMachine</code></a>, <code>&quot;states&quot;</code> | <code>&quot;scenarios&quot;</code> | <code>&quot;findings&quot;</code>&gt; &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L91" rel="noopener">ui/client/features/workflows/types.ts:91</a></p>
+<p>What the components render: the server narrative with sentences pre-split.</p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>contextSegments</h5>
+<blockquote>
+<p><strong>contextSegments</strong>: <a href="#inlinesegment"><code>InlineSegment</code></a>[][]</p>
+</blockquote>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <a href="#narrativefinding"><code>NarrativeFinding</code></a> &amp; <code>object</code>[]</p>
+</blockquote>
+<h5>scenarios</h5>
+<blockquote>
+<p><strong>scenarios</strong>: <a href="#narrativescenario"><code>NarrativeScenario</code></a> &amp; <code>object</code>[]</p>
+</blockquote>
+<h5>states</h5>
+<blockquote>
+<p><strong>states</strong>: <a href="#narrativestate"><code>NarrativeState</code></a> &amp; <code>object</code>[]</p>
+</blockquote>
+<h5>summarySegments</h5>
+<blockquote>
+<p><strong>summarySegments</strong>: <a href="#inlinesegment"><code>InlineSegment</code></a>[]</p>
+</blockquote>
+<hr>
+<h3 id="narrativescenario">NarrativeScenario<a class="anchor" href="#narrativescenario" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeScenario</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L62" rel="noopener">ui/client/features/workflows/types.ts:62</a></p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>end</h5>
+<blockquote>
+<p><strong>end</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L68" rel="noopener">ui/client/features/workflows/types.ts:68</a></p>
+<h6>outcome</h6>
+<blockquote>
+<p><strong>outcome</strong>: <code>&quot;final&quot;</code> | <code>&quot;stuck&quot;</code></p>
+</blockquote>
+<h6>state</h6>
+<blockquote>
+<p><strong>state</strong>: <code>string</code></p>
+</blockquote>
+<h5>events</h5>
+<blockquote>
+<p><strong>events</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L67" rel="noopener">ui/client/features/workflows/types.ts:67</a></p>
+<h5>happy</h5>
+<blockquote>
+<p><strong>happy</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L65" rel="noopener">ui/client/features/workflows/types.ts:65</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L63" rel="noopener">ui/client/features/workflows/types.ts:63</a></p>
+<h5>route</h5>
+<blockquote>
+<p><strong>route</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L66" rel="noopener">ui/client/features/workflows/types.ts:66</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L69" rel="noopener">ui/client/features/workflows/types.ts:69</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L64" rel="noopener">ui/client/features/workflows/types.ts:64</a></p>
+<hr>
+<h3 id="narrativestate">NarrativeState<a class="anchor" href="#narrativestate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeState</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<p>Mirrors src/engine/workflowExplain.mjs&#39;s per-machine output (served by
+GET /api/workflows/narrative): plain-English narrative, scenarios and health
+findings, re-derived from the real source on every request.</p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;initial&quot;</code> | <code>&quot;final&quot;</code> | <code>&quot;compound&quot;</code> | <code>&quot;normal&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<h5>sentences</h5>
+<blockquote>
+<p><strong>sentences</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L60" rel="noopener">ui/client/features/workflows/types.ts:60</a></p>
+<hr>
+<h3 id="narrativeview">NarrativeView<a class="anchor" href="#narrativeview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrativeView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L99" rel="noopener">ui/client/features/workflows/types.ts:99</a></p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>machines</h5>
+<blockquote>
+<p><strong>machines</strong>: <a href="#narrativemachineview"><code>NarrativeMachineView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L99" rel="noopener">ui/client/features/workflows/types.ts:99</a></p>
+<hr>
+<h3 id="pendingworkflowedit">PendingWorkflowEdit<a class="anchor" href="#pendingworkflowedit" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PendingWorkflowEdit</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L123" rel="noopener">ui/client/features/workflows/types.ts:123</a></p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>hunks</h5>
+<blockquote>
+<p><strong>hunks</strong>: <a href="#diffhunk"><code>DiffHunk</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L123" rel="noopener">ui/client/features/workflows/types.ts:123</a></p>
+<h5>req</h5>
+<blockquote>
+<p><strong>req</strong>: <a href="#workfloweditrequest"><code>WorkflowEditRequest</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L123" rel="noopener">ui/client/features/workflows/types.ts:123</a></p>
+<hr>
+<h3 id="selectededge">SelectedEdge<a class="anchor" href="#selectededge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SelectedEdge</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L139" rel="noopener">ui/client/features/workflows/types.ts:139</a></p>
+<p>A plain transition arrow picked on the diagram (the Edit tab can remove it).</p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>event</h5>
+<blockquote>
+<p><strong>event</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L139" rel="noopener">ui/client/features/workflows/types.ts:139</a></p>
+<h5>from</h5>
+<blockquote>
+<p><strong>from</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L139" rel="noopener">ui/client/features/workflows/types.ts:139</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L139" rel="noopener">ui/client/features/workflows/types.ts:139</a></p>
+<hr>
+<h3 id="workflowcontextfield">WorkflowContextField<a class="anchor" href="#workflowcontextfield" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowContextField</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L30" rel="noopener">ui/client/features/workflows/types.ts:30</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>initial</h5>
+<blockquote>
+<p><strong>initial</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L30" rel="noopener">ui/client/features/workflows/types.ts:30</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L30" rel="noopener">ui/client/features/workflows/types.ts:30</a></p>
+<h5>type?</h5>
+<blockquote>
+<p><code>optional</code> <strong>type?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L30" rel="noopener">ui/client/features/workflows/types.ts:30</a></p>
+<hr>
+<h3 id="workfloweditrequest">WorkflowEditRequest<a class="anchor" href="#workfloweditrequest" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowEditRequest</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L104" rel="noopener">ui/client/features/workflows/types.ts:104</a></p>
+<p>One visual edit (see src/engine/workflowEditor.mjs for the ops).</p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>event?</h5>
+<blockquote>
+<p><code>optional</code> <strong>event?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L114" rel="noopener">ui/client/features/workflows/types.ts:114</a></p>
+<h5>from?</h5>
+<blockquote>
+<p><code>optional</code> <strong>from?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L113" rel="noopener">ui/client/features/workflows/types.ts:113</a></p>
+<h5>initial?</h5>
+<blockquote>
+<p><code>optional</code> <strong>initial?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L117" rel="noopener">ui/client/features/workflows/types.ts:117</a></p>
+<p>epic #223: context fields, and where an action runs</p>
+<h5>kind?</h5>
+<blockquote>
+<p><code>optional</code> <strong>kind?</strong>: <a href="#workflowtransition"><code>WorkflowTransition</code></a>[<code>&quot;kind&quot;</code>]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L120" rel="noopener">ui/client/features/workflows/types.ts:120</a></p>
+<h5>machine</h5>
+<blockquote>
+<p><strong>machine</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L105" rel="noopener">ui/client/features/workflows/types.ts:105</a></p>
+<h5>name?</h5>
+<blockquote>
+<p><code>optional</code> <strong>name?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L110" rel="noopener">ui/client/features/workflows/types.ts:110</a></p>
+<h5>op</h5>
+<blockquote>
+<p><strong>op</strong>: <code>&quot;addState&quot;</code> | <code>&quot;removeState&quot;</code> | <code>&quot;renameState&quot;</code> | <code>&quot;addTransition&quot;</code> | <code>&quot;removeTransition&quot;</code> | <code>&quot;retargetTransition&quot;</code> | <code>&quot;addContextField&quot;</code> | <code>&quot;setContextField&quot;</code> | <code>&quot;removeContextField&quot;</code> | <code>&quot;declareAction&quot;</code> | <code>&quot;declareGuard&quot;</code> | <code>&quot;removeAction&quot;</code> | <code>&quot;removeGuard&quot;</code> | <code>&quot;assignAction&quot;</code> | <code>&quot;unassignAction&quot;</code> | <code>&quot;setGuard&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L106" rel="noopener">ui/client/features/workflows/types.ts:106</a></p>
+<h5>parent?</h5>
+<blockquote>
+<p><code>optional</code> <strong>parent?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L111" rel="noopener">ui/client/features/workflows/types.ts:111</a></p>
+<h5>path?</h5>
+<blockquote>
+<p><code>optional</code> <strong>path?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L112" rel="noopener">ui/client/features/workflows/types.ts:112</a></p>
+<h5>target?</h5>
+<blockquote>
+<p><code>optional</code> <strong>target?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L115" rel="noopener">ui/client/features/workflows/types.ts:115</a></p>
+<h5>type?</h5>
+<blockquote>
+<p><code>optional</code> <strong>type?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L118" rel="noopener">ui/client/features/workflows/types.ts:118</a></p>
+<h5>where?</h5>
+<blockquote>
+<p><code>optional</code> <strong>where?</strong>: <code>&quot;entry&quot;</code> | <code>&quot;exit&quot;</code> | <code>&quot;transition&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L119" rel="noopener">ui/client/features/workflows/types.ts:119</a></p>
+<hr>
+<h3 id="workflowfilemachines">WorkflowFileMachines<a class="anchor" href="#workflowfilemachines" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowFileMachines</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L48" rel="noopener">ui/client/features/workflows/types.ts:48</a></p>
+<h4 id="properties-12">Properties<a class="anchor" href="#properties-12" aria-label="Link to this section">#</a></h4>
+<h5>contentHash?</h5>
+<blockquote>
+<p><code>optional</code> <strong>contentHash?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L54" rel="noopener">ui/client/features/workflows/types.ts:54</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L53" rel="noopener">ui/client/features/workflows/types.ts:53</a></p>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L49" rel="noopener">ui/client/features/workflows/types.ts:49</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L50" rel="noopener">ui/client/features/workflows/types.ts:50</a></p>
+<h5>machines</h5>
+<blockquote>
+<p><strong>machines</strong>: <a href="#workflowmachine"><code>WorkflowMachine</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L52" rel="noopener">ui/client/features/workflows/types.ts:52</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L51" rel="noopener">ui/client/features/workflows/types.ts:51</a></p>
+<hr>
+<h3 id="workflowmachine">WorkflowMachine<a class="anchor" href="#workflowmachine" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowMachine</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L32" rel="noopener">ui/client/features/workflows/types.ts:32</a></p>
+<h4 id="properties-13">Properties<a class="anchor" href="#properties-13" aria-label="Link to this section">#</a></h4>
+<h5>context</h5>
+<blockquote>
+<p><strong>context</strong>: <a href="#workflowcontextfield"><code>WorkflowContextField</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L40" rel="noopener">ui/client/features/workflows/types.ts:40</a></p>
+<p>epic #223: context fields (initial value as source text; type when the file declares one)</p>
+<h5>contextEditable</h5>
+<blockquote>
+<p><strong>contextEditable</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L41" rel="noopener">ui/client/features/workflows/types.ts:41</a></p>
+<h5>declared</h5>
+<blockquote>
+<p><strong>declared</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L44" rel="noopener">ui/client/features/workflows/types.ts:44</a></p>
+<h6>actions</h6>
+<blockquote>
+<p><strong>actions</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>guards</h6>
+<blockquote>
+<p><strong>guards</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L45" rel="noopener">ui/client/features/workflows/types.ts:45</a></p>
+<h5>exportName</h5>
+<blockquote>
+<p><strong>exportName</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L33" rel="noopener">ui/client/features/workflows/types.ts:33</a></p>
+<h5>hasSetup</h5>
+<blockquote>
+<p><strong>hasSetup</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L43" rel="noopener">ui/client/features/workflows/types.ts:43</a></p>
+<p>created with setup({...}): named actions/guards can be declared</p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L34" rel="noopener">ui/client/features/workflows/types.ts:34</a></p>
+<h5>initial</h5>
+<blockquote>
+<p><strong>initial</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L36" rel="noopener">ui/client/features/workflows/types.ts:36</a></p>
+<h5>line?</h5>
+<blockquote>
+<p><code>optional</code> <strong>line?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L35" rel="noopener">ui/client/features/workflows/types.ts:35</a></p>
+<h5>states</h5>
+<blockquote>
+<p><strong>states</strong>: <a href="#workflowstate"><code>WorkflowState</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L37" rel="noopener">ui/client/features/workflows/types.ts:37</a></p>
+<h5>transitions</h5>
+<blockquote>
+<p><strong>transitions</strong>: <a href="#workflowtransition"><code>WorkflowTransition</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L38" rel="noopener">ui/client/features/workflows/types.ts:38</a></p>
+<hr>
+<h3 id="workflownarrative">WorkflowNarrative<a class="anchor" href="#workflownarrative" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowNarrative</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h4 id="properties-14">Properties<a class="anchor" href="#properties-14" aria-label="Link to this section">#</a></h4>
+<h5>contentHash?</h5>
+<blockquote>
+<p><code>optional</code> <strong>contentHash?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h5>machines</h5>
+<blockquote>
+<p><strong>machines</strong>: <a href="#narrativemachine"><code>NarrativeMachine</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L85" rel="noopener">ui/client/features/workflows/types.ts:85</a></p>
+<hr>
+<h3 id="workflowsstate">WorkflowsState<a class="anchor" href="#workflowsstate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowsState</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L125" rel="noopener">ui/client/features/workflows/types.ts:125</a></p>
+<h4 id="properties-15">Properties<a class="anchor" href="#properties-15" aria-label="Link to this section">#</a></h4>
+<h5>editBusy</h5>
+<blockquote>
+<p><strong>editBusy</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L134" rel="noopener">ui/client/features/workflows/types.ts:134</a></p>
+<h5>editError</h5>
+<blockquote>
+<p><strong>editError</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L135" rel="noopener">ui/client/features/workflows/types.ts:135</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L132" rel="noopener">ui/client/features/workflows/types.ts:132</a></p>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L127" rel="noopener">ui/client/features/workflows/types.ts:127</a></p>
+<h5>features</h5>
+<blockquote>
+<p><strong>features</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L126" rel="noopener">ui/client/features/workflows/types.ts:126</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L130" rel="noopener">ui/client/features/workflows/types.ts:130</a></p>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L128" rel="noopener">ui/client/features/workflows/types.ts:128</a></p>
+<h5>filesLoading</h5>
+<blockquote>
+<p><strong>filesLoading</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L129" rel="noopener">ui/client/features/workflows/types.ts:129</a></p>
+<h5>loaded</h5>
+<blockquote>
+<p><strong>loaded</strong>: <a href="#workflowfilemachines"><code>WorkflowFileMachines</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L131" rel="noopener">ui/client/features/workflows/types.ts:131</a></p>
+<h5>pending</h5>
+<blockquote>
+<p><strong>pending</strong>: <a href="#pendingworkflowedit"><code>PendingWorkflowEdit</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L133" rel="noopener">ui/client/features/workflows/types.ts:133</a></p>
+<hr>
+<h3 id="workflowstate">WorkflowState<a class="anchor" href="#workflowstate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowState</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L4" rel="noopener">ui/client/features/workflows/types.ts:4</a></p>
+<p>Mirrors src/engine/workflowExtractor.mjs&#39;s output (served by ui/server&#39;s
+GET /api/workflows/machines) — extracted fresh from the real source on
+every request, never stored client-side or on disk.</p>
+<h4 id="properties-16">Properties<a class="anchor" href="#properties-16" aria-label="Link to this section">#</a></h4>
+<h5>entry</h5>
+<blockquote>
+<p><strong>entry</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L11" rel="noopener">ui/client/features/workflows/types.ts:11</a></p>
+<h5>exit</h5>
+<blockquote>
+<p><strong>exit</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L12" rel="noopener">ui/client/features/workflows/types.ts:12</a></p>
+<h5>final</h5>
+<blockquote>
+<p><strong>final</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L10" rel="noopener">ui/client/features/workflows/types.ts:10</a></p>
+<h5>initial</h5>
+<blockquote>
+<p><strong>initial</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L9" rel="noopener">ui/client/features/workflows/types.ts:9</a></p>
+<h5>line?</h5>
+<blockquote>
+<p><code>optional</code> <strong>line?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L13" rel="noopener">ui/client/features/workflows/types.ts:13</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L6" rel="noopener">ui/client/features/workflows/types.ts:6</a></p>
+<h5>parent</h5>
+<blockquote>
+<p><strong>parent</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L7" rel="noopener">ui/client/features/workflows/types.ts:7</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L5" rel="noopener">ui/client/features/workflows/types.ts:5</a></p>
+<h5>type</h5>
+<blockquote>
+<p><strong>type</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L8" rel="noopener">ui/client/features/workflows/types.ts:8</a></p>
+<hr>
+<h3 id="workflowtransition">WorkflowTransition<a class="anchor" href="#workflowtransition" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>WorkflowTransition</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L16" rel="noopener">ui/client/features/workflows/types.ts:16</a></p>
+<h4 id="properties-17">Properties<a class="anchor" href="#properties-17" aria-label="Link to this section">#</a></h4>
+<h5>actions</h5>
+<blockquote>
+<p><strong>actions</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L23" rel="noopener">ui/client/features/workflows/types.ts:23</a></p>
+<h5>editable?</h5>
+<blockquote>
+<p><code>optional</code> <strong>editable?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L25" rel="noopener">ui/client/features/workflows/types.ts:25</a></p>
+<p>plain, unguarded, single-branch <code>on</code> entry: the only kind that can be edited visually</p>
+<h5>event</h5>
+<blockquote>
+<p><strong>event</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L18" rel="noopener">ui/client/features/workflows/types.ts:18</a></p>
+<h5>from</h5>
+<blockquote>
+<p><strong>from</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L17" rel="noopener">ui/client/features/workflows/types.ts:17</a></p>
+<h5>guard?</h5>
+<blockquote>
+<p><code>optional</code> <strong>guard?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L22" rel="noopener">ui/client/features/workflows/types.ts:22</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;on&quot;</code> | <code>&quot;after&quot;</code> | <code>&quot;always&quot;</code> | <code>&quot;onDone&quot;</code> | <code>&quot;invoke&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L19" rel="noopener">ui/client/features/workflows/types.ts:19</a></p>
+<h5>rawTarget?</h5>
+<blockquote>
+<p><code>optional</code> <strong>rawTarget?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L21" rel="noopener">ui/client/features/workflows/types.ts:21</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L20" rel="noopener">ui/client/features/workflows/types.ts:20</a></p>
+<h5>targetless</h5>
+<blockquote>
+<p><strong>targetless</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L26" rel="noopener">ui/client/features/workflows/types.ts:26</a></p>
+<h5>unresolved</h5>
+<blockquote>
+<p><strong>unresolved</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/types.ts#L27" rel="noopener">ui/client/features/workflows/types.ts:27</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/workflows/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

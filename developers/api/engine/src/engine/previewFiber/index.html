@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/previewFiber · Developer Docs</title>
+<meta name="description" content="Live preview v2 (#443): click-to-source by reading React's own dev-time internals from the running app, with NOTHING installed in the target app.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/previewFiber · Developer Docs">
+<meta property="og:description" content="Live preview v2 (#443): click-to-source by reading React's own dev-time internals from the running app, with NOTHING installed in the target app.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/previewFiber/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/previewFiber/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../">Home</a><a href="../../../../../../user-guide/">Guide</a><a href="../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/previewFiber</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/previewFiber</h1><div class="prose"><p>Live preview v2: click-to-source by reading React&#39;s own dev-time internals from the running app, with NOTHING installed in the target app.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/previewFiber.mjs" rel="noopener"><code>src/engine/previewFiber.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="previewfiberlimits">PREVIEW_FIBER_LIMITS<a class="anchor" href="#previewfiberlimits" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PREVIEW_FIBER_LIMITS</strong>: <code>Readonly</code>&lt;{ <code>ancestors</code>: <code>32</code>; <code>domPath</code>: <code>12</code>; <code>payloadChars</code>: <code>65536</code>; <code>props</code>: <code>40</code>; <code>propValueChars</code>: <code>120</code>; <code>stackChars</code>: <code>4096</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L46" rel="noopener">src/engine/previewFiber.mjs:46</a></p>
+<p>Payload caps (§5 of the design note). Exceeding one is reported, never truncated silently.</p>
+<hr>
+<h3 id="previewfibermessages">PREVIEW_FIBER_MESSAGES<a class="anchor" href="#previewfibermessages" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PREVIEW_FIBER_MESSAGES</strong>: <code>Readonly</code>&lt;{ <code>detach</code>: <code>&quot;construct:preview:detach&quot;</code>; <code>error</code>: <code>&quot;construct:preview:error&quot;</code>; <code>hello</code>: <code>&quot;construct:preview:hello&quot;</code>; <code>highlight</code>: <code>&quot;construct:preview:highlight&quot;</code>; <code>hover</code>: <code>&quot;construct:preview:hover&quot;</code>; <code>mode</code>: <code>&quot;construct:preview:mode&quot;</code>; <code>select</code>: <code>&quot;construct:preview:select&quot;</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L35" rel="noopener">src/engine/previewFiber.mjs:35</a></p>
+<p>The closed message vocabulary. Anything else is dropped by both halves.</p>
+<hr>
+<h3 id="previewfiberprotocol">PREVIEW_FIBER_PROTOCOL<a class="anchor" href="#previewfiberprotocol" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PREVIEW_FIBER_PROTOCOL</strong>: <code>&quot;construct-preview/1&quot;</code> = <code>&#39;construct-preview/1&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L32" rel="noopener">src/engine/previewFiber.mjs:32</a></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="applysourcemap">applySourceMap()<a class="anchor" href="#applysourcemap" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>applySourceMap</strong>(<code>map</code>, <code>line</code>, <code>column</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L569" rel="noopener">src/engine/previewFiber.mjs:569</a></p>
+<p>Map a 1-based generated position to its original one.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>map</h5>
+<p><code>any</code></p>
+<p>A parsed source map (index maps with <code>sections</code> are not supported).</p>
+<h5>line</h5>
+<p><code>number</code></p>
+<p>1-based generated line.</p>
+<h5>column</h5>
+<p><code>number</code></p>
+<p>1-based generated column.</p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>column</h5>
+<blockquote>
+<p><strong>column</strong>: <code>number</code></p>
+</blockquote>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="decodemappings">decodeMappings()<a class="anchor" href="#decodemappings" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>decodeMappings</strong>(<code>mappings</code>): <code>any</code>[][]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L518" rel="noopener">src/engine/previewFiber.mjs:518</a></p>
+<p>Decode a source map&#39;s <code>mappings</code> string into per-generated-line segments.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>mappings</h5>
+<p><code>string</code></p>
+<p>The <code>mappings</code> field of a source map.</p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code>[][]</p>
+<p>One array of segments per generated line (empty when <code>mappings</code> is not a string).</p>
+<hr>
+<h3 id="installpreviewfiberbridge">installPreviewFiberBridge()<a class="anchor" href="#installpreviewfiberbridge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>installPreviewFiberBridge</strong>(<code>win</code>, <code>options</code>): <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L68" rel="noopener">src/engine/previewFiber.mjs:68</a></p>
+<p>Install the in-page half. <code>options</code>: { parentOrigin, nonce, pick }.
+Returns false when it is already installed, not embedded, or has no nonce.
+Serialisable: everything it needs is defined inside it.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>win</h5>
+<p><code>any</code></p>
+<p>The preview page&#39;s <code>window</code>.</p>
+<h5>options</h5>
+<p><code>any</code></p>
+<p><code>{parentOrigin, nonce, pick}</code>: the Cockpit origin messages are posted to, the per-session nonce, and whether pick mode starts on.</p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>boolean</code></p>
+<p><code>false</code> when already installed, not embedded, or without a nonce.</p>
+<hr>
+<h3 id="parsestackframes">parseStackFrames()<a class="anchor" href="#parsestackframes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parseStackFrames</strong>(<code>stack</code>): <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L383" rel="noopener">src/engine/previewFiber.mjs:383</a></p>
+<p>Parse an Error.stack into frames. Handles V8 (&quot;    at Foo (url:1:2)&quot;) and
+SpiderMonkey/JSC (&quot;Foo@url:1:2&quot;). Frames that carry no position are dropped.
+The location is cut out by structure, not by a URL regex, because bundler
+URLs contain parentheses (<code>webpack-internal:///(app-pages-browser)/…</code>).</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>stack</h5>
+<p><code>string</code></p>
+<p>An <code>Error.stack</code> string.</p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>object</code>[]</p>
+<hr>
+<h3 id="picksourceframe">pickSourceFrame()<a class="anchor" href="#picksourceframe" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>pickSourceFrame</strong>(<code>frames</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L419" rel="noopener">src/engine/previewFiber.mjs:419</a></p>
+<p>The JSX call site is the first frame that is not React&#39;s own: <code>_debugStack</code>
+is created inside <code>jsxDEV</code>, so frame 0 always belongs to the dev runtime.
+This is the pre-source-map guess; <code>resolveFiberSelection</code> additionally walks
+the frames and prefers the first that MAPS to a file of the project, which
+is what makes bundled builds (one URL for everything) work.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>frames</h5>
+<p><code>object</code>[]</p>
+<p>Frames from <code>parseStackFrames</code>.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The first frame that is not React&#39;s own, or <code>null</code>.</p>
+<hr>
+<h3 id="previewfiberbridgescript">previewFiberBridgeScript()<a class="anchor" href="#previewfiberbridgescript" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>previewFiberBridgeScript</strong>(<code>options</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L349" rel="noopener">src/engine/previewFiber.mjs:349</a></p>
+<p>The inline script a loopback proxy injects as the FIRST child of <head>
+(before any app script, so the devtools-hook stub lands before React loads).
+<code>options</code> must carry <code>{ parentOrigin, nonce }</code>; both are embedded as JSON,
+never interpolated as code, and the page never evaluates a string.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>options</h5>
+<p><code>any</code></p>
+<p>Must carry <code>{parentOrigin, nonce}</code>; <code>pick</code> is optional.</p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>JavaScript source that installs the bridge in the page.</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>When <code>nonce</code> or <code>parentOrigin</code> is missing.</p>
+<hr>
+<h3 id="resolvefiberselection">resolveFiberSelection()<a class="anchor" href="#resolvefiberselection" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolveFiberSelection</strong>(<code>payload</code>, <code>context</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L725" rel="noopener">src/engine/previewFiber.mjs:725</a></p>
+<p>Turn a bridge selection payload into a source location, project-root-relative.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>payload</h5>
+<p><code>any</code></p>
+<p>the <code>construct:preview:select</code> message, or its <code>selection</code></p>
+<h5>context</h5>
+<p><code>sourceMaps</code> maps a served URL to its parsed source map (the caller
+       does that I/O); <code>servedFrom</code> is the project-relative directory the
+       dev server serves from.</p>
+<h6>projectRoot</h6>
+<p><code>string</code></p>
+<h6>servedFrom?</h6>
+<p><code>string</code></p>
+<h6>sourceMaps?</h6>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>ancestors</h5>
+<blockquote>
+<p><strong>ancestors</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>column</h5>
+<blockquote>
+<p><strong>column</strong>: <code>number</code></p>
+</blockquote>
+<h5>componentName</h5>
+<blockquote>
+<p><strong>componentName</strong>: <code>string</code></p>
+</blockquote>
+<h5>confidence</h5>
+<blockquote>
+<p><strong>confidence</strong>: <code>string</code></p>
+</blockquote>
+<h5>domPath</h5>
+<blockquote>
+<p><strong>domPath</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>reason</h5>
+<blockquote>
+<p><strong>reason</strong>: <code>string</code></p>
+</blockquote>
+<h5>tier</h5>
+<blockquote>
+<p><strong>tier</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="toprojectpath">toProjectPath()<a class="anchor" href="#toprojectpath" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>toProjectPath</strong>(<code>input</code>, <code>context</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/previewFiber.mjs#L470" rel="noopener">src/engine/previewFiber.mjs:470</a></p>
+<p>Containment: turn whatever the page said into a path RELATIVE to the project
+root, or null. Nothing the previewed app sends can make the Cockpit name a
+file outside the open project — this is the block&#39;s most important property.</p>
+<p><code>context.servedFrom</code> is the project-relative directory the dev server serves
+from (a Vite <code>root</code>, a Next app in a monorepo package); URL-shaped references
+are resolved under it.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>input</h5>
+<p><code>string</code></p>
+<p>A path or URL reported by the previewed page.</p>
+<h5>context</h5>
+<p>The open project root, and the project-relative directory the dev server serves from.</p>
+<h6>projectRoot</h6>
+<p><code>string</code></p>
+<h6>servedFrom?</h6>
+<p><code>string</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>A project-relative path, or <code>null</code> when it points outside the project.</p>
+<h4 id="throws-2">Throws<a class="anchor" href="#throws-2" aria-label="Link to this section">#</a></h4>
+<p>When <code>context.projectRoot</code> is missing.</p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/previewFiber.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

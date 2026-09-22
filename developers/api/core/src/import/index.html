@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/import · Developer Docs</title>
+<meta name="description" content="Import capability — scaffolds a vertical slice for an existing, non-Construct file.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/import · Developer Docs">
+<meta property="og:description" content="Import capability — scaffolds a vertical slice for an existing, non-Construct file.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/import/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/import/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../">Home</a><a href="../../../../../user-guide/">Guide</a><a href="../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../developers/api/">All packages</a></li><li><a href="../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/import</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/import</h1><div class="prose"><p>Import capability — scaffolds a vertical slice for an existing, non-Construct file.</p>
+<p><em>Core engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/import.mjs" rel="noopener"><code>src/import.mjs</code></a>.</em></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="analyzefiles">analyzeFiles()<a class="anchor" href="#analyzefiles" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>analyzeFiles</strong>(<code>absPaths</code>, <code>featureName</code>, <code>options?</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L387" rel="noopener">src/import.mjs:387</a></p>
+<p>Analyze an explicit list of already-resolved absolute file paths — the
+counterpart to analyzeRoute for callers (the route-tracing wizard) that
+already know exactly which files matter, rather than &quot;everything under
+this directory.&quot;</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>absPaths</h5>
+<p><code>string</code>[]</p>
+<p>Absolute paths of the files to analyze.</p>
+<h5>featureName</h5>
+<p><code>string</code></p>
+<p>Feature the analysis is for.</p>
+<h5>options?</h5>
+<p>Provider that performs the analysis (default <code>&#39;claude&#39;</code>).</p>
+<h6>llm?</h6>
+<p><code>string</code> = <code>&#39;claude&#39;</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<p>The analysis.</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>Usage error when no files are given.</p>
+<hr>
+<h3 id="analyzeroute">analyzeRoute()<a class="anchor" href="#analyzeroute" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>analyzeRoute</strong>(<code>routeDirs</code>, <code>featureName</code>, <code>__namedParameters?</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L323" rel="noopener">src/import.mjs:323</a></p>
+<p>Read every code file directly under <code>routeDirs</code> (a single directory, or
+an array of them — e.g. a feature whose hooks and pages live in two
+separate old-code directories) and ask <code>llm</code> to propose ONE combined
+import plan covering all of them. Returns a shape-validated plan with
+every unit&#39;s <code>from</code> resolved to an absolute path. Never writes anything —
+purely analysis. With more than one directory, each file&#39;s label in the
+prompt is prefixed with its own directory&#39;s basename so same-named files
+across directories (and the model&#39;s response) stay unambiguous; with
+just one directory the label is the bare relative path, unchanged from
+before this accepted more than one.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>routeDirs</h5>
+<p><code>any</code></p>
+<h5>featureName</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>llm?</h6>
+<p><code>string</code> = <code>&#39;claude&#39;</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<hr>
+<h3 id="executeimportplan">executeImportPlan()<a class="anchor" href="#executeimportplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>executeImportPlan</strong>(<code>root</code>, <code>plan</code>, <code>options?</code>): <code>Promise</code>&lt;{ <code>feature</code>: <code>string</code>; <code>results</code>: <code>any</code>[]; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L234" rel="noopener">src/import.mjs:234</a></p>
+<p>Execute an already-validated plan object — the deterministic half of
+importing a non-Construct feature. The plan itself (which old files map to
+which logical units/layers) is judgment, produced by whichever LLM
+analyzed the old feature and approved by a human; this function only ever
+runs <code>importVertical</code> once per already-decided unit, in the order given.
+<code>{ llm }</code> applies uniformly to every unit (writes ported logic instead of
+a breadcrumb) if given.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>plan</h5>
+<p>A validated import plan.</p>
+<h6>feature</h6>
+<p><code>string</code></p>
+<h6>units</h6>
+<p><code>object</code>[]</p>
+<h5>options?</h5>
+<p>Applied to every unit.</p>
+<h6>llm?</h6>
+<p><code>string</code></p>
+<h6>llmOptions?</h6>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;{ <code>feature</code>: <code>string</code>; <code>results</code>: <code>any</code>[]; }&gt;</p>
+<p>One result per unit, in plan order.</p>
+<hr>
+<h3 id="importplan">importPlan()<a class="anchor" href="#importplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>importPlan</strong>(<code>root</code>, <code>planPath</code>, <code>options?</code>): <code>Promise</code>&lt;{ <code>feature</code>: <code>string</code>; <code>results</code>: <code>any</code>[]; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L260" rel="noopener">src/import.mjs:260</a></p>
+<p>Load a plan from a JSON file, validate its shape, and execute it.
+Plan shape: <code>{ feature: string, units: [{ name, layers: string[], from }] }</code>.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>planPath</h5>
+<p><code>string</code></p>
+<p>JSON plan file.</p>
+<h5>options?</h5>
+<p>Applied to every unit.</p>
+<h6>llm?</h6>
+<p><code>string</code></p>
+<h6>llmOptions?</h6>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;{ <code>feature</code>: <code>string</code>; <code>results</code>: <code>any</code>[]; }&gt;</p>
+<p>One result per unit.</p>
+<h4 id="throws-2">Throws<a class="anchor" href="#throws-2" aria-label="Link to this section">#</a></h4>
+<p>Usage error when the plan cannot be read or has the wrong shape.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">await importPlan(root, &#39;plan.json&#39;);
+</code></pre>
+<hr>
+<h3 id="importvertical">importVertical()<a class="anchor" href="#importvertical" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>importVertical</strong>(<code>root</code>, <code>name</code>, <code>feature</code>, <code>layers</code>, <code>fromPath</code>, <code>options?</code>): <code>Promise</code>&lt;{ <code>files</code>: <code>string</code>[]; <code>fills</code>: <code>any</code>[]; <code>llmFilled</code>: <code>boolean</code>; <code>source</code>: <code>string</code>; <code>timings</code>: <code>any</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L79" rel="noopener">src/import.mjs:79</a></p>
+<p>Scaffold <code>layers</code> for one logical unit (exactly like generateVertical).
+With no <code>llm</code> option: prepends a TODO breadcrumb pointing at <code>fromPath</code> to
+each generated file — deterministic, never reads <code>fromPath</code>&#39;s content
+beyond confirming it exists. With <code>{ llm: &#39;&lt;provider&gt;&#39; }</code>: additionally
+calls that provider once per generated file to write the ported logic
+directly, replacing the stub. Either way, locating the source and
+scaffolding the files themselves never involves an LLM call.</p>
+<p>Async because <code>callLlm</code> is (providers like <code>ollama</code> make a real HTTP
+call) — with no <code>llm</code> option this still resolves on the same tick&#39;s
+microtask queue as before, no behavior change, just a Promise wrapper.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>name</h5>
+<p><code>string</code></p>
+<p>Unit name.</p>
+<h5>feature</h5>
+<p><code>string</code></p>
+<p>Feature that owns the files.</p>
+<h5>layers</h5>
+<p><code>string</code>[]</p>
+<p>Layers to scaffold.</p>
+<h5>fromPath</h5>
+<p><code>string</code></p>
+<p>The existing source file being ported; must exist.</p>
+<h5>options?</h5>
+<p><code>llm</code> names a provider that writes the ported logic into each stub.</p>
+<h6>llm?</h6>
+<p><code>string</code></p>
+<h6>llmOptions?</h6>
+<p><code>any</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;{ <code>files</code>: <code>string</code>[]; <code>fills</code>: <code>any</code>[]; <code>llmFilled</code>: <code>boolean</code>; <code>source</code>: <code>string</code>; <code>timings</code>: <code>any</code>; }&gt;</p>
+<p>The scaffolded files and, with <code>llm</code>, what each fill did.</p>
+<h4 id="throws-3">Throws<a class="anchor" href="#throws-3" aria-label="Link to this section">#</a></h4>
+<p>Usage error when <code>fromPath</code> is missing or the provider is unknown.</p>
+<hr>
+<h3 id="normalizeplanlayers">normalizePlanLayers()<a class="anchor" href="#normalizeplanlayers" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>normalizePlanLayers</strong>(<code>plan</code>): <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L158" rel="noopener">src/import.mjs:158</a></p>
+<p>#275 — deterministically repair a plan&#39;s layer sets in place, and report
+what was repaired as <code>[{ unit, added: [...] }]</code>.</p>
+<p>A unit listing <code>controller</code> without <code>page</code> is unbuildable: the controller
+stub composes a same-named page (see generators.mjs&#39;s LAYER_PREREQUISITES),
+so the page has to be part of the same unit. Plans come from an LLM&#39;s
+analysis of old code and vary run to run — #146&#39;s route-import demo hit
+exactly this intermittently — and adding the missing page is the only
+correct repair, so this normalises rather than rejecting: no judgement is
+involved, the wizard prints the (already-normalised) plan for human
+approval before anything is written, and a plan file that happened to work
+because the page already existed on disk keeps working.</p>
+<p>The opposite choice is deliberate one level down: <code>generateVertical</code> REJECTS
+the same combination, because there the layer list is what a human explicitly
+typed as <code>--layers</code>, and silently adding a layer they didn&#39;t ask for would be
+worse than telling them.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>plan</h5>
+<p><code>any</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>object</code>[]</p>
+<hr>
+<h3 id="validateplanshape">validatePlanShape()<a class="anchor" href="#validateplanshape" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>validatePlanShape</strong>(<code>plan</code>, <code>sourceDescription</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/import.mjs#L191" rel="noopener">src/import.mjs:191</a></p>
+<p>Shape-check a plan object (from a file, or an LLM&#39;s analysis response) —
+shared by the file-based <code>importPlan</code> and the interactive route wizard, so
+both reject the same malformed shapes with the same message. Never throws
+on content it merely disagrees with (e.g. an unrecognized layer name) —
+that&#39;s <code>construct validate</code>&#39;s job once the plan is executed; this only
+checks the plan is structurally usable at all.</p>
+<p>It does, however, normalise an unbuildable layer set (see
+<code>normalizePlanLayers</code>) — repairing the plan before anything is written,
+rather than letting it fail mid-build. Returns the (possibly repaired)
+plan; <code>plan.layerAdjustments</code> is set when anything was repaired.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>plan</h5>
+<p><code>any</code></p>
+<h5>sourceDescription</h5>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/import.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

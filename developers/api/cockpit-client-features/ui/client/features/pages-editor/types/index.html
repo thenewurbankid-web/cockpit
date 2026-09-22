@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/pages-editor/types · Developer Docs</title>
+<meta name="description" content="What the live preview panel is handed to draw, and what it knows about the preview address (#456).">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/pages-editor/types · Developer Docs">
+<meta property="og:description" content="What the live preview panel is handed to draw, and what it knows about the preview address (#456).">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/pages-editor/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/pages-editor/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/pages-editor/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/pages-editor/types</h1><div class="prose"><p>What the live preview panel is handed to draw, and what it knows about the preview address.</p>
+<p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/pages-editor/types.ts" rel="noopener"><code>ui/client/features/pages-editor/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="codesegment">CodeSegment<a class="anchor" href="#codesegment" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>CodeSegment</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L187" rel="noopener">ui/client/features/pages-editor/types.ts:187</a></p>
+<p>A run of source text; <code>ref</code> is set only for a reference that RESOLVED to a project file.</p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>ref?</h5>
+<blockquote>
+<p><code>optional</code> <strong>ref?</strong>: <a href="#navreference"><code>NavReference</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L187" rel="noopener">ui/client/features/pages-editor/types.ts:187</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L187" rel="noopener">ui/client/features/pages-editor/types.ts:187</a></p>
+<hr>
+<h3 id="diagnosticseverity">DiagnosticSeverity<a class="anchor" href="#diagnosticseverity" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticSeverity</strong> = <code>&quot;error&quot;</code> | <code>&quot;warning&quot;</code> | <code>&quot;info&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L32" rel="noopener">ui/client/features/pages-editor/types.ts:32</a></p>
+<hr>
+<h3 id="diagnosticsource">DiagnosticSource<a class="anchor" href="#diagnosticsource" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticSource</strong> = <code>&quot;typescript&quot;</code> | <code>&quot;architecture&quot;</code> | <code>&quot;separation-of-concerns&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L31" rel="noopener">ui/client/features/pages-editor/types.ts:31</a></p>
+<hr>
+<h3 id="diagnosticsummary">DiagnosticSummary<a class="anchor" href="#diagnosticsummary" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticSummary</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L58" rel="noopener">ui/client/features/pages-editor/types.ts:58</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>errors</h5>
+<blockquote>
+<p><strong>errors</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L58" rel="noopener">ui/client/features/pages-editor/types.ts:58</a></p>
+<h5>infos</h5>
+<blockquote>
+<p><strong>infos</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L58" rel="noopener">ui/client/features/pages-editor/types.ts:58</a></p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L58" rel="noopener">ui/client/features/pages-editor/types.ts:58</a></p>
+<h5>warnings</h5>
+<blockquote>
+<p><strong>warnings</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L58" rel="noopener">ui/client/features/pages-editor/types.ts:58</a></p>
+<hr>
+<h3 id="diffhunk">DiffHunk<a class="anchor" href="#diffhunk" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiffHunk</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L124" rel="noopener">ui/client/features/pages-editor/types.ts:124</a></p>
+<p>One contiguous run of unchanged/added/removed lines from a before/after
+diff — <code>added</code>/<code>removed</code> both falsy means unchanged context.</p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>added?</h5>
+<blockquote>
+<p><code>optional</code> <strong>added?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L124" rel="noopener">ui/client/features/pages-editor/types.ts:124</a></p>
+<h5>removed?</h5>
+<blockquote>
+<p><code>optional</code> <strong>removed?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L124" rel="noopener">ui/client/features/pages-editor/types.ts:124</a></p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L124" rel="noopener">ui/client/features/pages-editor/types.ts:124</a></p>
+<hr>
+<h3 id="diffrow">DiffRow<a class="anchor" href="#diffrow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiffRow</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L127" rel="noopener">ui/client/features/pages-editor/types.ts:127</a></p>
+<p>One row of a rendered before/after diff, pre-computed server-side.</p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>hidden?</h5>
+<blockquote>
+<p><code>optional</code> <strong>hidden?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L132" rel="noopener">ui/client/features/pages-editor/types.ts:132</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;context&quot;</code> | <code>&quot;added&quot;</code> | <code>&quot;removed&quot;</code> | <code>&quot;gap&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L128" rel="noopener">ui/client/features/pages-editor/types.ts:128</a></p>
+<h5>newLine?</h5>
+<blockquote>
+<p><code>optional</code> <strong>newLine?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L130" rel="noopener">ui/client/features/pages-editor/types.ts:130</a></p>
+<h5>oldLine?</h5>
+<blockquote>
+<p><code>optional</code> <strong>oldLine?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L129" rel="noopener">ui/client/features/pages-editor/types.ts:129</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L131" rel="noopener">ui/client/features/pages-editor/types.ts:131</a></p>
+<hr>
+<h3 id="navreference">NavReference<a class="anchor" href="#navreference" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NavReference</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L158" rel="noopener">ui/client/features/pages-editor/types.ts:158</a></p>
+<p>One reference in a file as the server resolved it when the file was drawn. <code>target</code> is a
+project-root-relative path, or null when it does not lead to a file inside the project.</p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>column</h5>
+<blockquote>
+<p><strong>column</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L164" rel="noopener">ui/client/features/pages-editor/types.ts:164</a></p>
+<h5>end</h5>
+<blockquote>
+<p><strong>end</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L162" rel="noopener">ui/client/features/pages-editor/types.ts:162</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;import&quot;</code> | <code>&quot;jsx&quot;</code> | <code>&quot;dynamic&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L160" rel="noopener">ui/client/features/pages-editor/types.ts:160</a></p>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L163" rel="noopener">ui/client/features/pages-editor/types.ts:163</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L159" rel="noopener">ui/client/features/pages-editor/types.ts:159</a></p>
+<h5>reason</h5>
+<blockquote>
+<p><strong>reason</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L166" rel="noopener">ui/client/features/pages-editor/types.ts:166</a></p>
+<h5>relation?</h5>
+<blockquote>
+<p><code>optional</code> <strong>relation?</strong>: <a href="#navrelation"><code>NavRelation</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L167" rel="noopener">ui/client/features/pages-editor/types.ts:167</a></p>
+<h5>start</h5>
+<blockquote>
+<p><strong>start</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L161" rel="noopener">ui/client/features/pages-editor/types.ts:161</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L165" rel="noopener">ui/client/features/pages-editor/types.ts:165</a></p>
+<hr>
+<h3 id="navrelation">NavRelation<a class="anchor" href="#navrelation" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NavRelation</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L145" rel="noopener">ui/client/features/pages-editor/types.ts:145</a></p>
+<p>How two files relate, labelled by layer (<code>page -&gt; component</code>) and, across features, by feature.</p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>crossFeature</h5>
+<blockquote>
+<p><strong>crossFeature</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L152" rel="noopener">ui/client/features/pages-editor/types.ts:152</a></p>
+<h5>description</h5>
+<blockquote>
+<p><strong>description</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L153" rel="noopener">ui/client/features/pages-editor/types.ts:153</a></p>
+<h5>fromFeature</h5>
+<blockquote>
+<p><strong>fromFeature</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L150" rel="noopener">ui/client/features/pages-editor/types.ts:150</a></p>
+<h5>fromLayer</h5>
+<blockquote>
+<p><strong>fromLayer</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L148" rel="noopener">ui/client/features/pages-editor/types.ts:148</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L146" rel="noopener">ui/client/features/pages-editor/types.ts:146</a></p>
+<h5>layers</h5>
+<blockquote>
+<p><strong>layers</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L147" rel="noopener">ui/client/features/pages-editor/types.ts:147</a></p>
+<h5>toFeature</h5>
+<blockquote>
+<p><strong>toFeature</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L151" rel="noopener">ui/client/features/pages-editor/types.ts:151</a></p>
+<h5>toLayer</h5>
+<blockquote>
+<p><strong>toLayer</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L149" rel="noopener">ui/client/features/pages-editor/types.ts:149</a></p>
+<hr>
+<h3 id="navview">NavView<a class="anchor" href="#navview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NavView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L171" rel="noopener">ui/client/features/pages-editor/types.ts:171</a></p>
+<p>A file the navigator shows: its source and every reference in it, already resolved.</p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>error?</h5>
+<blockquote>
+<p><code>optional</code> <strong>error?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L173" rel="noopener">ui/client/features/pages-editor/types.ts:173</a></p>
+<h5>name?</h5>
+<blockquote>
+<p><code>optional</code> <strong>name?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L177" rel="noopener">ui/client/features/pages-editor/types.ts:177</a></p>
+<h5>ok?</h5>
+<blockquote>
+<p><code>optional</code> <strong>ok?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L172" rel="noopener">ui/client/features/pages-editor/types.ts:172</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L174" rel="noopener">ui/client/features/pages-editor/types.ts:174</a></p>
+<h5>references</h5>
+<blockquote>
+<p><strong>references</strong>: <a href="#navreference"><code>NavReference</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L176" rel="noopener">ui/client/features/pages-editor/types.ts:176</a></p>
+<h5>relation?</h5>
+<blockquote>
+<p><code>optional</code> <strong>relation?</strong>: <a href="#navrelation"><code>NavRelation</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L178" rel="noopener">ui/client/features/pages-editor/types.ts:178</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L175" rel="noopener">ui/client/features/pages-editor/types.ts:175</a></p>
+<hr>
+<h3 id="pagechange">PageChange<a class="anchor" href="#pagechange" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PageChange</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L136" rel="noopener">ui/client/features/pages-editor/types.ts:136</a></p>
+<p>A page file last external (on-disk, non-editor) change.</p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>afterHash</h5>
+<blockquote>
+<p><strong>afterHash</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L139" rel="noopener">ui/client/features/pages-editor/types.ts:139</a></p>
+<h5>at</h5>
+<blockquote>
+<p><strong>at</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L137" rel="noopener">ui/client/features/pages-editor/types.ts:137</a></p>
+<h5>beforeHash</h5>
+<blockquote>
+<p><strong>beforeHash</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L138" rel="noopener">ui/client/features/pages-editor/types.ts:138</a></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#diffrow"><code>DiffRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L141" rel="noopener">ui/client/features/pages-editor/types.ts:141</a></p>
+<h5>stats</h5>
+<blockquote>
+<p><strong>stats</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L140" rel="noopener">ui/client/features/pages-editor/types.ts:140</a></p>
+<h6>added</h6>
+<blockquote>
+<p><strong>added</strong>: <code>number</code></p>
+</blockquote>
+<h6>removed</h6>
+<blockquote>
+<p><strong>removed</strong>: <code>number</code></p>
+</blockquote>
+<hr>
+<h3 id="pageseditorid">PagesEditorId<a class="anchor" href="#pageseditorid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PagesEditorId</strong> = <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L6" rel="noopener">ui/client/features/pages-editor/types.ts:6</a></p>
+<hr>
+<h3 id="pageseditornode">PagesEditorNode<a class="anchor" href="#pageseditornode" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PagesEditorNode</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L16" rel="noopener">ui/client/features/pages-editor/types.ts:16</a></p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>children</h5>
+<blockquote>
+<p><strong>children</strong>: <a href="#pageseditornode"><code>PagesEditorNode</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L25" rel="noopener">ui/client/features/pages-editor/types.ts:25</a></p>
+<h5>column?</h5>
+<blockquote>
+<p><code>optional</code> <strong>column?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L24" rel="noopener">ui/client/features/pages-editor/types.ts:24</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L17" rel="noopener">ui/client/features/pages-editor/types.ts:17</a></p>
+<h5>isCustomComponent</h5>
+<blockquote>
+<p><strong>isCustomComponent</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L20" rel="noopener">ui/client/features/pages-editor/types.ts:20</a></p>
+<h5>isFragment</h5>
+<blockquote>
+<p><strong>isFragment</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L19" rel="noopener">ui/client/features/pages-editor/types.ts:19</a></p>
+<h5>line?</h5>
+<blockquote>
+<p><code>optional</code> <strong>line?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L23" rel="noopener">ui/client/features/pages-editor/types.ts:23</a></p>
+<p>1-based source position of the element&#39;s <code>&lt;</code> (same values the core annotator writes into data-cx-src).</p>
+<h5>props</h5>
+<blockquote>
+<p><strong>props</strong>: <a href="#propdata"><code>PropData</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L21" rel="noopener">ui/client/features/pages-editor/types.ts:21</a></p>
+<h5>tag</h5>
+<blockquote>
+<p><strong>tag</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L18" rel="noopener">ui/client/features/pages-editor/types.ts:18</a></p>
+<hr>
+<h3 id="pagetree">PageTree<a class="anchor" href="#pagetree" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PageTree</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L28" rel="noopener">ui/client/features/pages-editor/types.ts:28</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>contentHash</h5>
+<blockquote>
+<p><strong>contentHash</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L28" rel="noopener">ui/client/features/pages-editor/types.ts:28</a></p>
+<h5>roots</h5>
+<blockquote>
+<p><strong>roots</strong>: <a href="#pageseditornode"><code>PagesEditorNode</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L28" rel="noopener">ui/client/features/pages-editor/types.ts:28</a></p>
+<hr>
+<h3 id="propdata">PropData<a class="anchor" href="#propdata" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PropData</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L14" rel="noopener">ui/client/features/pages-editor/types.ts:14</a></p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>index</h5>
+<blockquote>
+<p><strong>index</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L14" rel="noopener">ui/client/features/pages-editor/types.ts:14</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <a href="#propkind"><code>PropKind</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L14" rel="noopener">ui/client/features/pages-editor/types.ts:14</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L14" rel="noopener">ui/client/features/pages-editor/types.ts:14</a></p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>unknown</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L14" rel="noopener">ui/client/features/pages-editor/types.ts:14</a></p>
+<hr>
+<h3 id="propkind">PropKind<a class="anchor" href="#propkind" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PropKind</strong> = <code>&quot;string&quot;</code> | <code>&quot;number&quot;</code> | <code>&quot;boolean&quot;</code> | <code>&quot;identifier&quot;</code> | <code>&quot;expression&quot;</code> | <code>&quot;spread&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L8" rel="noopener">ui/client/features/pages-editor/types.ts:8</a></p>
+<hr>
+<h3 id="saveoutcome">SaveOutcome<a class="anchor" href="#saveoutcome" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SaveOutcome</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L73" rel="noopener">ui/client/features/pages-editor/types.ts:73</a></p>
+<h4 id="properties-12">Properties<a class="anchor" href="#properties-12" aria-label="Link to this section">#</a></h4>
+<h5>error?</h5>
+<blockquote>
+<p><code>optional</code> <strong>error?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L73" rel="noopener">ui/client/features/pages-editor/types.ts:73</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L73" rel="noopener">ui/client/features/pages-editor/types.ts:73</a></p>
+<h5>violations?</h5>
+<blockquote>
+<p><code>optional</code> <strong>violations?</strong>: <a href="#violation"><code>Violation</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L73" rel="noopener">ui/client/features/pages-editor/types.ts:73</a></p>
+<hr>
+<h3 id="scopedeclkind">ScopeDeclKind<a class="anchor" href="#scopedeclkind" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeDeclKind</strong> = <code>&quot;prop&quot;</code> | <code>&quot;state&quot;</code> | <code>&quot;setter&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L78" rel="noopener">ui/client/features/pages-editor/types.ts:78</a></p>
+<hr>
+<h3 id="scopeedge">ScopeEdge<a class="anchor" href="#scopeedge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeEdge</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L109" rel="noopener">ui/client/features/pages-editor/types.ts:109</a></p>
+<h4 id="properties-13">Properties<a class="anchor" href="#properties-13" aria-label="Link to this section">#</a></h4>
+<h5>color</h5>
+<blockquote>
+<p><strong>color</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L109" rel="noopener">ui/client/features/pages-editor/types.ts:109</a></p>
+<h5>from</h5>
+<blockquote>
+<p><strong>from</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L109" rel="noopener">ui/client/features/pages-editor/types.ts:109</a></p>
+<h5>to</h5>
+<blockquote>
+<p><strong>to</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L109" rel="noopener">ui/client/features/pages-editor/types.ts:109</a></p>
+<hr>
+<h3 id="scopeflag">ScopeFlag<a class="anchor" href="#scopeflag" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeFlag</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L111" rel="noopener">ui/client/features/pages-editor/types.ts:111</a></p>
+<h4 id="properties-14">Properties<a class="anchor" href="#properties-14" aria-label="Link to this section">#</a></h4>
+<h5>level</h5>
+<blockquote>
+<p><strong>level</strong>: <code>&quot;warn&quot;</code> | <code>&quot;info&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L111" rel="noopener">ui/client/features/pages-editor/types.ts:111</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L111" rel="noopener">ui/client/features/pages-editor/types.ts:111</a></p>
+<hr>
+<h3 id="scopelinkgraph">ScopeLinkGraph<a class="anchor" href="#scopelinkgraph" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeLinkGraph</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L80" rel="noopener">ui/client/features/pages-editor/types.ts:80</a></p>
+<h4 id="properties-15">Properties<a class="anchor" href="#properties-15" aria-label="Link to this section">#</a></h4>
+<h5>childProps</h5>
+<blockquote>
+<p><strong>childProps</strong>: <code>object</code>[] | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L87" rel="noopener">ui/client/features/pages-editor/types.ts:87</a></p>
+<h5>childPropsResolved</h5>
+<blockquote>
+<p><strong>childPropsResolved</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L91" rel="noopener">ui/client/features/pages-editor/types.ts:91</a></p>
+<h5>isCustomComponent</h5>
+<blockquote>
+<p><strong>isCustomComponent</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L83" rel="noopener">ui/client/features/pages-editor/types.ts:83</a></p>
+<h5>links</h5>
+<blockquote>
+<p><strong>links</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L85" rel="noopener">ui/client/features/pages-editor/types.ts:85</a></p>
+<h6>from</h6>
+<blockquote>
+<p><strong>from</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>prop</h6>
+<blockquote>
+<p><strong>prop</strong>: <code>string</code></p>
+</blockquote>
+<h6>text</h6>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<h6>valueKind</h6>
+<blockquote>
+<p><strong>valueKind</strong>: <code>&quot;literal&quot;</code> | <code>&quot;identifier&quot;</code> | <code>&quot;expression&quot;</code></p>
+</blockquote>
+<h5>nodeId</h5>
+<blockquote>
+<p><strong>nodeId</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L81" rel="noopener">ui/client/features/pages-editor/types.ts:81</a></p>
+<h5>scope</h5>
+<blockquote>
+<p><strong>scope</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L84" rel="noopener">ui/client/features/pages-editor/types.ts:84</a></p>
+<h6>kind</h6>
+<blockquote>
+<p><strong>kind</strong>: <a href="#scopedeclkind"><code>ScopeDeclKind</code></a></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h5>spreads</h5>
+<blockquote>
+<p><strong>spreads</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L86" rel="noopener">ui/client/features/pages-editor/types.ts:86</a></p>
+<h6>from</h6>
+<blockquote>
+<p><strong>from</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>text</h6>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<h5>suggestions</h5>
+<blockquote>
+<p><strong>suggestions</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L89" rel="noopener">ui/client/features/pages-editor/types.ts:89</a></p>
+<h5>tag</h5>
+<blockquote>
+<p><strong>tag</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L82" rel="noopener">ui/client/features/pages-editor/types.ts:82</a></p>
+<h5>undeclared</h5>
+<blockquote>
+<p><strong>undeclared</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L88" rel="noopener">ui/client/features/pages-editor/types.ts:88</a></p>
+<h5>unusedScope</h5>
+<blockquote>
+<p><strong>unusedScope</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L90" rel="noopener">ui/client/features/pages-editor/types.ts:90</a></p>
+<hr>
+<h3 id="scopesourceitem">ScopeSourceItem<a class="anchor" href="#scopesourceitem" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeSourceItem</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<h4 id="properties-16">Properties<a class="anchor" href="#properties-16" aria-label="Link to this section">#</a></h4>
+<h5>color</h5>
+<blockquote>
+<p><strong>color</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <a href="#scopedeclkind"><code>ScopeDeclKind</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<h5>linked</h5>
+<blockquote>
+<p><strong>linked</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<h5>unusedInPage</h5>
+<blockquote>
+<p><strong>unusedInPage</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L94" rel="noopener">ui/client/features/pages-editor/types.ts:94</a></p>
+<hr>
+<h3 id="scopetargetitem">ScopeTargetItem<a class="anchor" href="#scopetargetitem" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeTargetItem</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L98" rel="noopener">ui/client/features/pages-editor/types.ts:98</a></p>
+<h4 id="properties-17">Properties<a class="anchor" href="#properties-17" aria-label="Link to this section">#</a></h4>
+<h5>color</h5>
+<blockquote>
+<p><strong>color</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L104" rel="noopener">ui/client/features/pages-editor/types.ts:104</a></p>
+<p>Colour of the first linked source, or null when the prop is not fed by a scope name.</p>
+<h5>declared</h5>
+<blockquote>
+<p><strong>declared</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L106" rel="noopener">ui/client/features/pages-editor/types.ts:106</a></p>
+<p>True when the (closed) child declares this prop.</p>
+<h5>prop</h5>
+<blockquote>
+<p><strong>prop</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L99" rel="noopener">ui/client/features/pages-editor/types.ts:99</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#scopetargetstatus"><code>ScopeTargetStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L100" rel="noopener">ui/client/features/pages-editor/types.ts:100</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L102" rel="noopener">ui/client/features/pages-editor/types.ts:102</a></p>
+<p>How the value is written, e.g. <code>count + 1</code>, <code>&quot;hi&quot;</code>; empty for props nobody passes.</p>
+<hr>
+<h3 id="scopetargetstatus">ScopeTargetStatus<a class="anchor" href="#scopetargetstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeTargetStatus</strong> = <code>&quot;bound&quot;</code> | <code>&quot;literal&quot;</code> | <code>&quot;unbound&quot;</code> | <code>&quot;spread&quot;</code> | <code>&quot;undeclared&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L96" rel="noopener">ui/client/features/pages-editor/types.ts:96</a></p>
+<hr>
+<h3 id="scopeview">ScopeView<a class="anchor" href="#scopeview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ScopeView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L113" rel="noopener">ui/client/features/pages-editor/types.ts:113</a></p>
+<h4 id="properties-18">Properties<a class="anchor" href="#properties-18" aria-label="Link to this section">#</a></h4>
+<h5>childPropsResolved</h5>
+<blockquote>
+<p><strong>childPropsResolved</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L119" rel="noopener">ui/client/features/pages-editor/types.ts:119</a></p>
+<h5>edges</h5>
+<blockquote>
+<p><strong>edges</strong>: <a href="#scopeedge"><code>ScopeEdge</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L117" rel="noopener">ui/client/features/pages-editor/types.ts:117</a></p>
+<h5>flags</h5>
+<blockquote>
+<p><strong>flags</strong>: <a href="#scopeflag"><code>ScopeFlag</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L118" rel="noopener">ui/client/features/pages-editor/types.ts:118</a></p>
+<h5>sources</h5>
+<blockquote>
+<p><strong>sources</strong>: <a href="#scopesourceitem"><code>ScopeSourceItem</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L115" rel="noopener">ui/client/features/pages-editor/types.ts:115</a></p>
+<h5>tag</h5>
+<blockquote>
+<p><strong>tag</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L114" rel="noopener">ui/client/features/pages-editor/types.ts:114</a></p>
+<h5>targets</h5>
+<blockquote>
+<p><strong>targets</strong>: <a href="#scopetargetitem"><code>ScopeTargetItem</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L116" rel="noopener">ui/client/features/pages-editor/types.ts:116</a></p>
+<hr>
+<h3 id="sourcediagnostic">SourceDiagnostic<a class="anchor" href="#sourcediagnostic" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SourceDiagnostic</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L35" rel="noopener">ui/client/features/pages-editor/types.ts:35</a></p>
+<p>One diagnostic as returned by GET /api/pages/source (1-based positions).</p>
+<h4 id="properties-19">Properties<a class="anchor" href="#properties-19" aria-label="Link to this section">#</a></h4>
+<h5>code</h5>
+<blockquote>
+<p><strong>code</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L37" rel="noopener">ui/client/features/pages-editor/types.ts:37</a></p>
+<h5>column</h5>
+<blockquote>
+<p><strong>column</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L41" rel="noopener">ui/client/features/pages-editor/types.ts:41</a></p>
+<h5>endColumn</h5>
+<blockquote>
+<p><strong>endColumn</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L43" rel="noopener">ui/client/features/pages-editor/types.ts:43</a></p>
+<h5>endLine</h5>
+<blockquote>
+<p><strong>endLine</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L42" rel="noopener">ui/client/features/pages-editor/types.ts:42</a></p>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L40" rel="noopener">ui/client/features/pages-editor/types.ts:40</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L39" rel="noopener">ui/client/features/pages-editor/types.ts:39</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <a href="#diagnosticseverity"><code>DiagnosticSeverity</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L38" rel="noopener">ui/client/features/pages-editor/types.ts:38</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <a href="#diagnosticsource"><code>DiagnosticSource</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L36" rel="noopener">ui/client/features/pages-editor/types.ts:36</a></p>
+<hr>
+<h3 id="sourceeditorprops">SourceEditorProps<a class="anchor" href="#sourceeditorprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SourceEditorProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L62" rel="noopener">ui/client/features/pages-editor/types.ts:62</a></p>
+<p>The whole contract an editor adapter implements (Monaco, textarea, ...).
+<code>onChange</code> is optional: omit it (with readOnly) for a viewer.</p>
+<h4 id="properties-20">Properties<a class="anchor" href="#properties-20" aria-label="Link to this section">#</a></h4>
+<h5>label?</h5>
+<blockquote>
+<p><code>optional</code> <strong>label?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L68" rel="noopener">ui/client/features/pages-editor/types.ts:68</a></p>
+<p>Accessible label / stable test hook.</p>
+<h5>markers</h5>
+<blockquote>
+<p><strong>markers</strong>: <a href="#sourcemarker"><code>SourceMarker</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L64" rel="noopener">ui/client/features/pages-editor/types.ts:64</a></p>
+<h5>onChange?</h5>
+<blockquote>
+<p><code>optional</code> <strong>onChange?</strong>: (<code>value</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L66" rel="noopener">ui/client/features/pages-editor/types.ts:66</a></p>
+<h6>Parameters</h6>
+<h6>value</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>readOnly?</h5>
+<blockquote>
+<p><code>optional</code> <strong>readOnly?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L65" rel="noopener">ui/client/features/pages-editor/types.ts:65</a></p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L63" rel="noopener">ui/client/features/pages-editor/types.ts:63</a></p>
+<hr>
+<h3 id="sourcemarker">SourceMarker<a class="anchor" href="#sourcemarker" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SourceMarker</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L47" rel="noopener">ui/client/features/pages-editor/types.ts:47</a></p>
+<p>Editor-neutral marker (1-based, end exclusive), message pre-labelled.</p>
+<h4 id="properties-21">Properties<a class="anchor" href="#properties-21" aria-label="Link to this section">#</a></h4>
+<h5>code</h5>
+<blockquote>
+<p><strong>code</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L54" rel="noopener">ui/client/features/pages-editor/types.ts:54</a></p>
+<h5>endColumn</h5>
+<blockquote>
+<p><strong>endColumn</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L53" rel="noopener">ui/client/features/pages-editor/types.ts:53</a></p>
+<h5>endLine</h5>
+<blockquote>
+<p><strong>endLine</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L52" rel="noopener">ui/client/features/pages-editor/types.ts:52</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L49" rel="noopener">ui/client/features/pages-editor/types.ts:49</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <a href="#diagnosticseverity"><code>DiagnosticSeverity</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L48" rel="noopener">ui/client/features/pages-editor/types.ts:48</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <a href="#diagnosticsource"><code>DiagnosticSource</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L55" rel="noopener">ui/client/features/pages-editor/types.ts:55</a></p>
+<h5>startColumn</h5>
+<blockquote>
+<p><strong>startColumn</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L51" rel="noopener">ui/client/features/pages-editor/types.ts:51</a></p>
+<h5>startLine</h5>
+<blockquote>
+<p><strong>startLine</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L50" rel="noopener">ui/client/features/pages-editor/types.ts:50</a></p>
+<hr>
+<h3 id="statusmessage">StatusMessage<a class="anchor" href="#statusmessage" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>StatusMessage</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L75" rel="noopener">ui/client/features/pages-editor/types.ts:75</a></p>
+<h4 id="properties-22">Properties<a class="anchor" href="#properties-22" aria-label="Link to this section">#</a></h4>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L75" rel="noopener">ui/client/features/pages-editor/types.ts:75</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L75" rel="noopener">ui/client/features/pages-editor/types.ts:75</a></p>
+<h5>violations?</h5>
+<blockquote>
+<p><code>optional</code> <strong>violations?</strong>: <a href="#violation"><code>Violation</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L75" rel="noopener">ui/client/features/pages-editor/types.ts:75</a></p>
+<hr>
+<h3 id="trail">Trail<a class="anchor" href="#trail" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Trail</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L184" rel="noopener">ui/client/features/pages-editor/types.ts:184</a></p>
+<h4 id="properties-23">Properties<a class="anchor" href="#properties-23" aria-label="Link to this section">#</a></h4>
+<h5>index</h5>
+<blockquote>
+<p><strong>index</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L184" rel="noopener">ui/client/features/pages-editor/types.ts:184</a></p>
+<h5>steps</h5>
+<blockquote>
+<p><strong>steps</strong>: <a href="#trailstep"><code>TrailStep</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L184" rel="noopener">ui/client/features/pages-editor/types.ts:184</a></p>
+<hr>
+<h3 id="trailitem">TrailItem<a class="anchor" href="#trailitem" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TrailItem</strong> = { <code>index</code>: <code>number</code>; <code>kind</code>: <code>&quot;step&quot;</code>; <code>step</code>: <a href="#trailstep"><code>TrailStep</code></a>; } | { <code>hidden</code>: <code>number</code>[]; <code>kind</code>: <code>&quot;fold&quot;</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L190" rel="noopener">ui/client/features/pages-editor/types.ts:190</a></p>
+<p>What the trail draws: a step, or a fold standing in for the hidden middle steps.</p>
+<hr>
+<h3 id="trailstep">TrailStep<a class="anchor" href="#trailstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TrailStep</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L182" rel="noopener">ui/client/features/pages-editor/types.ts:182</a></p>
+<p>One hop in the trail: what was clicked, how it relates to the hop before, and what it shows.</p>
+<h4 id="properties-24">Properties<a class="anchor" href="#properties-24" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L182" rel="noopener">ui/client/features/pages-editor/types.ts:182</a></p>
+<h5>relation</h5>
+<blockquote>
+<p><strong>relation</strong>: <a href="#navrelation"><code>NavRelation</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L182" rel="noopener">ui/client/features/pages-editor/types.ts:182</a></p>
+<h5>view</h5>
+<blockquote>
+<p><strong>view</strong>: <a href="#navview"><code>NavView</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L182" rel="noopener">ui/client/features/pages-editor/types.ts:182</a></p>
+<hr>
+<h3 id="violation">Violation<a class="anchor" href="#violation" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Violation</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L71" rel="noopener">ui/client/features/pages-editor/types.ts:71</a></p>
+<h4 id="properties-25">Properties<a class="anchor" href="#properties-25" aria-label="Link to this section">#</a></h4>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L71" rel="noopener">ui/client/features/pages-editor/types.ts:71</a></p>
+<h5>rule</h5>
+<blockquote>
+<p><strong>rule</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L71" rel="noopener">ui/client/features/pages-editor/types.ts:71</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pages-editor/types.ts#L71" rel="noopener">ui/client/features/pages-editor/types.ts:71</a></p>
+<h2 id="references">References<a class="anchor" href="#references" aria-label="Link to this section">#</a></h2>
+<h3 id="livepreviewview">LivePreviewView<a class="anchor" href="#livepreviewview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/pages-editor/domain/LivePreviewView/#livepreviewview">LivePreviewView</a></p>
+<hr>
+<h3 id="previewreach">PreviewReach<a class="anchor" href="#previewreach" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/pages-editor/domain/LivePreviewView/#previewreach">PreviewReach</a></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#type-aliases">Type Aliases</a></li><li><a href="#references">References</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/pages-editor/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

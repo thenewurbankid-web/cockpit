@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/review/domain/TreeTypes · Developer Docs</title>
+<meta name="description" content="Types of the changed-units tree (#351): its nodes, what a key does, and the keyboard state a controller hands the component.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/review/domain/TreeTypes · Developer Docs">
+<meta property="og:description" content="Types of the changed-units tree (#351): its nodes, what a key does, and the keyboard state a controller hands the component.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../../">Home</a><a href="../../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/review/domain/TreeTypes</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/review/domain/TreeTypes</h1><div class="prose"><p>Types of the changed-units tree: its nodes, what a key does, and the keyboard state a controller hands the component.</p>
+<p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/review/domain/TreeTypes.ts" rel="noopener"><code>ui/client/features/review/domain/TreeTypes.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="changetreeprops">ChangeTreeProps<a class="anchor" href="#changetreeprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ChangeTreeProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L32" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:32</a></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>ariaLabel</h5>
+<blockquote>
+<p><strong>ariaLabel</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L36" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:36</a></p>
+<h5>grouping</h5>
+<blockquote>
+<p><strong>grouping</strong>: <a href="#treegrouping"><code>TreeGrouping</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L33" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:33</a></p>
+<h5>nav</h5>
+<blockquote>
+<p><strong>nav</strong>: <a href="#treenavprops"><code>TreeNavProps</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L40" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:40</a></p>
+<h5>nodes</h5>
+<blockquote>
+<p><strong>nodes</strong>: <a href="#treenodeview"><code>TreeNodeView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L37" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:37</a></p>
+<h5>onGrouping</h5>
+<blockquote>
+<p><strong>onGrouping</strong>: (<code>g</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L34" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:34</a></p>
+<h6>Parameters</h6>
+<h6>g</h6>
+<p><a href="#treegrouping"><code>TreeGrouping</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onSelect</h5>
+<blockquote>
+<p><strong>onSelect</strong>: (<code>path</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L39" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:39</a></p>
+<h6>Parameters</h6>
+<h6>path</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>selectedPath</h5>
+<blockquote>
+<p><strong>selectedPath</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L38" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:38</a></p>
+<h5>totals</h5>
+<blockquote>
+<p><strong>totals</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L35" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:35</a></p>
+<hr>
+<h3 id="treeaction">TreeAction<a class="anchor" href="#treeaction" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TreeAction</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L20" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:20</a></p>
+<p>What a key does in the tree: move focus, open/close a parent, or select a file.</p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>activate?</h5>
+<blockquote>
+<p><code>optional</code> <strong>activate?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L20" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:20</a></p>
+<h5>focus?</h5>
+<blockquote>
+<p><code>optional</code> <strong>focus?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L20" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:20</a></p>
+<h5>open?</h5>
+<blockquote>
+<p><code>optional</code> <strong>open?</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L20" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:20</a></p>
+<h6>id</h6>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<h6>open</h6>
+<blockquote>
+<p><strong>open</strong>: <code>boolean</code></p>
+</blockquote>
+<hr>
+<h3 id="treegrouping">TreeGrouping<a class="anchor" href="#treegrouping" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TreeGrouping</strong> = <code>&quot;feature&quot;</code> | <code>&quot;layer&quot;</code> | <code>&quot;files&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L5" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:5</a></p>
+<hr>
+<h3 id="treenavprops">TreeNavProps<a class="anchor" href="#treenavprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TreeNavProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L23" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:23</a></p>
+<p>The tree&#39;s keyboard state, owned by hooks/useTreeNavigation (a roving tabindex: ONE row is the tab stop).</p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>isOpen</h5>
+<blockquote>
+<p><strong>isOpen</strong>: (<code>id</code>) =&gt; <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L24" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:24</a></p>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>boolean</code></p>
+<h5>onFocusRow</h5>
+<blockquote>
+<p><strong>onFocusRow</strong>: (<code>id</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L28" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:28</a></p>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onKeyDown</h5>
+<blockquote>
+<p><strong>onKeyDown</strong>: (<code>e</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L26" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:26</a></p>
+<h6>Parameters</h6>
+<h6>e</h6>
+<p><code>KeyboardEvent</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onToggle</h5>
+<blockquote>
+<p><strong>onToggle</strong>: (<code>id</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L27" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:27</a></p>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>tabStopId</h5>
+<blockquote>
+<p><strong>tabStopId</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L25" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:25</a></p>
+<h5>treeRef</h5>
+<blockquote>
+<p><strong>treeRef</strong>: <code>RefObject</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L29" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:29</a></p>
+<hr>
+<h3 id="treenodeview">TreeNodeView<a class="anchor" href="#treenodeview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TreeNodeView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L8" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:8</a></p>
+<p>One node of the changed-units tree (built in domain/TreeNav.ts; the component only draws it).</p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>children</h5>
+<blockquote>
+<p><strong>children</strong>: <a href="#treenodeview"><code>TreeNodeView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L17" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:17</a></p>
+<h5>count</h5>
+<blockquote>
+<p><strong>count</strong>: <code>number</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L12" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:12</a></p>
+<h5>data</h5>
+<blockquote>
+<p><strong>data</strong>: <code>Record</code>&lt;<code>string</code>, <code>string</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L16" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:16</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/types/#treefile"><code>TreeFile</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L13" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:13</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L9" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:9</a></p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;feature&quot;</code> | <code>&quot;layer&quot;</code> | <code>&quot;file&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L10" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:10</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L11" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:11</a></p>
+<h5>showLayer</h5>
+<blockquote>
+<p><strong>showLayer</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L14" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:14</a></p>
+<h5>testId</h5>
+<blockquote>
+<p><strong>testId</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/domain/TreeTypes.ts#L15" rel="noopener">ui/client/features/review/domain/TreeTypes.ts:15</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/review/domain/TreeTypes.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

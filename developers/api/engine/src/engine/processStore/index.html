@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/processStore · Developer Docs</title>
+<meta name="description" content="#287 — where a process lives between one Cockpit session and the next.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/processStore · Developer Docs">
+<meta property="og:description" content="#287 — where a process lives between one Cockpit session and the next.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processStore/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processStore/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../">Home</a><a href="../../../../../../user-guide/">Guide</a><a href="../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/processStore</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/processStore</h1><div class="prose"><p>#287 — where a process lives between one Cockpit session and the next.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processStore.mjs" rel="noopener"><code>src/engine/processStore.mjs</code></a>.</em></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="atomicwritejson">atomicWriteJson()<a class="anchor" href="#atomicwritejson" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>atomicWriteJson</strong>(<code>file</code>, <code>value</code>, <code>__namedParameters?</code>): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processStore.mjs#L101" rel="noopener">src/engine/processStore.mjs:101</a></p>
+<p>Write <code>value</code> as JSON to <code>file</code> atomically: a temp file in the same directory, flushed to disk (<code>fsync</code>), then
+<code>rename()</code>. On ANY failure the temp file is removed and the old file is untouched; a disk-full error (<code>ENOSPC</code>,
+<code>EDQUOT</code>) is rethrown with a message that says so. <code>fsImpl</code> is a test seam.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>file</h5>
+<p><code>any</code></p>
+<h5>value</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>fsImpl?</h6>
+<p><code>any</code> = <code>fs</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="openprocessstore">openProcessStore()<a class="anchor" href="#openprocessstore" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>openProcessStore</strong>(<code>projectRoot</code>, <code>options?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processStore.mjs#L139" rel="noopener">src/engine/processStore.mjs:139</a></p>
+<p>Open the store for one project. Returns a small object rather than free
+functions so a caller passes the project root and the state directory once.</p>
+<p>JSON in, JSON out: every method takes and returns plain process records —
+the same objects processModel.mjs produces. Nothing here knows about HTTP,
+WebSockets or the UI.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>projectRoot</h5>
+<p><code>string</code></p>
+<p>The project the processes belong to.</p>
+<h5>options?</h5>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>...</code></p>
+<p>Clock (ISO string).</p>
+<h6>stateDir?</h6>
+<p><code>string</code> = <code>...</code></p>
+<p>Base state directory.</p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p>The store bound to that project.</p>
+<h5>adoptInterrupted</h5>
+<blockquote>
+<p><strong>adoptInterrupted</strong>: <code>Function</code></p>
+</blockquote>
+<h5>all</h5>
+<blockquote>
+<p><strong>all</strong>: <code>Function</code></p>
+</blockquote>
+<h5>list</h5>
+<blockquote>
+<p><strong>list</strong>: <code>Function</code></p>
+</blockquote>
+<h5>load</h5>
+<blockquote>
+<p><strong>load</strong>: <code>Function</code></p>
+</blockquote>
+<h5>remove</h5>
+<blockquote>
+<p><strong>remove</strong>: <code>Function</code></p>
+</blockquote>
+<h5>save</h5>
+<blockquote>
+<p><strong>save</strong>: <code>Function</code></p>
+</blockquote>
+<hr>
+<h3 id="processdir">processDir()<a class="anchor" href="#processdir" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>processDir</strong>(<code>projectRoot</code>, <code>options?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processStore.mjs#L83" rel="noopener">src/engine/processStore.mjs:83</a></p>
+<p>Absolute directory holding one project&#39;s process records.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>projectRoot</h5>
+<p><code>string</code></p>
+<p>Project the processes belong to.</p>
+<h5>options?</h5>
+<h6>stateDir?</h6>
+<p><code>string</code> = <code>...</code></p>
+<p>Base state directory (defaults to <code>resolveStateDir()</code>).</p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>Absolute path of <code>&lt;stateDir&gt;/processes/&lt;projectKey&gt;</code>.</p>
+<hr>
+<h3 id="projectkey">projectKey()<a class="anchor" href="#projectkey" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>projectKey</strong>(<code>projectRoot</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processStore.mjs#L68" rel="noopener">src/engine/processStore.mjs:68</a></p>
+<p>The per-project directory name: readable prefix plus a hash, so two
+projects called <code>web</code> in different checkouts never collide and a human
+looking in the state directory can still tell which is which.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>projectRoot</h5>
+<p><code>string</code></p>
+<p>Path of the project (resolved to absolute first).</p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p><code>&lt;basename&gt;-&lt;12 hex chars of a SHA-1 of the absolute path&gt;</code>, safe to use as a directory name.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">projectKey(&#39;/work/web&#39;); // =&gt; &#39;web-3f2a9c1b7d40&#39;
+</code></pre>
+<hr>
+<h3 id="resolvestatedir">resolveStateDir()<a class="anchor" href="#resolvestatedir" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolveStateDir</strong>(<code>env?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processStore.mjs#L51" rel="noopener">src/engine/processStore.mjs:51</a></p>
+<p>The base state directory, resolved from the environment. Pass <code>env</code> to
+test the resolution without touching <code>process.env</code>.</p>
+<p><code>CONSTRUCT_STATE_DIR</code> wins so a test, a sandbox or a second Cockpit can be
+pointed somewhere harmless in one variable.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>env?</h5>
+<p><code>Record</code>&lt;<code>string</code>, <code>string</code>&gt; = <code>process.env</code></p>
+<p>Environment to read; defaults to <code>process.env</code>.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>Absolute path of the base state directory: <code>CONSTRUCT_STATE_DIR</code>, else <code>$XDG_STATE_HOME/construct</code>, else <code>~/.local/state/construct</code>.</p>
+<h4 id="example-2">Example<a class="anchor" href="#example-2" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">resolveStateDir({ CONSTRUCT_STATE_DIR: &#39;/tmp/state&#39; }); // =&gt; &#39;/tmp/state&#39;
+</code></pre>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processStore.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

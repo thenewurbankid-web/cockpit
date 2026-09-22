@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/server/src/cloneJobs-1 · Developer Docs</title>
+<meta name="description" content="API of ui/server/src/cloneJobs-1.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/server/src/cloneJobs-1 · Developer Docs">
+<meta property="og:description" content="API of ui/server/src/cloneJobs-1.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/cloneJobs-1/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/cloneJobs-1/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/server/src/cloneJobs-1</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/server/src/cloneJobs-1</h1><div class="prose"><p><em>Cockpit server, next. Source: n/a.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="clonestamp">CLONE_STAMP<a class="anchor" href="#clonestamp" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>CLONE_STAMP</strong>: <code>&quot;construct-cloned.json&quot;</code> = <code>&#39;construct-cloned.json&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L173" rel="noopener">ui/server/src/cloneJobs.mjs:173</a></p>
+<p>Proof, inside the clone&#39;s own metadata directory, that THIS Cockpit made it (&quot;Pull latest&quot; touches only these).</p>
+<hr>
+<h3 id="defaultmaxbytes">DEFAULT_MAX_BYTES<a class="anchor" href="#defaultmaxbytes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DEFAULT_MAX_BYTES</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L30" rel="noopener">ui/server/src/cloneJobs.mjs:30</a></p>
+<hr>
+<h3 id="defaulttimeoutms">DEFAULT_TIMEOUT_MS<a class="anchor" href="#defaulttimeoutms" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DEFAULT_TIMEOUT_MS</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L31" rel="noopener">ui/server/src/cloneJobs.mjs:31</a></p>
+<hr>
+<h3 id="markerprefix">MARKER_PREFIX<a class="anchor" href="#markerprefix" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>MARKER_PREFIX</strong>: <code>&quot;.construct-clone-&quot;</code> = <code>&#39;.construct-clone-&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L109" rel="noopener">ui/server/src/cloneJobs.mjs:109</a></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="cloneargs">cloneArgs()<a class="anchor" href="#cloneargs" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>cloneArgs</strong>(<code>__namedParameters</code>): <code>any</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L83" rel="noopener">ui/server/src/cloneJobs.mjs:83</a></p>
+<p>The exact argv handed to git (after the <code>git</code> program name). Exported so a test can assert every flag.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters</h5>
+<h6>allowLocal?</h6>
+<p><code>boolean</code> = <code>false</code></p>
+<h6>branch?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>depth?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>dest</h6>
+<p><code>any</code></p>
+<h6>parsed</h6>
+<p><code>any</code></p>
+<h6>pin?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>any</code>[]</p>
+<hr>
+<h3 id="cloneenv">cloneEnv()<a class="anchor" href="#cloneenv" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>cloneEnv</strong>(<code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L66" rel="noopener">ui/server/src/cloneJobs.mjs:66</a></p>
+<p>The environment git runs in: nothing inherited but PATH, and no config file, proxy, askpass or helper.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters?</h5>
+<h6>allowLocal?</h6>
+<p><code>boolean</code> = <code>false</code></p>
+<h6>askpass?</h6>
+<p><code>any</code> = <code>null</code></p>
+<h6>base?</h6>
+<p><code>any</code> = <code>process.env</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>GIT_ALLOW_PROTOCOL</h5>
+<blockquote>
+<p><strong>GIT_ALLOW_PROTOCOL</strong>: <code>string</code></p>
+</blockquote>
+<h5>GIT_ASKPASS</h5>
+<blockquote>
+<p><strong>GIT_ASKPASS</strong>: <code>any</code></p>
+</blockquote>
+<h5>GIT_CONFIG_GLOBAL</h5>
+<blockquote>
+<p><strong>GIT_CONFIG_GLOBAL</strong>: <code>string</code> = <code>&#39;/dev/null&#39;</code></p>
+</blockquote>
+<h5>GIT_CONFIG_NOSYSTEM</h5>
+<blockquote>
+<p><strong>GIT_CONFIG_NOSYSTEM</strong>: <code>string</code> = <code>&#39;1&#39;</code></p>
+</blockquote>
+<h5>GIT_PROTOCOL_FROM_USER</h5>
+<blockquote>
+<p><strong>GIT_PROTOCOL_FROM_USER</strong>: <code>string</code> = <code>&#39;0&#39;</code></p>
+</blockquote>
+<h5>GIT_TERMINAL_PROMPT</h5>
+<blockquote>
+<p><strong>GIT_TERMINAL_PROMPT</strong>: <code>string</code> = <code>&#39;0&#39;</code></p>
+</blockquote>
+<h5>HOME</h5>
+<blockquote>
+<p><strong>HOME</strong>: <code>string</code> = <code>&#39;/nonexistent&#39;</code></p>
+</blockquote>
+<h5>LANG</h5>
+<blockquote>
+<p><strong>LANG</strong>: <code>string</code> = <code>&#39;C&#39;</code></p>
+</blockquote>
+<h5>LC_ALL</h5>
+<blockquote>
+<p><strong>LC_ALL</strong>: <code>string</code> = <code>&#39;C&#39;</code></p>
+</blockquote>
+<h5>PATH</h5>
+<blockquote>
+<p><strong>PATH</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="createclonejobs">createCloneJobs()<a class="anchor" href="#createclonejobs" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createCloneJobs</strong>(<code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L209" rel="noopener">ui/server/src/cloneJobs.mjs:209</a></p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters?</h5>
+<h6>getRoot</h6>
+<p>() =&gt; <code>string</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<h5>gitStatus</h5>
+<blockquote>
+<p><strong>gitStatus</strong>: () =&gt; { <code>cloneEnabled</code>: <code>boolean</code>; <code>code</code>: <code>string</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason</code>: <code>any</code>; <code>version</code>: <code>any</code>; } | { <code>cloneEnabled</code>: <code>boolean</code>; <code>code</code>: <code>string</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason</code>: <code>string</code>; <code>version</code>: <code>any</code>; } | { <code>cloneEnabled</code>: <code>boolean</code>; <code>code?</code>: <code>undefined</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason?</code>: <code>undefined</code>; <code>version</code>: <code>any</code>; }</p>
+</blockquote>
+<p>#423: whether clone may run on this machine&#39;s git. Below 2.37.0 git silently ignores <code>http.curloptResolve</code>,
+the pin that keeps git on the addresses that were just checked to be public, so the anti-rebinding half of the
+SSRF defence would be off without a word. Refused rather than degraded: a clone with half its defence is not
+one we want to run. -&gt; {ok, version, minimum, cloneEnabled, reason?, code?}</p>
+<h6>Returns</h6>
+<p>{ <code>cloneEnabled</code>: <code>boolean</code>; <code>code</code>: <code>string</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason</code>: <code>any</code>; <code>version</code>: <code>any</code>; } | { <code>cloneEnabled</code>: <code>boolean</code>; <code>code</code>: <code>string</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason</code>: <code>string</code>; <code>version</code>: <code>any</code>; } | { <code>cloneEnabled</code>: <code>boolean</code>; <code>code?</code>: <code>undefined</code>; <code>minimum</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>reason?</code>: <code>undefined</code>; <code>version</code>: <code>any</code>; }</p>
+<h5>list</h5>
+<blockquote>
+<p><strong>list</strong>: () =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>live</h5>
+<blockquote>
+<p><strong>live</strong>: () =&gt; <code>number</code></p>
+</blockquote>
+<p>Test seam: resolves when the given job has finished.</p>
+<h6>Returns</h6>
+<p><code>number</code></p>
+<h5>cancel()</h5>
+<blockquote>
+<p><strong>cancel</strong>(<code>id</code>): { <code>body</code>: { <code>error</code>: <code>string</code>; <code>job?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; } | { <code>body</code>: { <code>error</code>: <code>string</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; } | { <code>body</code>: { <code>error?</code>: <code>undefined</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; }</p>
+</blockquote>
+<p>-&gt; {status, body}</p>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p>{ <code>body</code>: { <code>error</code>: <code>string</code>; <code>job?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; } | { <code>body</code>: { <code>error</code>: <code>string</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; } | { <code>body</code>: { <code>error?</code>: <code>undefined</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; }; <code>status</code>: <code>number</code>; }</p>
+<h5>get()</h5>
+<blockquote>
+<p><strong>get</strong>(<code>id</code>): <code>object</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code></p>
+<h6>branch?</h6>
+<blockquote>
+<p><code>optional</code> <strong>branch?</strong>: <code>any</code> = <code>j.branch</code></p>
+</blockquote>
+<h6>bytes</h6>
+<blockquote>
+<p><strong>bytes</strong>: <code>any</code> = <code>j.bytes</code></p>
+</blockquote>
+<h6>code?</h6>
+<blockquote>
+<p><code>optional</code> <strong>code?</strong>: <code>any</code> = <code>j.errorCode</code></p>
+</blockquote>
+<h6>dir?</h6>
+<blockquote>
+<p><code>optional</code> <strong>dir?</strong>: <code>any</code> = <code>j.dest</code></p>
+</blockquote>
+<h6>error?</h6>
+<blockquote>
+<p><code>optional</code> <strong>error?</strong>: <code>any</code> = <code>j.error</code></p>
+</blockquote>
+<h6>finishedAt</h6>
+<blockquote>
+<p><strong>finishedAt</strong>: <code>any</code> = <code>j.finishedAt</code></p>
+</blockquote>
+<h6>id</h6>
+<blockquote>
+<p><strong>id</strong>: <code>any</code> = <code>j.id</code></p>
+</blockquote>
+<h6>kind</h6>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code> = <code>&#39;clone&#39;</code></p>
+</blockquote>
+<h6>log</h6>
+<blockquote>
+<p><strong>log</strong>: <code>any</code></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>any</code> = <code>j.slug</code></p>
+</blockquote>
+<h6>private</h6>
+<blockquote>
+<p><strong>private</strong>: <code>boolean</code></p>
+</blockquote>
+<h6>progress</h6>
+<blockquote>
+<p><strong>progress</strong>: <code>any</code> = <code>j.progress</code></p>
+</blockquote>
+<h6>startedAt</h6>
+<blockquote>
+<p><strong>startedAt</strong>: <code>any</code> = <code>j.startedAt</code></p>
+</blockquote>
+<h6>state</h6>
+<blockquote>
+<p><strong>state</strong>: <code>any</code> = <code>j.state</code></p>
+</blockquote>
+<h6>title</h6>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<h6>url</h6>
+<blockquote>
+<p><strong>url</strong>: <code>any</code> = <code>j.url</code></p>
+</blockquote>
+<h5>pull()</h5>
+<blockquote>
+<p><strong>pull</strong>(<code>opts?</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>&quot;Pull latest&quot; for a clone this Cockpit made: <code>git pull --ff-only</code>, argv only, contained, with the same one-time
+<code>token</code> handling as start(). -&gt; {ok:true, name, upToDate, message, detail} | {ok:false, status, code, error}</p>
+<h6>Parameters</h6>
+<h6>opts?</h6>
+<h6>Returns</h6>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<h5>recoverInterrupted()</h5>
+<blockquote>
+<p><strong>recoverInterrupted</strong>(): <code>object</code></p>
+</blockquote>
+<p>#422: sweep the workspace for markers left by a server that is gone (called at server start, and usable any
+time). Removes only directories that carry OUR marker, are real directories, and sit directly under the
+workspace root; stops an orphaned git first when it is still running. A marker whose server is alive is kept.
+-&gt; {removed: string[], killed: string[], kept: {slug, why}[], badMarkers: string[]}</p>
+<h6>Returns</h6>
+<p><code>object</code></p>
+<h6>badMarkers</h6>
+<blockquote>
+<p><strong>badMarkers</strong>: <code>any</code>[] = <code>[]</code></p>
+</blockquote>
+<h6>kept</h6>
+<blockquote>
+<p><strong>kept</strong>: <code>any</code>[] = <code>[]</code></p>
+</blockquote>
+<h6>killed</h6>
+<blockquote>
+<p><strong>killed</strong>: <code>any</code>[] = <code>[]</code></p>
+</blockquote>
+<h6>removed</h6>
+<blockquote>
+<p><strong>removed</strong>: <code>any</code>[] = <code>[]</code></p>
+</blockquote>
+<h5>start()</h5>
+<blockquote>
+<p><strong>start</strong>(<code>opts?</code>): <code>Promise</code>&lt;{ <code>code?</code>: <code>undefined</code>; <code>done</code>: <code>Promise</code>&lt;<code>any</code>&gt;; <code>error?</code>: <code>undefined</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; <code>status?</code>: <code>undefined</code>; } | { <code>code</code>: <code>string</code>; <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>status</code>: <code>number</code>; }&gt;</p>
+</blockquote>
+<p>Validate and start. <code>token</code> (optional, a string) is a one-time access token for a private repository: it is
+validated, held as a Buffer, given to the process only through the per-job askpass helper, and zeroed when the
+job ends. -&gt; {ok:true, job} | {ok:false, status, code, error}</p>
+<h6>Parameters</h6>
+<h6>opts?</h6>
+<h6>Returns</h6>
+<p><code>Promise</code>&lt;{ <code>code?</code>: <code>undefined</code>; <code>done</code>: <code>Promise</code>&lt;<code>any</code>&gt;; <code>error?</code>: <code>undefined</code>; <code>job</code>: { <code>branch?</code>: <code>any</code>; <code>bytes</code>: <code>any</code>; <code>code?</code>: <code>any</code>; <code>dir?</code>: <code>any</code>; <code>error?</code>: <code>any</code>; <code>finishedAt</code>: <code>any</code>; <code>id</code>: <code>any</code>; <code>kind</code>: <code>string</code>; <code>log</code>: <code>any</code>; <code>name</code>: <code>any</code>; <code>private</code>: <code>boolean</code>; <code>progress</code>: <code>any</code>; <code>startedAt</code>: <code>any</code>; <code>state</code>: <code>any</code>; <code>title</code>: <code>string</code>; <code>url</code>: <code>any</code>; }; <code>ok</code>: <code>boolean</code>; <code>status?</code>: <code>undefined</code>; } | { <code>code</code>: <code>string</code>; <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>status</code>: <code>number</code>; }&gt;</p>
+<hr>
+<h3 id="dirbytes">dirBytes()<a class="anchor" href="#dirbytes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>dirBytes</strong>(<code>dir</code>, <code>limit?</code>): <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L39" rel="noopener">ui/server/src/cloneJobs.mjs:39</a></p>
+<p>Bytes under <code>dir</code> (lstat only, never follows a link), stopping early once <code>limit</code> is passed.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>dir</h5>
+<p><code>any</code></p>
+<h5>limit?</h5>
+<p><code>number</code> = <code>Infinity</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>number</code></p>
+<hr>
+<h3 id="killliveclonegroups">killLiveCloneGroups()<a class="anchor" href="#killliveclonegroups" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>killLiveCloneGroups</strong>(): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L121" rel="noopener">ui/server/src/cloneJobs.mjs:121</a></p>
+<p>SIGKILL every live clone&#39;s process group. Registered on exit and on the terminating signals; exported for tests.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="liveclonechildren">liveCloneChildren()<a class="anchor" href="#liveclonechildren" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>liveCloneChildren</strong>(): <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L129" rel="noopener">ui/server/src/cloneJobs.mjs:129</a></p>
+<p>How many clone children are alive right now (test seam).</p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>number</code></p>
+<hr>
+<h3 id="markerpath">markerPath()<a class="anchor" href="#markerpath" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>markerPath</strong>(<code>root</code>, <code>slug</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L110" rel="noopener">ui/server/src/cloneJobs.mjs:110</a></p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>slug</h5>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="stamppath">stampPath()<a class="anchor" href="#stamppath" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>stampPath</strong>(<code>dest</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cloneJobs.mjs#L174" rel="noopener">ui/server/src/cloneJobs.mjs:174</a></p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>dest</h5>
+<p><code>any</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/package.json">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building blocks · Developer Docs</title>
+<meta name="description" content="The inventory of reusable deterministic modules.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Building blocks · Developer Docs">
+<meta property="og:description" content="The inventory of reusable deterministic modules.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/building-blocks/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/building-blocks/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/">Guide</a><a href="../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../developers/architecture/">Architecture</a></li><li><a href="../../developers/repository-layout/">Repository layout</a></li><li><a href="../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../developers/ast/">The AST package</a></li><li><a href="../../developers/workflows/">Workflow narrator</a></li><li><a href="../../developers/building-blocks/" aria-current="page">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../developers/cli-reference/">CLI reference</a></li><li><a href="../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../developers/extending/">Extending Construct</a></li><li><a href="../../developers/testing/">Testing</a></li><li><a href="../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../developers/api/">All packages</a></li><li><a href="../../developers/api/core/">Core engine</a></li><li><a href="../../developers/api/engine/">Engine</a></li><li><a href="../../developers/api/ast/">AST</a></li><li><a href="../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../developers/api/tools/">Tools</a></li><li><a href="../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>Building blocks</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<p class="kicker">Internals</p><h1>Building blocks</h1><p class="lede">The inventory of reusable deterministic modules.</p><div class="prose"><p>A maintained inventory of the small, deterministic building blocks already in the codebase, so new work reuses
+them instead of re-implementing them (or asking an LLM to). Update this file when
+you add, move or retire a block.</p>
+<p>Legend: <strong>Det</strong> = deterministic, no LLM. <strong>Rec</strong> = recommendation (<em>packaged</em> = already a clean, single-entry
+module; <em>group next</em> = worth extracting, filed as an issue; <em>leave</em> = fine where it is).</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Capability</th>
+<th>Where it lives</th>
+<th>Consumers</th>
+<th>Det/LLM</th>
+<th>Rec</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>AST package</strong>: parse, walk, extract, generate</td>
+<td><code>src/ast/</code> (entry <code>src/ast/index.mjs</code>; README there)</td>
+<td><code>src/parser.mjs</code>, <code>architecture-enforcer</code>, <code>route-resolver</code>, <code>frozen-detector</code>, <code>prose</code>, <code>engine/{pageTransformer,controllerBinder,workflowGenerator,workflowExtractor}</code>, <code>ui/server/src/pagesEditor.mjs</code></td>
+<td>Det</td>
+<td><strong>Packaged</strong> (JSX edit/analysis family)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Glob matching</strong> (<code>**</code> / <code>*</code> to RegExp)</td>
+<td><code>src/glob.mjs</code> (<code>globToRegExp</code>, <code>matchGlob</code>)</td>
+<td>architecture/readability/SoC enforcers (layer patterns, exceptions), pagesEditor</td>
+<td>Det</td>
+<td><strong>Packaged</strong> (replaced 5 inline copies)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Timing</strong> (<code>startTimer</code>, <code>elapsedSeconds</code>, <code>formatDuration</code>)</td>
+<td><code>src/timing.mjs</code></td>
+<td><code>cli.mjs</code>, <code>import.mjs</code>, <code>ui/server/src/commandRunner.mjs</code></td>
+<td>Det</td>
+<td>Packaged already (3 pure functions, no deps)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>LLM provider registry</strong> (<code>PROVIDERS</code>, <code>callLlm</code>, <code>stripCodeFence</code>, Ollama defaults)</td>
+<td><code>src/llm.mjs</code></td>
+<td><code>import.mjs</code>, <code>generators.mjs</code>, <code>ui/server/src/{settings,ollama}.mjs</code></td>
+<td><strong>LLM</strong> (the one deliberate exception; opt-in via <code>--llm</code>)</td>
+<td>Packaged already; keep isolated so everything else stays LLM-free</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Transactional writer + context envelope + pipeline</strong> (buffer writes, validate a shadow copy, commit atomically)</td>
+<td><code>src/engine/{transactionalWriter,envelope,pipeline}.mjs</code></td>
+<td><code>generators.mjs</code>, <code>cli.mjs</code>, the generators in <code>src/engine/</code></td>
+<td>Det</td>
+<td>Packaged already (<code>createTransaction</code>, <code>createEnvelope/validateEnvelope</code>, <code>runPipeline</code>)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Zero-LLM generators</strong> (workflow from a state descriptor, controller binding, page transformer)</td>
+<td><code>src/engine/{workflowGenerator,controllerBinder,pageTransformer}.mjs</code></td>
+<td><code>cli.mjs</code>, <code>generators.mjs</code></td>
+<td>Det</td>
+<td>Packaged (now sit on <code>src/ast</code>)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Layer classification + layer graph</strong> (<code>classifyFile</code>, <code>classifyProjectFile</code>, <code>loadLayerGraph</code>, <code>canImport</code>, <code>mergeLayers</code>, <code>validateGraph</code>)</td>
+<td><code>src/architecture-graph.mjs</code> (one classifier; <code>architecture-enforcer.mjs</code> re-exports <code>classifyFile</code>; <code>parser.classifyLayer</code> is a thin default-graph shim)</td>
+<td>enforcers, <code>parser.parseFile</code>/<code>summarizeFeature</code>, readability, <code>pagesEditor</code> (graph only)</td>
+<td>Det</td>
+<td><strong>Packaged</strong>: single graph-driven classifier honoring custom layer patterns and <code>frozen:</code> regions</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Exceptions (scoped, time-boxed)</strong></td>
+<td><code>src/exceptions.mjs</code> (<code>validateExceptionsShape</code>, <code>exceptionApplies</code>, <code>expiredExceptionViolations</code>)</td>
+<td>the three enforcers (architecture re-exports the names for back-compat)</td>
+<td>Det</td>
+<td><strong>Packaged</strong> (replaced 3 near-identical <code>isExempt</code> copies)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Config loading + rule registry</strong> (<code>loadConfig</code>, <code>DEFAULT_RULES</code>, <code>normalizeRules</code>, <code>layersForFramework</code>, <code>aggregateValidation</code>)</td>
+<td><code>src/config.mjs</code>, <code>src/registry.mjs</code>, <code>src/engine/defaultEnforcers.mjs</code></td>
+<td>CLI, all enforcers, ui/server</td>
+<td>Det</td>
+<td>Packaged already</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Violation diagnostics</strong> (<code>makeViolation</code>, <code>formatReport</code>, <code>ConstructError</code>, <code>EXIT_CODES</code>)</td>
+<td><code>src/diagnostics.mjs</code></td>
+<td>everything</td>
+<td>Det</td>
+<td>Packaged already</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Prose descriptions of code</strong> (TS AST to English)</td>
+<td><code>src/prose.mjs</code></td>
+<td><code>summarize</code></td>
+<td>Det</td>
+<td>Packaged already (uses <code>src/ast/tsNodes</code>)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>Source edit / write-back primitives</strong> (JSX tree, props, snippet patch, auto-map, scope/prop analysis; hash-guarded <code>patchNode</code> + enforcement check stay in ui/server)</td>
+<td><code>src/ast/jsx*.mjs</code> (typescript-estree; pure edits) + <code>ui/server/src/pagesEditor.mjs</code> (glue)</td>
+<td>ui/server routes, Pages Editor UI</td>
+<td>Det</td>
+<td><strong>Packaged</strong>: Babel removed from <code>ui/server</code>; parity proven by golden tests captured from the Babel implementation</td>
+</tr>
+<tr>
+<td>13</td>
+<td><strong>File walk / relative path / write</strong></td>
+<td><code>src/fs.mjs</code> (<code>walk</code>, <code>rel</code>, <code>write</code>, <code>ensureDir</code>)</td>
+<td>most modules</td>
+<td>Det</td>
+<td>Leave (tiny)</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>Line source for interactive prompts</strong></td>
+<td><code>src/line-source.mjs</code></td>
+<td><code>repl.mjs</code>, <code>cli.mjs</code></td>
+<td>Det</td>
+<td>Leave</td>
+</tr>
+<tr>
+<td>15</td>
+<td><strong>Import planning / route resolution</strong></td>
+<td><code>src/import.mjs</code>, <code>src/route-resolver.mjs</code></td>
+<td>CLI <code>import</code></td>
+<td>Det (LLM only on opt-in fill)</td>
+<td>Leave; <code>route-resolver</code> already uses <code>src/ast</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td><strong>Workflow narrator</strong> (state machine to plain English, Given/When/Then scenarios, health findings; feeds WORKFLOW-002/003)</td>
+<td><code>src/engine/{workflowNarrator,workflowScenarios,workflowExplain,workflowSource}.mjs</code>; docs in <code>docs/workflow-narrator.md</code></td>
+<td>CLI <code>research workflow</code>, <code>ui/server/src/workflowsViewer.mjs</code> (<code>GET /api/workflows/narrative</code>), architecture-enforcer (WORKFLOW-002/003)</td>
+<td>Det</td>
+<td>Packaged (built on <code>workflowExtractor</code>, no LLM, nothing stored)</td>
+</tr>
+<tr>
+<td>17</td>
+<td><strong>Unit summaries</strong> (structured, LLM-free summary of any project/feature/layer/file/hook/route/rule/package/etc. for bots and humans; pluggable per-kind registry, JSON Schema, token budgets)</td>
+<td><code>src/engine/unitSummary.mjs</code> + <code>src/engine/units/</code> (facts, machines, registry, kinds); <code>schemas/unit-summary.v1.json</code>; docs in <code>docs/unit-summary.md</code></td>
+<td>CLI <code>summarize &lt;ref&gt;</code> / <code>--list</code> / <code>--usage</code>, <code>ui/server/src/unitsApi.mjs</code> (<code>GET /api/units</code>, <code>/api/units/summary</code>, <code>/api/features*</code>)</td>
+<td>Det</td>
+<td>Packaged (composes AST, layer graph, enforcers, workflow narrator; MCP-ready pure API, no MCP server yet)</td>
+</tr>
+<tr>
+<td>18</td>
+<td><strong>Live preview + click-to-source</strong> (annotate JSX with <code>file:line:col</code> in memory, in-page click bridge, opt-in Vite plugin)</td>
+<td><code>src/engine/{jsxSourceAnnotator,previewBridge,previewVitePlugin}.mjs</code></td>
+<td>Cockpit Pages Editor &quot;Live app preview&quot;</td>
+<td>Det</td>
+<td>Packaged (dev-server only, never modifies source or production builds)</td>
+</tr>
+<tr>
+<td>18b</td>
+<td><strong>Live preview v2: click-to-source from React internals</strong> (bridge script generator for an app that installs nothing, + a pure fiber-payload -&gt; <code>{file, line, column, componentName, ancestors[]}</code> resolver: four-tier ladder <code>data-cx-src</code> / <code>_debugSource</code> / <code>_debugStack</code> + source map / component-only, stack parsing, base64-VLQ source-map lookup, project containment)</td>
+<td><code>src/engine/previewFiber.mjs</code>; design in <code>docs/design/live-preview-v2.md</code>; fixtures + recorder in <code>test-utils/preview-fixtures/</code></td>
+<td>none yet — the injecting proxy, the dev-server process and the Pages editor wiring are later slices of the same epic</td>
+<td>Det</td>
+<td><strong>Packaged</strong> (no dependencies; the bridge half is serialisable and the resolver half is pure, so both are unit-testable against payloads recorded from real dev builds)</td>
+</tr>
+<tr>
+<td>19</td>
+<td><strong>Scope/binding links</strong> (which page values flow into which props of one element; unbound, undeclared and unused flags)</td>
+<td><code>src/engine/scopeLinks.mjs</code></td>
+<td><code>ui/server/src/pagesEditor.mjs</code> (Scope tab)</td>
+<td>Det</td>
+<td>Packaged (pure; cross-file resolution stays with the caller)</td>
+</tr>
+<tr>
+<td>20</td>
+<td><strong>Workflow editing</strong> (state/transition/context/action/guard edits as exact source-range replacements; context reader)</td>
+<td><code>src/engine/{workflowEditor,workflowContext}.mjs</code></td>
+<td><code>ui/server/src/workflowsViewer.mjs</code> (Edit and Context &amp; actions tabs)</td>
+<td>Det</td>
+<td>Packaged (formatting and comments outside the edit stay byte-identical)</td>
+</tr>
+<tr>
+<td>21</td>
+<td><strong>External-change tracking + text diff</strong> (per-file &quot;changed outside the editor&quot; records; before/after rows with collapsed context)</td>
+<td><code>src/file-change-tracker.mjs</code>, <code>src/text-diff.mjs</code> (uses <code>diff</code>)</td>
+<td><code>ui/server/src/pageChanges.mjs</code> (Diff tab)</td>
+<td>Det</td>
+<td>Packaged (I/O-free; renderer-agnostic view model)</td>
+</tr>
+<tr>
+<td>22</td>
+<td><strong>Allowlisted directory browser</strong> (directories only, realpath-checked against allowed roots)</td>
+<td><code>src/dir-browser.mjs</code></td>
+<td><code>ui/server/src/dirBrowse.mjs</code> (folder picker in Settings, the project switcher and the &quot;Open a project&quot; screen; its only root is the workspace)</td>
+<td>Det</td>
+<td>Packaged (security-sensitive: keep it the only path a UI server uses to list folders)</td>
+</tr>
+<tr>
+<td>22b</td>
+<td><strong>Workspace boundary</strong> (one realpath-contained root: <code>..</code>, symlinks out, dangling symlinks, sibling prefixes, NUL/over-long paths refused; the open project re-verified per request; consistent <code>409 NO_PROJECT</code>)</td>
+<td><code>ui/server/src/workspace.mjs</code>, <code>ui/server/src/projectGuard.mjs</code>; setting <code>CONSTRUCT_WORKSPACE_ROOT</code></td>
+<td>Every project route of the Cockpit server, the wizard socket, <code>/api/import</code> reads</td>
+<td>Det</td>
+<td>Leave in <code>ui/server</code> for now (pure fs/path, no HTTP; a candidate to package next to <code>dir-browser</code> if another server needs it)</td>
+</tr>
+<tr>
+<td>23</td>
+<td><strong>Project validation as data</strong> and <strong>bounded output buffer</strong> (same enforcers as <code>construct validate</code>, returned as rows; last ~500 log lines)</td>
+<td><code>ui/server/src/validateApi.mjs</code> (<code>GET /api/validate</code>), <code>ui/server/src/logBuffer.mjs</code></td>
+<td>Cockpit drawer (Diagnostics, Logs)</td>
+<td>Det</td>
+<td>Leave in <code>ui/server</code> (thin glue over <code>src/registry.mjs</code>)</td>
+</tr>
+<tr>
+<td>24</td>
+<td><strong>Execution plan contract</strong> (ordered steps, each a reference to a real flow, with executor tag, expected touches and dependencies; flow registry covering the whole CLI surface; <code>validatePlan</code>, <code>planToCommand</code>, <code>planTouches</code>)</td>
+<td><code>src/plan.mjs</code>; <code>schemas/plan.v1.json</code></td>
+<td>Research mode (plan pane), the process runtime</td>
+<td>Det</td>
+<td>Packaged (pure JSON-in/JSON-out; contains, rather than replaces, <code>src/import.mjs</code>&#39;s narrower import plan)</td>
+</tr>
+</tbody></table>
+<p>| 25 | <strong>Impact analysis</strong> (blast radius of a change: features/layers/files touched, why each is implicated, shared-component warnings, per-entry <code>derived</code>/<code>inferred</code> provenance) | <code>src/engine/impact.mjs</code>; <code>schemas/impact-report.v1.json</code>; docs in <code>docs/impact-analysis.md</code> | CLI <code>research impact</code>, Research mode, PR health | Det | <strong>Packaged</strong> (assembles the layer graph, <code>units/facts.mjs</code>, the unit registry and the enforcers over a reverse import index; read-only, MCP-ready pure API) |</p>
+<p>| 26 | <strong>Process runtime</strong> (a running plan: the lifecycle as a real XState machine that narrates itself, per-step status keyed to plan step ids, an <code>ok</code>/<code>llm</code>/<code>warn</code> log where every step records whether a model was involved, artifacts collected for approval, pause/resume/cancel/retry, and persistence outside the project so a run survives a restart) | <code>src/engine/{processMachine,processModel,processStore,processEngine}.mjs</code>; <code>schemas/process.v1.json</code> | The Cockpit&#39;s Processes section, the bot runner | Det | <strong>Packaged</strong> (pure JSON-in/JSON-out, no UI imports; one transaction per step via <code>transactionalWriter</code>, so a cancelled or failed step writes nothing; <code>executeStep</code> is the seam a runner fills) |
+| 27 | <strong>Deterministic commit messages</strong> (branch-scoped serial <code>&lt;prefix&gt;-&lt;session&gt;-&lt;serial&gt;</code>, impact counts consumed from row 25, prose from the unit summarizer, session branch naming, dirty-tree honesty) | <code>src/engine/commitMessage.mjs</code>; docs in <code>docs/commit-on-save.md</code> | Cockpit commit-on-save | Det | <strong>Packaged</strong> (pure, read-only, never shells out and never calls a model — a structural test asserts its import graph cannot reach <code>src/llm.mjs</code>) |
+| 28 | <strong>PR health</strong> (five deterministic review indicators between two refs: declared-vs-actual scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation) | <code>src/engine/prHealth.mjs</code>, <code>src/engine/gitTrees.mjs</code>; <code>schemas/pr-health.v1.json</code>; docs in <code>docs/pr-health.md</code> | CLI <code>construct review</code>, PR review UI | Det | <strong>Packaged</strong> (reuses <code>impactFromChangedFiles</code>, <code>planTouches</code>, the workflow narrator; read-only via temporary detached worktrees) |</p>
+<h2 id="how-to-use-this-file">How to use this file<a class="anchor" href="#how-to-use-this-file" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>Before writing a helper, check the table. If a block exists, import it; if it is nearly right, extend it
+rather than forking it.</li>
+<li>Adding a deterministic block? Give it a single entry point, JSDoc, tests, and a row here.</li>
+<li>Anything that calls an LLM must go through row 4 so the rest of the tool stays repeatable.</li>
+</ul>
+<h2 id="follow-ups">Follow-ups<a class="anchor" href="#follow-ups" aria-label="Link to this section">#</a></h2>
+<p>Babel unification for <code>pagesEditor</code>, layer-classifier and exception-handling
+consolidation are done.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../developers/workflows/"><span>Previous</span>Workflow narrator</a><a class="next" href="../../developers/cli-reference/"><span>Next</span>CLI reference</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#how-to-use-this-file">How to use this file</a></li><li><a href="#follow-ups">Follow-ups</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/docs/capabilities.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

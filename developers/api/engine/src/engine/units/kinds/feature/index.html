@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/units/kinds/feature · Developer Docs</title>
+<meta name="description" content="Unit kinds: project, feature, layer.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/units/kinds/feature · Developer Docs">
+<meta property="og:description" content="Unit kinds: project, feature, layer.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/units/kinds/feature/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/units/kinds/feature/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/units/kinds/feature</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/units/kinds/feature</h1><div class="prose"><p>Unit kinds: project, feature, layer.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/units/kinds/feature.mjs" rel="noopener"><code>src/engine/units/kinds/feature.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="corelayers">CORE_LAYERS<a class="anchor" href="#corelayers" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>CORE_LAYERS</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L8" rel="noopener">src/engine/units/kinds/feature.mjs:8</a></p>
+<hr>
+<h3 id="featurekind">featureKind<a class="anchor" href="#featurekind" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>featureKind</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L130" rel="noopener">src/engine/units/kinds/feature.mjs:130</a></p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>description</h5>
+<blockquote>
+<p><strong>description</strong>: <code>string</code> = <code>&#39;A features/&lt;name&gt;/ vertical slice: layers, contracts, data flow, workflows, dependencies, rules, tests.&#39;</code></p>
+</blockquote>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code> = <code>&#39;feature&#39;</code></p>
+</blockquote>
+<h5>list</h5>
+<blockquote>
+<p><strong>list</strong>: (<code>ctx</code>) =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>resolve</h5>
+<blockquote>
+<p><strong>resolve</strong>: (<code>ctx</code>, <code>ref</code>) =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>ref</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>summarize</h5>
+<blockquote>
+<p><strong>summarize</strong>: (<code>ctx</code>, <code>id</code>, <code>detail</code>) =&gt; <code>object</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>id</h6>
+<p><code>any</code></p>
+<h6>detail</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code></p>
+<h6>health</h6>
+<blockquote>
+<p><strong>health</strong>: <code>object</code></p>
+</blockquote>
+<h6>health.completeness</h6>
+<blockquote>
+<p><strong>completeness</strong>: <code>number</code></p>
+</blockquote>
+<h6>health.findings</h6>
+<blockquote>
+<p><strong>findings</strong>: <code>any</code></p>
+</blockquote>
+<h6>health.status</h6>
+<blockquote>
+<p><strong>status</strong>: <code>string</code></p>
+</blockquote>
+<h6>links</h6>
+<blockquote>
+<p><strong>links</strong>: <code>object</code></p>
+</blockquote>
+<h6>links.children</h6>
+<blockquote>
+<p><strong>children</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>links.parent</h6>
+<blockquote>
+<p><strong>parent</strong>: <code>string</code> = <code>&#39;project:.&#39;</code></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>any</code></p>
+</blockquote>
+<h6>next</h6>
+<blockquote>
+<p><strong>next</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>path</h6>
+<blockquote>
+<p><strong>path</strong>: <code>string</code> = <code>D.dir</code></p>
+</blockquote>
+<h6>sections</h6>
+<blockquote>
+<p><strong>sections</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.contracts</h6>
+<blockquote>
+<p><strong>contracts</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.contracts.components?</h6>
+<blockquote>
+<p><code>optional</code> <strong>components?</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.contracts.hooks?</h6>
+<blockquote>
+<p><code>optional</code> <strong>hooks?</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.contracts.publicApi</h6>
+<blockquote>
+<p><strong>publicApi</strong>: <code>any</code> = <code>D.publicApi</code></p>
+</blockquote>
+<h6>sections.contracts.routes</h6>
+<blockquote>
+<p><strong>routes</strong>: <code>any</code> = <code>D.routes</code></p>
+</blockquote>
+<h6>sections.contracts.serviceEndpoints?</h6>
+<blockquote>
+<p><code>optional</code> <strong>serviceEndpoints?</strong>: <code>any</code>[]</p>
+</blockquote>
+<h6>sections.dataFlow</h6>
+<blockquote>
+<p><strong>dataFlow</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.dataFlow.files?</h6>
+<blockquote>
+<p><code>optional</code> <strong>files?</strong>: <code>object</code>[] = <code>D.fileEdges</code></p>
+</blockquote>
+<h6>sections.dataFlow.layers</h6>
+<blockquote>
+<p><strong>layers</strong>: <code>string</code>[] | <code>object</code>[]</p>
+</blockquote>
+<h6>sections.dependencies</h6>
+<blockquote>
+<p><strong>dependencies</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.dependencies.externalPackages</h6>
+<blockquote>
+<p><strong>externalPackages</strong>: <code>number</code> | <code>any</code>[]</p>
+</blockquote>
+<h6>sections.dependencies.usedBy</h6>
+<blockquote>
+<p><strong>usedBy</strong>: <code>number</code> | <code>object</code>[]</p>
+</blockquote>
+<h6>sections.dependencies.usesFeatures</h6>
+<blockquote>
+<p><strong>usesFeatures</strong>: <code>any</code>[]</p>
+</blockquote>
+<h6>sections.files</h6>
+<blockquote>
+<p><strong>files</strong>: <code>object</code></p>
+</blockquote>
+<h6>Index Signature</h6>
+<p>[<code>k</code>: <code>string</code>]: <code>any</code></p>
+<h6>sections.flow?</h6>
+<blockquote>
+<p><code>optional</code> <strong>flow?</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.flow.framework</h6>
+<blockquote>
+<p><strong>framework</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.flow.notes</h6>
+<blockquote>
+<p><strong>notes</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>sections.flow.routeAdapter</h6>
+<blockquote>
+<p><strong>routeAdapter</strong>: <code>boolean</code> = <code>true</code></p>
+</blockquote>
+<h6>sections.flow.routes</h6>
+<blockquote>
+<p><strong>routes</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.layers</h6>
+<blockquote>
+<p><strong>layers</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.layers.fileCounts</h6>
+<blockquote>
+<p><strong>fileCounts</strong>: <code>any</code> = <code>layerCounts</code></p>
+</blockquote>
+<h6>sections.layers.missing</h6>
+<blockquote>
+<p><strong>missing</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>sections.layers.present</h6>
+<blockquote>
+<p><strong>present</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>sections.rules</h6>
+<blockquote>
+<p><strong>rules</strong>: { <code>counts</code>: { <code>error</code>: <code>any</code>; <code>warning</code>: <code>any</code>; }; <code>exceptions</code>: <code>any</code>; <code>violations</code>: <code>any</code>; } | { <code>errors</code>: <code>any</code>; <code>exceptions</code>: <code>any</code>; <code>warnings</code>: <code>any</code>; }</p>
+</blockquote>
+<h6>sections.tests</h6>
+<blockquote>
+<p><strong>tests</strong>: { <code>count</code>: <code>any</code>; <code>files?</code>: <code>undefined</code>; } | { <code>count</code>: <code>any</code>; <code>files</code>: <code>any</code>; }</p>
+</blockquote>
+<h6>sections.workflows</h6>
+<blockquote>
+<p><strong>workflows</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>summary</h6>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="layerkind">layerKind<a class="anchor" href="#layerkind" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>layerKind</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L165" rel="noopener">src/engine/units/kinds/feature.mjs:165</a></p>
+<h4 id="type-declaration-2">Type Declaration<a class="anchor" href="#type-declaration-2" aria-label="Link to this section">#</a></h4>
+<h5>description</h5>
+<blockquote>
+<p><strong>description</strong>: <code>string</code> = <code>&#39;One architecture layer, within a feature (&quot;login/hook&quot;) or across the project (&quot;hook&quot;).&#39;</code></p>
+</blockquote>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code> = <code>&#39;layer&#39;</code></p>
+</blockquote>
+<h5>list</h5>
+<blockquote>
+<p><strong>list</strong>: (<code>ctx</code>) =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>resolve</h5>
+<blockquote>
+<p><strong>resolve</strong>: (<code>ctx</code>, <code>ref</code>) =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>ref</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>summarize</h5>
+<blockquote>
+<p><strong>summarize</strong>: (<code>ctx</code>, <code>id</code>, <code>detail</code>) =&gt; <code>object</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>id</h6>
+<p><code>any</code></p>
+<h6>detail</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code></p>
+<h6>health</h6>
+<blockquote>
+<p><strong>health</strong>: <code>object</code></p>
+</blockquote>
+<h6>health.findings</h6>
+<blockquote>
+<p><strong>findings</strong>: <code>any</code></p>
+</blockquote>
+<h6>health.status</h6>
+<blockquote>
+<p><strong>status</strong>: <code>string</code></p>
+</blockquote>
+<h6>links</h6>
+<blockquote>
+<p><strong>links</strong>: <code>object</code></p>
+</blockquote>
+<h6>links.children</h6>
+<blockquote>
+<p><strong>children</strong>: <code>any</code></p>
+</blockquote>
+<h6>links.parent</h6>
+<blockquote>
+<p><strong>parent</strong>: <code>string</code></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>any</code> = <code>id</code></p>
+</blockquote>
+<h6>next</h6>
+<blockquote>
+<p><strong>next</strong>: <code>any</code></p>
+</blockquote>
+<h6>path</h6>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<h6>sections</h6>
+<blockquote>
+<p><strong>sections</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.files</h6>
+<blockquote>
+<p><strong>files</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.rule</h6>
+<blockquote>
+<p><strong>rule</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.rule.canImport</h6>
+<blockquote>
+<p><strong>canImport</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.rule.pattern</h6>
+<blockquote>
+<p><strong>pattern</strong>: <code>any</code> = <code>def.pattern</code></p>
+</blockquote>
+<h6>sections.rules</h6>
+<blockquote>
+<p><strong>rules</strong>: { <code>error</code>: <code>any</code>; <code>warning</code>: <code>any</code>; } | { <code>counts</code>: { <code>error</code>: <code>any</code>; <code>warning</code>: <code>any</code>; }; <code>exceptions</code>: <code>any</code>; <code>violations</code>: <code>any</code>; }</p>
+</blockquote>
+<h6>sections.workflows?</h6>
+<blockquote>
+<p><code>optional</code> <strong>workflows?</strong>: <code>object</code>[] = <code>wf</code></p>
+</blockquote>
+<h6>summary</h6>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="projectkind">projectKind<a class="anchor" href="#projectkind" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>projectKind</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L180" rel="noopener">src/engine/units/kinds/feature.mjs:180</a></p>
+<h4 id="type-declaration-3">Type Declaration<a class="anchor" href="#type-declaration-3" aria-label="Link to this section">#</a></h4>
+<h5>description</h5>
+<blockquote>
+<p><strong>description</strong>: <code>string</code> = <code>&#39;The whole project: features with health one-liners, layer graph, rule totals.&#39;</code></p>
+</blockquote>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code> = <code>&#39;project&#39;</code></p>
+</blockquote>
+<h5>list</h5>
+<blockquote>
+<p><strong>list</strong>: () =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>resolve</h5>
+<blockquote>
+<p><strong>resolve</strong>: (<code>ctx</code>, <code>ref</code>) =&gt; <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>ref</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>summarize</h5>
+<blockquote>
+<p><strong>summarize</strong>: (<code>ctx</code>, <code>id</code>, <code>detail</code>) =&gt; <code>object</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>id</h6>
+<p><code>any</code></p>
+<h6>detail</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code></p>
+<h6>health</h6>
+<blockquote>
+<p><strong>health</strong>: <code>object</code></p>
+</blockquote>
+<h6>health.findings</h6>
+<blockquote>
+<p><strong>findings</strong>: <code>any</code></p>
+</blockquote>
+<h6>health.status</h6>
+<blockquote>
+<p><strong>status</strong>: <code>string</code></p>
+</blockquote>
+<h6>links</h6>
+<blockquote>
+<p><strong>links</strong>: <code>object</code></p>
+</blockquote>
+<h6>links.children</h6>
+<blockquote>
+<p><strong>children</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>any</code></p>
+</blockquote>
+<h6>next</h6>
+<blockquote>
+<p><strong>next</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>path</h6>
+<blockquote>
+<p><strong>path</strong>: <code>string</code> = <code>&#39;.&#39;</code></p>
+</blockquote>
+<h6>sections</h6>
+<blockquote>
+<p><strong>sections</strong>: <code>object</code></p>
+</blockquote>
+<h6>sections.exceptions?</h6>
+<blockquote>
+<p><code>optional</code> <strong>exceptions?</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.features</h6>
+<blockquote>
+<p><strong>features</strong>: <code>object</code>[] = <code>feats</code></p>
+</blockquote>
+<h6>sections.featuresRoot</h6>
+<blockquote>
+<p><strong>featuresRoot</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.framework</h6>
+<blockquote>
+<p><strong>framework</strong>: <code>any</code> = <code>cfg.project.framework</code></p>
+</blockquote>
+<h6>sections.frozen?</h6>
+<blockquote>
+<p><code>optional</code> <strong>frozen?</strong>: <code>any</code></p>
+</blockquote>
+<h6>sections.layerGraph</h6>
+<blockquote>
+<p><strong>layerGraph</strong>: <code>object</code></p>
+</blockquote>
+<h6>Index Signature</h6>
+<p>[<code>k</code>: <code>string</code>]: <code>any</code></p>
+<h6>sections.rules?</h6>
+<blockquote>
+<p><code>optional</code> <strong>rules?</strong>: <code>object</code></p>
+</blockquote>
+<h6>Index Signature</h6>
+<p>[<code>k</code>: <code>string</code>]: <code>any</code></p>
+<h6>summary</h6>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="featurenames">featureNames()<a class="anchor" href="#featurenames" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>featureNames</strong>(<code>ctx</code>): <code>any</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L14" rel="noopener">src/engine/units/kinds/feature.mjs:14</a></p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>any</code>[]</p>
+<hr>
+<h3 id="refof">refOf()<a class="anchor" href="#refof" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>refOf</strong>(<code>kind</code>, <code>id</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/kinds/feature.mjs#L10" rel="noopener">src/engine/units/kinds/feature.mjs:10</a></p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>kind</h5>
+<p><code>any</code></p>
+<h5>id</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/units/kinds/feature.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

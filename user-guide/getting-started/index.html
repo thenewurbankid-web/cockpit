@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started · User Guide</title>
+<meta name="description" content="Try it in 60 seconds, then see what just happened.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Getting started · User Guide">
+<meta property="og:description" content="Try it in 60 seconds, then see what just happened.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/user-guide/getting-started/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/user-guide/getting-started/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/" aria-current="page">Guide</a><a href="../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../user-guide/getting-started/" aria-current="page">Getting started</a></li><li><a href="../../user-guide/line/">What Line is</a></li><li><a href="../../user-guide/concepts/">The five ideas</a></li><li><a href="../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../user-guide/construct/">What Construct is</a></li><li><a href="../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../user-guide/cli/">Using the command line</a></li><li><a href="../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Getting started</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Start</p><h1>Getting started</h1><p class="lede">Try it in 60 seconds, then see what just happened.</p><div class="prose"><p><strong>Try it in 60 seconds</strong> (needs Node.js 20 or newer)</p>
+<pre><code class="language-bash">git clone https://github.com/thenewurbankid-web/construct.git &amp;&amp; cd construct &amp;&amp; npm install &amp;&amp; npm link
+construct init my-app &amp;&amp; cd my-app &amp;&amp; construct create feature billing
+construct validate
+</code></pre>
+<p><strong>You should see:</strong> the files it created, <code>[llm: 0 calls ...]</code> (nothing was guessed), and a check that exits 0. The check may show two warnings that a starter feature&#39;s public API has no description. Those are reminders, not failures.</p>
+<p><strong>Next:</strong> <a href="../../user-guide/cockpit/">open the browser Cockpit</a>, or read on to see what just happened.</p>
+<h2 id="what-just-happened">What just happened<a class="anchor" href="#what-just-happened" aria-label="Link to this section">#</a></h2>
+<p><strong>1. Install.</strong> <code>npm link</code> puts the <code>construct</code> command on your path. <code>construct doctor</code> prints your Node and npm versions and confirms the checking tools are available.</p>
+<p><strong>2. Create a project.</strong> <code>construct init my-app</code> writes an <code>architecture.yml</code> (the rules for your project), an <code>AGENTS.md</code> and a small starter feature called <code>core</code>. It targets a Next.js App Router app by default; for a client-routed single-page app use <code>construct init my-app --framework react-spa</code>. Then, inside the project:</p>
+<pre><code class="language-bash">npm install
+construct sync
+construct validate
+</code></pre>
+<p>A fresh project passes. <code>validate</code> exits with a non-zero status only when something is an <strong>error</strong>.</p>
+<p><strong>3. Add your first feature.</strong> A <strong>feature</strong> is a folder that owns everything for one part of your app. Add a slice of it in one command:</p>
+<pre><code class="language-bash">construct create layer Invoice --feature billing --layers domain,hook,page,controller
+</code></pre>
+<p>Every command lists the files it wrote and how many AI calls it made. Unless you pass <code>--llm</code>, that number is zero and every file is a plain template you fill in yourself. Construct builds the parts in dependency order whatever order you list them in, so imports resolve. If you skip one a later file needs, <code>validate</code> says exactly which file is missing.</p>
+<p><strong>4. Look around.</strong> Both commands are read-only:</p>
+<pre><code class="language-bash">construct research summarize --feature billing --format compact
+construct research workflow billing
+</code></pre>
+<p><code>summarize</code> describes a feature in plain English from its code. <code>research workflow</code> explains any state machines in it.</p>
+<p><strong>5. Open the Cockpit (optional).</strong> Everything above also works from a browser. Start the two halves in separate terminals:</p>
+<pre><code class="language-bash">cd ui/server &amp;&amp; npm install &amp;&amp; npm start      # API on http://localhost:4000
+cd ui/client &amp;&amp; npm install &amp;&amp; npm run dev    # app on http://localhost:3000
+</code></pre>
+<p>Open <a href="http://localhost:3000" rel="noopener">http://localhost:3000</a>. The <strong>Settings</strong> page tells the Cockpit which project folder to work on. See <a href="../../user-guide/cockpit/">Using the Cockpit</a>.</p>
+<h2 id="where-next">Where next<a class="anchor" href="#where-next" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="../../user-guide/concepts/">The five ideas</a> behind everything, one sentence each.</li>
+<li>The <a href="../../user-guide/how-to/">how-to guides</a> cover each task: creating, refactoring, importing, tuning rules.</li>
+<li>The <a href="../../user-guide/examples/">examples</a> show a problem, the exact command or screen, and the exact result, separately for the CLI, the Cockpit and the core API.</li>
+</ul>
+<p>Checked against commit <code>584753c</code> on 2026-09-20: the three quickstart commands were run in a fresh folder and printed the created feature, <code>[llm: 0 calls ...]</code> and two READ-003 warnings with exit code 0.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../user-guide/"><span>Previous</span>Overview</a><a class="next" href="../../user-guide/line/"><span>Next</span>What Line is</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#what-just-happened">What just happened</a></li><li><a href="#where-next">Where next</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/getting-started.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

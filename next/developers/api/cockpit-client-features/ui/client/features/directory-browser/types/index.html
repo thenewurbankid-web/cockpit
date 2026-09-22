@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/directory-browser/types · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/directory-browser/types.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/directory-browser/types · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/directory-browser/types.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/directory-browser/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/directory-browser/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/directory-browser/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/directory-browser/types</h1><div class="prose"><p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/directory-browser/types.ts" rel="noopener"><code>ui/client/features/directory-browser/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="browsefailure">BrowseFailure<a class="anchor" href="#browsefailure" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BrowseFailure</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L27" rel="noopener">ui/client/features/directory-browser/types.ts:27</a></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L27" rel="noopener">ui/client/features/directory-browser/types.ts:27</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>false</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L27" rel="noopener">ui/client/features/directory-browser/types.ts:27</a></p>
+<hr>
+<h3 id="dirbadge">DirBadge<a class="anchor" href="#dirbadge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirBadge</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L29" rel="noopener">ui/client/features/directory-browser/types.ts:29</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>key</h5>
+<blockquote>
+<p><strong>key</strong>: <code>&quot;construct&quot;</code> | <code>&quot;react&quot;</code> | <code>&quot;package&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L29" rel="noopener">ui/client/features/directory-browser/types.ts:29</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L29" rel="noopener">ui/client/features/directory-browser/types.ts:29</a></p>
+<hr>
+<h3 id="dircrumb">DirCrumb<a class="anchor" href="#dircrumb" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirCrumb</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L48" rel="noopener">ui/client/features/directory-browser/types.ts:48</a></p>
+<p>One step of the workspace-relative breadcrumb (&quot;Workspace&quot; then each folder below it).</p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L48" rel="noopener">ui/client/features/directory-browser/types.ts:48</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L48" rel="noopener">ui/client/features/directory-browser/types.ts:48</a></p>
+<hr>
+<h3 id="directorybrowserid">DirectoryBrowserId<a class="anchor" href="#directorybrowserid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirectoryBrowserId</strong> = <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L1" rel="noopener">ui/client/features/directory-browser/types.ts:1</a></p>
+<hr>
+<h3 id="directorypickerprops">DirectoryPickerProps<a class="anchor" href="#directorypickerprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirectoryPickerProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L34" rel="noopener">ui/client/features/directory-browser/types.ts:34</a></p>
+<p>Props of the swappable presentational picker (components/DirectoryPicker).</p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L37" rel="noopener">ui/client/features/directory-browser/types.ts:37</a></p>
+<h5>listing</h5>
+<blockquote>
+<p><strong>listing</strong>: <a href="#dirlistingview"><code>DirListingView</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L35" rel="noopener">ui/client/features/directory-browser/types.ts:35</a></p>
+<h5>loading</h5>
+<blockquote>
+<p><strong>loading</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L36" rel="noopener">ui/client/features/directory-browser/types.ts:36</a></p>
+<h5>onLoadMore</h5>
+<blockquote>
+<p><strong>onLoadMore</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L43" rel="noopener">ui/client/features/directory-browser/types.ts:43</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onNavigate</h5>
+<blockquote>
+<p><strong>onNavigate</strong>: (<code>path</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L39" rel="noopener">ui/client/features/directory-browser/types.ts:39</a></p>
+<h6>Parameters</h6>
+<h6>path</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onSelect</h5>
+<blockquote>
+<p><strong>onSelect</strong>: (<code>path</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L41" rel="noopener">ui/client/features/directory-browser/types.ts:41</a></p>
+<h6>Parameters</h6>
+<h6>path</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onToggleHidden</h5>
+<blockquote>
+<p><strong>onToggleHidden</strong>: (<code>value</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L42" rel="noopener">ui/client/features/directory-browser/types.ts:42</a></p>
+<h6>Parameters</h6>
+<h6>value</h6>
+<p><code>boolean</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onUp</h5>
+<blockquote>
+<p><strong>onUp</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L40" rel="noopener">ui/client/features/directory-browser/types.ts:40</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>showHidden</h5>
+<blockquote>
+<p><strong>showHidden</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L38" rel="noopener">ui/client/features/directory-browser/types.ts:38</a></p>
+<hr>
+<h3 id="direntryview">DirEntryView<a class="anchor" href="#direntryview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirEntryView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L31" rel="noopener">ui/client/features/directory-browser/types.ts:31</a></p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>badges</h5>
+<blockquote>
+<p><strong>badges</strong>: <a href="#dirbadge"><code>DirBadge</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L31" rel="noopener">ui/client/features/directory-browser/types.ts:31</a></p>
+<h5>looksLikeProject</h5>
+<blockquote>
+<p><strong>looksLikeProject</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L31" rel="noopener">ui/client/features/directory-browser/types.ts:31</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L31" rel="noopener">ui/client/features/directory-browser/types.ts:31</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L31" rel="noopener">ui/client/features/directory-browser/types.ts:31</a></p>
+<hr>
+<h3 id="dirlistingview">DirListingView<a class="anchor" href="#dirlistingview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DirListingView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L50" rel="noopener">ui/client/features/directory-browser/types.ts:50</a></p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>crumbs</h5>
+<blockquote>
+<p><strong>crumbs</strong>: <a href="#dircrumb"><code>DirCrumb</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L55" rel="noopener">ui/client/features/directory-browser/types.ts:55</a></p>
+<p>Breadcrumb from the root down to <code>path</code>, so the UI can show workspace-relative locations.</p>
+<h5>currentBadges</h5>
+<blockquote>
+<p><strong>currentBadges</strong>: <a href="#dirbadge"><code>DirBadge</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L60" rel="noopener">ui/client/features/directory-browser/types.ts:60</a></p>
+<h5>entries</h5>
+<blockquote>
+<p><strong>entries</strong>: <a href="#direntryview"><code>DirEntryView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L57" rel="noopener">ui/client/features/directory-browser/types.ts:57</a></p>
+<h5>parent</h5>
+<blockquote>
+<p><strong>parent</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L56" rel="noopener">ui/client/features/directory-browser/types.ts:56</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L51" rel="noopener">ui/client/features/directory-browser/types.ts:51</a></p>
+<h5>root</h5>
+<blockquote>
+<p><strong>root</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L53" rel="noopener">ui/client/features/directory-browser/types.ts:53</a></p>
+<p>The browsable root (the workspace); null if the server did not report one.</p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L58" rel="noopener">ui/client/features/directory-browser/types.ts:58</a></p>
+<h5>truncated</h5>
+<blockquote>
+<p><strong>truncated</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L59" rel="noopener">ui/client/features/directory-browser/types.ts:59</a></p>
+<hr>
+<h3 id="rawdirentry">RawDirEntry<a class="anchor" href="#rawdirentry" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RawDirEntry</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L5" rel="noopener">ui/client/features/directory-browser/types.ts:5</a></p>
+<p>One sub-directory as returned by ui/server&#39;s GET /api/fs/browse (core:
+src/dir-browser.mjs). Directories only — never files or file contents.</p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>hasArchitectureYml</h5>
+<blockquote>
+<p><strong>hasArchitectureYml</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L8" rel="noopener">ui/client/features/directory-browser/types.ts:8</a></p>
+<h5>hasPackageJson</h5>
+<blockquote>
+<p><strong>hasPackageJson</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L9" rel="noopener">ui/client/features/directory-browser/types.ts:9</a></p>
+<h5>isConstructProject</h5>
+<blockquote>
+<p><strong>isConstructProject</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L11" rel="noopener">ui/client/features/directory-browser/types.ts:11</a></p>
+<h5>isReact</h5>
+<blockquote>
+<p><strong>isReact</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L10" rel="noopener">ui/client/features/directory-browser/types.ts:10</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L6" rel="noopener">ui/client/features/directory-browser/types.ts:6</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L7" rel="noopener">ui/client/features/directory-browser/types.ts:7</a></p>
+<hr>
+<h3 id="rawdirlisting">RawDirListing<a class="anchor" href="#rawdirlisting" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RawDirListing</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L14" rel="noopener">ui/client/features/directory-browser/types.ts:14</a></p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>current</h5>
+<blockquote>
+<p><strong>current</strong>: <code>Omit</code>&lt;<a href="#rawdirentry"><code>RawDirEntry</code></a>, <code>&quot;name&quot;</code> | <code>&quot;path&quot;</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L24" rel="noopener">ui/client/features/directory-browser/types.ts:24</a></p>
+<h5>entries</h5>
+<blockquote>
+<p><strong>entries</strong>: <a href="#rawdirentry"><code>RawDirEntry</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L19" rel="noopener">ui/client/features/directory-browser/types.ts:19</a></p>
+<h5>limit</h5>
+<blockquote>
+<p><strong>limit</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L22" rel="noopener">ui/client/features/directory-browser/types.ts:22</a></p>
+<h5>offset</h5>
+<blockquote>
+<p><strong>offset</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L21" rel="noopener">ui/client/features/directory-browser/types.ts:21</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>true</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L15" rel="noopener">ui/client/features/directory-browser/types.ts:15</a></p>
+<h5>parent</h5>
+<blockquote>
+<p><strong>parent</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L17" rel="noopener">ui/client/features/directory-browser/types.ts:17</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L16" rel="noopener">ui/client/features/directory-browser/types.ts:16</a></p>
+<h5>roots</h5>
+<blockquote>
+<p><strong>roots</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L18" rel="noopener">ui/client/features/directory-browser/types.ts:18</a></p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L20" rel="noopener">ui/client/features/directory-browser/types.ts:20</a></p>
+<h5>truncated</h5>
+<blockquote>
+<p><strong>truncated</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/directory-browser/types.ts#L23" rel="noopener">ui/client/features/directory-browser/types.ts:23</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/directory-browser/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

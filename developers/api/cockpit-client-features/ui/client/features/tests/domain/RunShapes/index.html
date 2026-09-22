@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/tests/domain/RunShapes · Developer Docs</title>
+<meta name="description" content="Shapes for running the tests (#305): the server's /api/tests/:feature/runs and what the run panel draws from it.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/tests/domain/RunShapes · Developer Docs">
+<meta property="og:description" content="Shapes for running the tests (#305): the server's /api/tests/:feature/runs and what the run panel draws from it.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/tests/domain/RunShapes/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/tests/domain/RunShapes/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../../">Home</a><a href="../../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/tests/domain/RunShapes</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/tests/domain/RunShapes</h1><div class="prose"><p>Shapes for running the tests: the server&#39;s /api/tests/:feature/runs and what the run panel draws from it.</p>
+<p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/tests/domain/RunShapes.ts" rel="noopener"><code>ui/client/features/tests/domain/RunShapes.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="outcomeview">OutcomeView<a class="anchor" href="#outcomeview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>OutcomeView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L27" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:27</a></p>
+<p>The words for one outcome, kept as data so the symbol and the word always travel together (never colour alone).</p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>symbol</h5>
+<blockquote>
+<p><strong>symbol</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L27" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:27</a></p>
+<h5>tone</h5>
+<blockquote>
+<p><strong>tone</strong>: <code>&quot;ok&quot;</code> | <code>&quot;error&quot;</code> | <code>&quot;muted&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L27" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:27</a></p>
+<h5>word</h5>
+<blockquote>
+<p><strong>word</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L27" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:27</a></p>
+<hr>
+<h3 id="resultmark">ResultMark<a class="anchor" href="#resultmark" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ResultMark</strong> = <a href="#outcomeview"><code>OutcomeView</code></a> &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L29" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:29</a></p>
+<p>A result as drawn: <code>status</code> is &#39;none&#39; for a test nothing has run.</p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#runstatus"><code>RunStatus</code></a> | <code>&quot;none&quot;</code></p>
+</blockquote>
+<hr>
+<h3 id="runcounts">RunCounts<a class="anchor" href="#runcounts" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunCounts</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L15" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:15</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>failed</h5>
+<blockquote>
+<p><strong>failed</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L15" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:15</a></p>
+<h5>notRun</h5>
+<blockquote>
+<p><strong>notRun</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L15" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:15</a></p>
+<h5>passed</h5>
+<blockquote>
+<p><strong>passed</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L15" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:15</a></p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L15" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:15</a></p>
+<hr>
+<h3 id="runfailure">RunFailure<a class="anchor" href="#runfailure" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunFailure</strong> = { <code>event</code>: <code>string</code> | <code>null</code>; <code>fix</code>: <code>string</code>; <code>kind</code>: <code>&quot;convention&quot;</code>; <code>message</code>: <code>string</code>; <code>page</code>: <code>string</code> | <code>null</code>; <code>selector</code>: <code>string</code>; <code>step</code>: <a href="#runstep"><code>RunStep</code></a> | <code>null</code>; <code>title</code>: <code>string</code>; <code>why</code>: <code>string</code>; } | { <code>bugReport?</code>: <code>string</code>; <code>expected</code>: <code>string</code>; <code>kind</code>: <code>&quot;app&quot;</code>; <code>message</code>: <code>string</code>; <code>page</code>: <code>string</code> | <code>null</code>; <code>reached</code>: <code>string</code>; <code>step</code>: <a href="#runstep"><code>RunStep</code></a> | <code>null</code>; <code>summary</code>: <code>string</code>; <code>title</code>: <code>string</code>; } | { <code>kind</code>: <code>&quot;other&quot;</code>; <code>message</code>: <code>string</code>; <code>step</code>: <code>null</code>; <code>title</code>: <code>string</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L6" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:6</a></p>
+<hr>
+<h3 id="runlive">RunLive<a class="anchor" href="#runlive" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunLive</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L13" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:13</a></p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>processId</h5>
+<blockquote>
+<p><strong>processId</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L13" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:13</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <code>&quot;queued&quot;</code> | <code>&quot;running&quot;</code> | <code>&quot;paused&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L13" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:13</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <a href="#runtarget"><code>RunTarget</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L13" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:13</a></p>
+<hr>
+<h3 id="runoutcome">RunOutcome<a class="anchor" href="#runoutcome" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunOutcome</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>area</h5>
+<blockquote>
+<p><strong>area</strong>: <a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/tests/types/#testarea"><code>TestArea</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>durationMs</h5>
+<blockquote>
+<p><strong>durationMs</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>failure?</h5>
+<blockquote>
+<p><code>optional</code> <strong>failure?</strong>: <a href="#runfailure"><code>RunFailure</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>reason?</h5>
+<blockquote>
+<p><code>optional</code> <strong>reason?</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#runstatus"><code>RunStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L11" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:11</a></p>
+<hr>
+<h3 id="runpanelprops">RunPanelProps<a class="anchor" href="#runpanelprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunPanelProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L46" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:46</a></p>
+<p>The run panel&#39;s props: the view, the address field, and what a click does.</p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>address</h5>
+<blockquote>
+<p><strong>address</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L48" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:48</a></p>
+<h5>canRun</h5>
+<blockquote>
+<p><strong>canRun</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L51" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:51</a></p>
+<h5>copied</h5>
+<blockquote>
+<p><strong>copied</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L50" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:50</a></p>
+<h5>onAddress</h5>
+<blockquote>
+<p><strong>onAddress</strong>: (<code>value</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L52" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:52</a></p>
+<h6>Parameters</h6>
+<h6>value</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onCancel</h5>
+<blockquote>
+<p><strong>onCancel</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L54" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:54</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onCopy</h5>
+<blockquote>
+<p><strong>onCopy</strong>: (<code>key</code>, <code>text</code>) =&gt; <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L55" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:55</a></p>
+<h6>Parameters</h6>
+<h6>key</h6>
+<p><code>string</code></p>
+<h6>text</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<h5>onOpenTest</h5>
+<blockquote>
+<p><strong>onOpenTest</strong>: (<code>area</code>, <code>file</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L56" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:56</a></p>
+<h6>Parameters</h6>
+<h6>area</h6>
+<p><a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/tests/types/#testarea"><code>TestArea</code></a></p>
+<h6>file</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onRunAll</h5>
+<blockquote>
+<p><strong>onRunAll</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L53" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:53</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>refused</h5>
+<blockquote>
+<p><strong>refused</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L49" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:49</a></p>
+<h5>view</h5>
+<blockquote>
+<p><strong>view</strong>: <a href="#runpanelview"><code>RunPanelView</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L47" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:47</a></p>
+<hr>
+<h3 id="runpanelview">RunPanelView<a class="anchor" href="#runpanelview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunPanelView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L34" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:34</a></p>
+<p>Everything the run panel draws, as plain text and flags, so the components hold no rules.</p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>busy</h5>
+<blockquote>
+<p><strong>busy</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L35" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:35</a></p>
+<h5>done</h5>
+<blockquote>
+<p><strong>done</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L38" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:38</a></p>
+<h5>failures</h5>
+<blockquote>
+<p><strong>failures</strong>: <a href="#runoutcome"><code>RunOutcome</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L40" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:40</a></p>
+<h5>live</h5>
+<blockquote>
+<p><strong>live</strong>: { <code>state</code>: <code>string</code>; <code>text</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L36" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:36</a></p>
+<h5>problem</h5>
+<blockquote>
+<p><strong>problem</strong>: { <code>code</code>: <code>string</code>; <code>heading</code>: <code>string</code>; <code>message</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L37" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:37</a></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#runrowview"><code>RunRowView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L39" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:39</a></p>
+<hr>
+<h3 id="runproblem">RunProblem<a class="anchor" href="#runproblem" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunProblem</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L14" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:14</a></p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>code</h5>
+<blockquote>
+<p><strong>code</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L14" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:14</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L14" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:14</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <code>&quot;error&quot;</code> | <code>&quot;cancelled&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L14" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:14</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <a href="#runtarget"><code>RunTarget</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L14" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:14</a></p>
+<hr>
+<h3 id="runreply">RunReply<a class="anchor" href="#runreply" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunReply</strong> = { <code>ok</code>: <code>true</code>; <code>snap</code>: <a href="#runsnapshot"><code>RunSnapshot</code></a>; } | { <code>code?</code>: <code>string</code>; <code>error</code>: <code>string</code>; <code>ok</code>: <code>false</code>; <code>snap?</code>: <a href="#runsnapshot"><code>RunSnapshot</code></a>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L24" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:24</a></p>
+<hr>
+<h3 id="runrowview">RunRowView<a class="anchor" href="#runrowview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunRowView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<p>One test&#39;s row in the results list.</p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>area</h5>
+<blockquote>
+<p><strong>area</strong>: <a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/tests/types/#testarea"><code>TestArea</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<h5>detail</h5>
+<blockquote>
+<p><strong>detail</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<h5>key</h5>
+<blockquote>
+<p><strong>key</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<h5>mark</h5>
+<blockquote>
+<p><strong>mark</strong>: <a href="#resultmark"><code>ResultMark</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L32" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:32</a></p>
+<hr>
+<h3 id="runsnapshot">RunSnapshot<a class="anchor" href="#runsnapshot" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunSnapshot</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L16" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:16</a></p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>defaultBaseUrl</h5>
+<blockquote>
+<p><strong>defaultBaseUrl</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L22" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:22</a></p>
+<h5>lastRun</h5>
+<blockquote>
+<p><strong>lastRun</strong>: { <code>baseUrl</code>: <code>string</code>; <code>counts</code>: <a href="#runcounts"><code>RunCounts</code></a>; <code>durationMs</code>: <code>number</code>; <code>processId</code>: <code>string</code>; <code>target</code>: <a href="#runtarget"><code>RunTarget</code></a>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L20" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:20</a></p>
+<h5>live</h5>
+<blockquote>
+<p><strong>live</strong>: <a href="#runlive"><code>RunLive</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L18" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:18</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>true</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L17" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:17</a></p>
+<h5>problem</h5>
+<blockquote>
+<p><strong>problem</strong>: <a href="#runproblem"><code>RunProblem</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L21" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:21</a></p>
+<h5>tests</h5>
+<blockquote>
+<p><strong>tests</strong>: <a href="#runoutcome"><code>RunOutcome</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L19" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:19</a></p>
+<hr>
+<h3 id="runstatus">RunStatus<a class="anchor" href="#runstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunStatus</strong> = <code>&quot;passed&quot;</code> | <code>&quot;failed&quot;</code> | <code>&quot;not-run&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L10" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:10</a></p>
+<hr>
+<h3 id="runstep">RunStep<a class="anchor" href="#runstep" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunStep</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L5" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:5</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>n</h5>
+<blockquote>
+<p><strong>n</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L5" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:5</a></p>
+<h5>sentence</h5>
+<blockquote>
+<p><strong>sentence</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L5" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:5</a></p>
+<hr>
+<h3 id="runtarget">RunTarget<a class="anchor" href="#runtarget" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>RunTarget</strong> = { <code>area</code>: <a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/tests/types/#testarea"><code>TestArea</code></a>; <code>name</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L12" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:12</a></p>
+<hr>
+<h3 id="testrunprops">TestRunProps<a class="anchor" href="#testrunprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TestRunProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<p>Running one test from its detail: its last result and the actions.</p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>busy</h5>
+<blockquote>
+<p><strong>busy</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<h5>copied</h5>
+<blockquote>
+<p><strong>copied</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<h5>onCopy</h5>
+<blockquote>
+<p><strong>onCopy</strong>: (<code>key</code>, <code>text</code>) =&gt; <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<h6>Parameters</h6>
+<h6>key</h6>
+<p><code>string</code></p>
+<h6>text</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<h5>onRun</h5>
+<blockquote>
+<p><strong>onRun</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>view</h5>
+<blockquote>
+<p><strong>view</strong>: <a href="#testrunview"><code>TestRunView</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L60" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:60</a></p>
+<hr>
+<h3 id="testrunview">TestRunView<a class="anchor" href="#testrunview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TestRunView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L43" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:43</a></p>
+<p>What one test&#39;s detail draws about its last run.</p>
+<h4 id="properties-12">Properties<a class="anchor" href="#properties-12" aria-label="Link to this section">#</a></h4>
+<h5>detail</h5>
+<blockquote>
+<p><strong>detail</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L43" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:43</a></p>
+<h5>mark</h5>
+<blockquote>
+<p><strong>mark</strong>: <a href="#resultmark"><code>ResultMark</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L43" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:43</a></p>
+<h5>outcome</h5>
+<blockquote>
+<p><strong>outcome</strong>: <a href="#runoutcome"><code>RunOutcome</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tests/domain/RunShapes.ts#L43" rel="noopener">ui/client/features/tests/domain/RunShapes.ts:43</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/tests/domain/RunShapes.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

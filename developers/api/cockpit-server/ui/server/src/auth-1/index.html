@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/server/src/auth-1 · Developer Docs</title>
+<meta name="description" content="API of ui/server/src/auth-1.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/server/src/auth-1 · Developer Docs">
+<meta property="og:description" content="API of ui/server/src/auth-1.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/auth-1/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-server/ui/server/src/auth-1/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/server/src/auth-1</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/server/src/auth-1</h1><div class="prose"><p><em>Cockpit server, next. Source: n/a.</em></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="authconfigerror">AuthConfigError<a class="anchor" href="#authconfigerror" aria-label="Link to this section">#</a></h3>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L55" rel="noopener">ui/server/src/auth.mjs:55</a></p>
+<p>Thrown for a configuration the server must refuse to start with, as
+opposed to a request-time failure. index.mjs prints <code>.message</code> and exits
+1 rather than dumping a stack trace at whoever ran <code>npm start</code>.</p>
+<h4 id="extends">Extends<a class="anchor" href="#extends" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><code>Error</code></li>
+</ul>
+<h4 id="constructors">Constructors<a class="anchor" href="#constructors" aria-label="Link to this section">#</a></h4>
+<h5>Constructor</h5>
+<blockquote>
+<p><strong>new AuthConfigError</strong>(<code>message</code>): <a href="#authconfigerror"><code>AuthConfigError</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L56" rel="noopener">ui/server/src/auth.mjs:56</a></p>
+<h6>Parameters</h6>
+<h6>message</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><a href="#authconfigerror"><code>AuthConfigError</code></a></p>
+<h6>Overrides</h6>
+<p><code>Error.constructor</code></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L58" rel="noopener">ui/server/src/auth.mjs:58</a></p>
+<h6>Inherited from</h6>
+<p><code>Error.name</code></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="defaultsessionttlhours">DEFAULT_SESSION_TTL_HOURS<a class="anchor" href="#defaultsessionttlhours" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DEFAULT_SESSION_TTL_HOURS</strong>: <code>8</code> = <code>8</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L32" rel="noopener">ui/server/src/auth.mjs:32</a></p>
+<hr>
+<h3 id="sessioncookie">SESSION_COOKIE<a class="anchor" href="#sessioncookie" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>SESSION_COOKIE</strong>: <code>&quot;construct_session&quot;</code> = <code>&#39;construct_session&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L30" rel="noopener">ui/server/src/auth.mjs:30</a></p>
+<hr>
+<h3 id="statecookie">STATE_COOKIE<a class="anchor" href="#statecookie" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>STATE_COOKIE</strong>: <code>&quot;construct_oauth_state&quot;</code> = <code>&#39;construct_oauth_state&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L31" rel="noopener">ui/server/src/auth.mjs:31</a></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="createauth">createAuth()<a class="anchor" href="#createauth" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createAuth</strong>(<code>config</code>, <code>deps?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L357" rel="noopener">ui/server/src/auth.mjs:357</a></p>
+<p>Build the auth surface from a resolved config.</p>
+<p><code>deps</code> exists so the tests can drive the OAuth round trip without a
+network: <code>fetchImpl</code> stands in for GitHub, <code>now</code> for the clock and
+<code>randomToken</code> for the CSRF state.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>config</h5>
+<p><code>any</code></p>
+<h5>deps?</h5>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<h5>allows</h5>
+<blockquote>
+<p><strong>allows</strong>: (<code>headers</code>) =&gt; <code>boolean</code></p>
+</blockquote>
+<p>May this request proceed? True when auth is not required at all, or
+when it carries a valid session. The WebSocket upgrade uses exactly
+this, so the socket can never be more permissive than the REST API.</p>
+<h6>Parameters</h6>
+<h6>headers</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>boolean</code></p>
+<h5>config</h5>
+<blockquote>
+<p><strong>config</strong>: <code>any</code></p>
+</blockquote>
+<h5>describeStartup</h5>
+<blockquote>
+<p><strong>describeStartup</strong>: () =&gt; <code>object</code>[]</p>
+</blockquote>
+<p>One-line startup summary + the warnings that matter.</p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>handleCallback</h5>
+<blockquote>
+<p><strong>handleCallback</strong>: (<code>req</code>, <code>res</code>) =&gt; <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<h5>handleLogin</h5>
+<blockquote>
+<p><strong>handleLogin</strong>: (<code>req</code>, <code>res</code>) =&gt; <code>any</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>handleLogout</h5>
+<blockquote>
+<p><strong>handleLogout</strong>: (<code>req</code>, <code>res</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>handleSession</h5>
+<blockquote>
+<p><strong>handleSession</strong>: (<code>req</code>, <code>res</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>handleTestLogin</h5>
+<blockquote>
+<p><strong>handleTestLogin</strong>: (<code>req</code>, <code>res</code>) =&gt; <code>any</code></p>
+</blockquote>
+<p>The e2e escape hatch — and it is a <em>login</em>, not a bypass.</p>
+<p>It does not make requests authenticate themselves and it does not
+disable <code>requireSession</code>. It mints a normal signed session cookie for
+one configured login, so Playwright proves the real gate by actually
+logging in and holding a real cookie. There is no code path anywhere
+in this module where &quot;an env var is set&quot; substitutes for &quot;this request
+carries a valid signed session&quot;.</p>
+<p>Four independent things have to be true for it to do anything:</p>
+<ol>
+<li><code>CONSTRUCT_AUTH_TEST_USER</code> is set — otherwise this route 404s and
+does not exist.</li>
+<li><code>NODE_ENV !== &#39;production&#39;</code> — otherwise the process refused to
+start (resolveAuthConfig).</li>
+<li>The server is bound to loopback — otherwise, likewise.</li>
+<li>The request carries the Cockpit&#39;s own Origin — so a page in
+another tab cannot mint one in a developer&#39;s browser. Fail-closed:
+a request with no Origin at all (plain curl) is refused too.</li>
+<li>The configured login passes the same allowlist the OAuth callback
+applies, when an allowlist exists. Also enforced at startup; kept
+here so the two login paths cannot drift apart later.</li>
+</ol>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>isAllowedLogin</h5>
+<blockquote>
+<p><strong>isAllowedLogin</strong>: (<code>login</code>) =&gt; <code>any</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>login</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>mountRoutes</h5>
+<blockquote>
+<p><strong>mountRoutes</strong>: (<code>app</code>) =&gt; <code>any</code></p>
+</blockquote>
+<p>Register the <code>/auth/*</code> surface. These routes are deliberately outside
+<code>/api</code>, and therefore outside the gate — you cannot log in through a
+door that requires you to already be logged in.</p>
+<h6>Parameters</h6>
+<h6>app</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>required</h5>
+<blockquote>
+<p><strong>required</strong>: <code>any</code> = <code>config.required</code></p>
+</blockquote>
+<h5>requireSession</h5>
+<blockquote>
+<p><strong>requireSession</strong>: (<code>req</code>, <code>res</code>, <code>next</code>) =&gt; <code>any</code></p>
+</blockquote>
+<p>The gate. index.mjs mounts this on <code>/api</code> above every route it
+protects — not per route, so nothing can be added later that forgets
+to be gated.</p>
+<h6>Parameters</h6>
+<h6>req</h6>
+<p><code>any</code></p>
+<h6>res</h6>
+<p><code>any</code></p>
+<h6>next</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>sessionFromHeaders</h5>
+<blockquote>
+<p><strong>sessionFromHeaders</strong>: (<code>headers</code>) =&gt; <code>any</code></p>
+</blockquote>
+<p>The verified session on a request, or null. Used by the middleware,
+by the WebSocket upgrade check, and by <code>/auth/session</code>.</p>
+<h6>Parameters</h6>
+<h6>headers</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code></p>
+<h5>testLoginEnabled</h5>
+<blockquote>
+<p><strong>testLoginEnabled</strong>: <code>boolean</code></p>
+</blockquote>
+<hr>
+<h3 id="isloopbackhost">isLoopbackHost()<a class="anchor" href="#isloopbackhost" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>isLoopbackHost</strong>(<code>host</code>): <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L48" rel="noopener">ui/server/src/auth.mjs:48</a></p>
+<p>A host string this server can bind to that is <em>not</em> reachable from
+another machine. Anything else counts as exposed, and exposure without
+authentication is refused at startup.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>host</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>boolean</code></p>
+<hr>
+<h3 id="parseallowedlogins">parseAllowedLogins()<a class="anchor" href="#parseallowedlogins" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parseAllowedLogins</strong>(<code>raw</code>): <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L159" rel="noopener">ui/server/src/auth.mjs:159</a></p>
+<p><code>CONSTRUCT_ALLOWED_LOGINS</code> — comma (or whitespace) separated GitHub
+logins. Compared case-insensitively, because GitHub logins are.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>raw</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>string</code>[]</p>
+<hr>
+<h3 id="parsecookies">parseCookies()<a class="anchor" href="#parsecookies" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parseCookies</strong>(<code>header</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L70" rel="noopener">ui/server/src/auth.mjs:70</a></p>
+<p>Parse a <code>Cookie:</code> header into a null-prototype object. First occurrence
+of a name wins (a second <code>construct_session=</code> appended by an attacker
+cannot override the real one), and the result has no prototype so a
+cookie literally named <code>__proto__</code> is inert.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>header</h5>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="resolveauthconfig">resolveAuthConfig()<a class="anchor" href="#resolveauthconfig" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolveAuthConfig</strong>(<code>env?</code>, <code>__namedParameters?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L189" rel="noopener">ui/server/src/auth.mjs:189</a></p>
+<p>Resolve the whole auth posture from the environment, or throw
+AuthConfigError for a configuration the server must not run with.</p>
+<p>The rules, in one place:</p>
+<ul>
+<li>OAuth credentials present  -&gt; login required, always, loopback or not.</li>
+<li>Bound to a non-loopback host without a way to log in -&gt; refuse to
+start. This is what makes #277&#39;s loopback default meaningful: you
+cannot expose this server and still have it be open.</li>
+<li>Loopback with nothing configured -&gt; unauthenticated, as today, with a
+startup warning. Requiring every developer (and the e2e suite) to
+register an OAuth app to run a local cockpit would break dev for a
+threat model (&quot;an attacker already on your machine, as you&quot;) that a
+cookie does not address anyway. <code>CONSTRUCT_AUTH=required</code> forces the
+gate on regardless.</li>
+<li><code>CONSTRUCT_AUTH=off</code> is honoured only on loopback.</li>
+</ul>
+<p>The test-login hatch (<code>CONSTRUCT_AUTH_TEST_USER</code>) is guarded here rather
+than at request time on purpose: a box configured with it in production,
+or exposed on a real interface, fails loudly at startup instead of
+silently running with a back door.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>env?</h5>
+<p><code>any</code> = <code>process.env</code></p>
+<h5>__namedParameters?</h5>
+<h6>clientOrigin?</h6>
+<p><code>string</code> = <code>&#39;http://localhost:3000&#39;</code></p>
+<h6>host?</h6>
+<p><code>string</code> = <code>&#39;127.0.0.1&#39;</code></p>
+<h6>port?</h6>
+<p><code>number</code> = <code>4000</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>allowedLogins</h5>
+<blockquote>
+<p><strong>allowedLogins</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>callbackUrl</h5>
+<blockquote>
+<p><strong>callbackUrl</strong>: <code>string</code></p>
+</blockquote>
+<h5>clientId</h5>
+<blockquote>
+<p><strong>clientId</strong>: <code>string</code></p>
+</blockquote>
+<h5>clientOrigin</h5>
+<blockquote>
+<p><strong>clientOrigin</strong>: <code>string</code></p>
+</blockquote>
+<h5>clientSecret</h5>
+<blockquote>
+<p><strong>clientSecret</strong>: <code>string</code></p>
+</blockquote>
+<h5>ephemeralSecret</h5>
+<blockquote>
+<p><strong>ephemeralSecret</strong>: <code>boolean</code> = <code>!sessionSecretEnv</code></p>
+</blockquote>
+<h5>host</h5>
+<blockquote>
+<p><strong>host</strong>: <code>string</code></p>
+</blockquote>
+<h5>loopback</h5>
+<blockquote>
+<p><strong>loopback</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>oauthConfigured</h5>
+<blockquote>
+<p><strong>oauthConfigured</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>required</h5>
+<blockquote>
+<p><strong>required</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>secureCookies</h5>
+<blockquote>
+<p><strong>secureCookies</strong>: <code>boolean</code> = <code>!loopback</code></p>
+</blockquote>
+<h5>sessionSecret</h5>
+<blockquote>
+<p><strong>sessionSecret</strong>: <code>any</code></p>
+</blockquote>
+<h5>sessionTtlMs</h5>
+<blockquote>
+<p><strong>sessionTtlMs</strong>: <code>number</code></p>
+</blockquote>
+<h5>testUser</h5>
+<blockquote>
+<p><strong>testUser</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="serializecookie">serializeCookie()<a class="anchor" href="#serializecookie" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>serializeCookie</strong>(<code>name</code>, <code>value</code>, <code>__namedParameters?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L91" rel="noopener">ui/server/src/auth.mjs:91</a></p>
+<p>Serialize one <code>Set-Cookie</code> value. <code>httpOnly</code> and <code>sameSite=Lax</code> are the
+defaults rather than options a caller might forget.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>value</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>httpOnly?</h6>
+<p><code>boolean</code> = <code>true</code></p>
+<h6>path?</h6>
+<p><code>string</code> = <code>&#39;/&#39;</code></p>
+<h6>sameSite?</h6>
+<p><code>string</code> = <code>&#39;Lax&#39;</code></p>
+<h6>secure?</h6>
+<p><code>boolean</code> = <code>false</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="signvalue">signValue()<a class="anchor" href="#signvalue" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>signValue</strong>(<code>payload</code>, <code>secret</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L113" rel="noopener">ui/server/src/auth.mjs:113</a></p>
+<p><code>base64url(JSON) + &quot;.&quot; + base64url(HMAC-SHA256)</code>. base64url contains no
+<code>.</code>, so the separator is unambiguous.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>payload</h5>
+<p><code>any</code></p>
+<h5>secret</h5>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="verifysession">verifySession()<a class="anchor" href="#verifysession" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>verifySession</strong>(<code>token</code>, <code>secret</code>, <code>now?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L143" rel="noopener">ui/server/src/auth.mjs:143</a></p>
+<p>A session is a verified value that additionally names a GitHub login.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>token</h5>
+<p><code>any</code></p>
+<h5>secret</h5>
+<p><code>any</code></p>
+<h5>now?</h5>
+<p><code>number</code> = <code>...</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="verifyvalue">verifyValue()<a class="anchor" href="#verifyvalue" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>verifyValue</strong>(<code>token</code>, <code>secret</code>, <code>now?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/auth.mjs#L121" rel="noopener">ui/server/src/auth.mjs:121</a></p>
+<p>Verify signature and expiry. Returns the payload, or null — never
+throws, and never distinguishes <em>why</em> it failed to the caller, so a
+probing client learns nothing from the difference.</p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>token</h5>
+<p><code>any</code></p>
+<h5>secret</h5>
+<p><code>any</code></p>
+<h5>now?</h5>
+<p><code>number</code> = <code>...</code></p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#classes">Classes</a></li><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/package.json">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

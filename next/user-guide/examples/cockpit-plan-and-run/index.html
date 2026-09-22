@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan, run in a branch, approve per file · User Guide</title>
+<meta name="description" content="From a described change to a reviewed plan to changes you approve one file at a time.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Plan, run in a branch, approve per file · User Guide">
+<meta property="og:description" content="From a described change to a reviewed plan to changes you approve one file at a time.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/cockpit-plan-and-run/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/cockpit-plan-and-run/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../">Home</a><a href="../../../user-guide/" aria-current="page">Guide</a><a href="../../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../../user-guide/getting-started/">Getting started</a></li><li><a href="../../../user-guide/line/">What Line is</a></li><li><a href="../../../user-guide/concepts/">The five ideas</a></li><li><a href="../../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../../user-guide/construct/">What Construct is</a></li><li><a href="../../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../../user-guide/examples/cockpit-plan-and-run/" aria-current="page"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../../user-guide/cli/">Using the command line</a></li><li><a href="../../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Plan, run in a branch, approve per file</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Cockpit</p><h1>Plan, run in a branch, approve per file</h1><p class="lede">From a described change to a reviewed plan to changes you approve one file at a time.</p><div class="prose"><p><strong>Problem.</strong> An AI agent edits your files directly, and you only find out what it touched afterwards, in a change you did not ask for. Rolling it back means untangling it from your own work.</p>
+<h2 id="do-this">Do this<a class="anchor" href="#do-this" aria-label="Link to this section">#</a></h2>
+<p>Open the <strong>Plan</strong> screen and describe the change in your own words, or name a feature, file or route. The Cockpit shows what the change will touch, then lists the steps, each marked <em>Deterministic</em>, <em>Local model</em> or <em>You</em>. Press <strong>Run plan</strong>.</p>
+<p>This page shows the Cockpit only. The same tools are available from the <a href="../../../user-guide/examples/cli-impact-and-review/">command line</a> and as a <a href="../../../user-guide/examples/core-plans-and-impact/">Core API</a>.</p>
+<h3 id="1-describe-the-change-see-what-it-touches">1. Describe the change, see what it touches<a class="anchor" href="#1-describe-the-change-see-what-it-touches" aria-label="Link to this section">#</a></h3>
+<p>You can press <strong>Suggest units from the note text</strong>. That is a plain text match, no model, and every suggestion is shown as a guess (<code>inferred</code>, with a confidence) for you to confirm or untick. The rules your project enforces are listed beside the text, so the limits are visible while you plan.</p>
+<p><strong>Analyse impact</strong> then shows what the change reaches: features, files, and warnings such as &quot;the seeds live in 2 features but the impact reaches 1 more&quot;. Each row is marked <code>derived</code> (worked out from your code) or <code>inferred</code> (reached only through a guess).</p>
+<p><img src="../../../assets/img/cockpit-plan-impact.webp" loading="lazy" decoding="async" alt="Plan screen showing what a change touches: 3 features and 21 files, with cross-feature and public-API warnings and derived or inferred marks on every row"></p>
+<h3 id="2-build-the-plan-and-run-it">2. Build the plan and run it<a class="anchor" href="#2-build-the-plan-and-run-it" aria-label="Link to this section">#</a></h3>
+<p>Add steps from the catalogue, or add the read-only steps the analysis suggests. Every step names a real Construct command and who does it. A plan that names a command Construct does not have is refused, with the list of real ones.</p>
+<p><strong>Run plan</strong> starts one bot. It works in its own copy of the repository, on its own branch, and every step that succeeds becomes a commit there. The <strong>Processes</strong> drawer narrates the run and lets you pause or cancel. A failed step stops the plan and its half-written files are reset. Cancelling or failing leaves your own files as they were.</p>
+<p><img src="../../../assets/img/cockpit-plan-run.webp" loading="lazy" decoding="async" alt="Plan screen with two steps and the Processes drawer showing the run in progress, with a line per step and Pause and Cancel buttons"></p>
+<h2 id="you-get">You get<a class="anchor" href="#you-get" aria-label="Link to this section">#</a></h2>
+<p>When the run finishes, <strong>Files this process changed</strong> lists every file the bot wrote, with the exact difference. There is no &quot;approve all&quot;: you approve or reject each file by name.</p>
+<p><img src="../../../assets/img/cockpit-approval.webp" loading="lazy" decoding="async" alt="Processes drawer after a finished run: each changed file with its diff and its own Approve and Reject buttons"></p>
+<p>The gate refuses, with a reason, anything it should not apply:</p>
+<ul>
+<li>a file outside what the plan said it would touch;</li>
+<li>a protected path, a symlink, or a region marked frozen;</li>
+<li>a file you have changed yourself since (your work is never overwritten);</li>
+<li>a difference that is not the one you were shown (approval quotes the fingerprint of what was on screen).</li>
+</ul>
+<p>After applying, the project is checked again and any new violation is reported. Your decision, who made it and when, is recorded.</p>
+<h2 id="why-it-matters">Why it matters<a class="anchor" href="#why-it-matters" aria-label="Link to this section">#</a></h2>
+<p>You review a small, exact change instead of untangling a surprise, and nothing reaches your project until you say so.</p>
+<table>
+<thead>
+<tr>
+<th>You get</th>
+<th>Where to see it</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A plan you can read before anything runs</td>
+<td>step 2: each step names its command and who does it</td>
+</tr>
+<tr>
+<td>What a change touches, worked out from your code, with guesses labelled</td>
+<td><code>derived</code> and <code>inferred</code> in step 1</td>
+</tr>
+<tr>
+<td>Your own files untouched until you approve</td>
+<td>the bot&#39;s own copy and branch</td>
+</tr>
+<tr>
+<td>A decision per file, on the exact difference</td>
+<td>&quot;You get&quot; above</td>
+</tr>
+</tbody></table>
+<p>Checked against commit <code>081150b</code> on 2026-09-20 (wording revised for plain language on the same day). Screenshots come from the project&#39;s own Playwright runs of these screens.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../../user-guide/cockpit/"><span>Previous</span>Using the Cockpit</a><a class="next" href="../../../user-guide/examples/cockpit-review/"><span>Next</span>Review a branch by what it means</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#do-this">Do this</a></li><li><a href="#you-get">You get</a></li><li><a href="#why-it-matters">Why it matters</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/examples/cockpit-plan-and-run.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

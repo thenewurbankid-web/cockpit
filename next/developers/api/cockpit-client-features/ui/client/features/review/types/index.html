@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/review/types · Developer Docs</title>
+<meta name="description" content="Shapes of ui/server's /api/review (reviewApi.mjs) and of the PR-health report it carries (schemas/pr-health.v1.json, src/engine/prHealth.mjs).">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/review/types · Developer Docs">
+<meta property="og:description" content="Shapes of ui/server's /api/review (reviewApi.mjs) and of the PR-health report it carries (schemas/pr-health.v1.json, src/engine/prHealth.mjs).">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/review/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/review/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/review/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/review/types</h1><div class="prose"><p>Shapes of ui/server&#39;s /api/review (reviewApi.mjs) and of the PR-health report it carries (schemas/pr-health.v1.json, src/engine/prHealth.mjs).</p>
+<p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/review/types.ts" rel="noopener"><code>ui/client/features/review/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="analysis">Analysis<a class="anchor" href="#analysis" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Analysis</strong> = { <code>processId?</code>: <code>string</code>; <code>state</code>: <code>&quot;none&quot;</code> | <code>&quot;queued&quot;</code> | <code>&quot;running&quot;</code> | <code>&quot;paused&quot;</code> | <code>&quot;cancelled&quot;</code>; } | { <code>error</code>: { <code>code</code>: <code>string</code>; <code>message</code>: <code>string</code>; }; <code>processId?</code>: <code>string</code>; <code>state</code>: <code>&quot;error&quot;</code>; } | <a href="#analysisdone"><code>AnalysisDone</code></a> &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L31" rel="noopener">ui/client/features/review/types.ts:31</a></p>
+<p><code>processId</code> is the analysis&#39;s Process: it is in the Processes drawer, where it can be paused or cancelled.</p>
+<hr>
+<h3 id="analysisdone">AnalysisDone<a class="anchor" href="#analysisdone" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>AnalysisDone</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L19" rel="noopener">ui/client/features/review/types.ts:19</a></p>
+<p>A finished analysis of one branch, as the list shows it.</p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>counts</h5>
+<blockquote>
+<p><strong>counts</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L25" rel="noopener">ui/client/features/review/types.ts:25</a></p>
+<h6>conversation</h6>
+<blockquote>
+<p><strong>conversation</strong>: <code>number</code></p>
+</blockquote>
+<h6>mechanical</h6>
+<blockquote>
+<p><strong>mechanical</strong>: <code>number</code></p>
+</blockquote>
+<h5>degraded</h5>
+<blockquote>
+<p><strong>degraded</strong>: { <code>message?</code>: <code>string</code>; <code>truncated</code>: <code>boolean</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L28" rel="noopener">ui/client/features/review/types.ts:28</a></p>
+<h5>features</h5>
+<blockquote>
+<p><strong>features</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L23" rel="noopener">ui/client/features/review/types.ts:23</a></p>
+<h6>files</h6>
+<blockquote>
+<p><strong>files</strong>: <code>number</code></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L22" rel="noopener">ui/client/features/review/types.ts:22</a></p>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L24" rel="noopener">ui/client/features/review/types.ts:24</a></p>
+<h5>indicators</h5>
+<blockquote>
+<p><strong>indicators</strong>: <a href="#indicatorslim"><code>IndicatorSlim</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L27" rel="noopener">ui/client/features/review/types.ts:27</a></p>
+<h5>scope</h5>
+<blockquote>
+<p><strong>scope</strong>: { <code>declared</code>: <code>number</code>; <code>touched</code>: <code>number</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L26" rel="noopener">ui/client/features/review/types.ts:26</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <code>&quot;done&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L20" rel="noopener">ui/client/features/review/types.ts:20</a></p>
+<h5>summary</h5>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L21" rel="noopener">ui/client/features/review/types.ts:21</a></p>
+<hr>
+<h3 id="badge">Badge<a class="anchor" href="#badge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Badge</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L134" rel="noopener">ui/client/features/review/types.ts:134</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L134" rel="noopener">ui/client/features/review/types.ts:134</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L134" rel="noopener">ui/client/features/review/types.ts:134</a></p>
+<h5>tone</h5>
+<blockquote>
+<p><strong>tone</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/review/types.md#tone-3"><code>Tone</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L134" rel="noopener">ui/client/features/review/types.ts:134</a></p>
+<hr>
+<h3 id="blastevidence">BlastEvidence<a class="anchor" href="#blastevidence" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BlastEvidence</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L79" rel="noopener">ui/client/features/review/types.ts:79</a></p>
+<p>The evidence the blast-radius indicator carries (declared vs touched, both directions).</p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>declared</h5>
+<blockquote>
+<p><strong>declared</strong>: { <code>features</code>: <code>string</code>[]; <code>files</code>: <code>string</code>[]; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L80" rel="noopener">ui/client/features/review/types.ts:80</a></p>
+<h5>extraFeatures?</h5>
+<blockquote>
+<p><code>optional</code> <strong>extraFeatures?</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L82" rel="noopener">ui/client/features/review/types.ts:82</a></p>
+<h5>extraFiles?</h5>
+<blockquote>
+<p><code>optional</code> <strong>extraFiles?</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L84" rel="noopener">ui/client/features/review/types.ts:84</a></p>
+<h6>items</h6>
+<blockquote>
+<p><strong>items</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>total</h6>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<h5>missingFiles?</h5>
+<blockquote>
+<p><code>optional</code> <strong>missingFiles?</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L85" rel="noopener">ui/client/features/review/types.ts:85</a></p>
+<h6>items</h6>
+<blockquote>
+<p><strong>items</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>total</h6>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<h5>touched</h5>
+<blockquote>
+<p><strong>touched</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L81" rel="noopener">ui/client/features/review/types.ts:81</a></p>
+<h6>directories?</h6>
+<blockquote>
+<p><code>optional</code> <strong>directories?</strong>: <code>string</code>[]</p>
+</blockquote>
+<h6>features</h6>
+<blockquote>
+<p><strong>features</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>unreachedFeatures?</h5>
+<blockquote>
+<p><code>optional</code> <strong>unreachedFeatures?</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L83" rel="noopener">ui/client/features/review/types.ts:83</a></p>
+<hr>
+<h3 id="branchlist">BranchList<a class="anchor" href="#branchlist" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BranchList</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L47" rel="noopener">ui/client/features/review/types.ts:47</a></p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>base</h5>
+<blockquote>
+<p><strong>base</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L49" rel="noopener">ui/client/features/review/types.ts:49</a></p>
+<h5>baseSha?</h5>
+<blockquote>
+<p><code>optional</code> <strong>baseSha?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L50" rel="noopener">ui/client/features/review/types.ts:50</a></p>
+<h5>branches</h5>
+<blockquote>
+<p><strong>branches</strong>: <a href="#branchrow"><code>BranchRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L53" rel="noopener">ui/client/features/review/types.ts:53</a></p>
+<h5>current</h5>
+<blockquote>
+<p><strong>current</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L51" rel="noopener">ui/client/features/review/types.ts:51</a></p>
+<h5>refs</h5>
+<blockquote>
+<p><strong>refs</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L52" rel="noopener">ui/client/features/review/types.ts:52</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L48" rel="noopener">ui/client/features/review/types.ts:48</a></p>
+<h6>id</h6>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<h6>label</h6>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="branchlistprops">BranchListProps<a class="anchor" href="#branchlistprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BranchListProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L174" rel="noopener">ui/client/features/review/types.ts:174</a></p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>base</h5>
+<blockquote>
+<p><strong>base</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L175" rel="noopener">ui/client/features/review/types.ts:175</a></p>
+<h5>explanation</h5>
+<blockquote>
+<p><strong>explanation</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L178" rel="noopener">ui/client/features/review/types.ts:178</a></p>
+<h5>onOpen</h5>
+<blockquote>
+<p><strong>onOpen</strong>: (<code>name</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L180" rel="noopener">ui/client/features/review/types.ts:180</a></p>
+<h6>Parameters</h6>
+<h6>name</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onOrder</h5>
+<blockquote>
+<p><strong>onOrder</strong>: (<code>order</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L179" rel="noopener">ui/client/features/review/types.ts:179</a></p>
+<h6>Parameters</h6>
+<h6>order</h6>
+<p><a href="#listorder"><code>ListOrder</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onReload</h5>
+<blockquote>
+<p><strong>onReload</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L181" rel="noopener">ui/client/features/review/types.ts:181</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>order</h5>
+<blockquote>
+<p><strong>order</strong>: <a href="#listorder"><code>ListOrder</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L177" rel="noopener">ui/client/features/review/types.ts:177</a></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#branchrowview"><code>BranchRowView</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L176" rel="noopener">ui/client/features/review/types.ts:176</a></p>
+<hr>
+<h3 id="branchrow">BranchRow<a class="anchor" href="#branchrow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BranchRow</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L36" rel="noopener">ui/client/features/review/types.ts:36</a></p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>ahead</h5>
+<blockquote>
+<p><strong>ahead</strong>: <code>number</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L43" rel="noopener">ui/client/features/review/types.ts:43</a></p>
+<h5>analysis</h5>
+<blockquote>
+<p><strong>analysis</strong>: <a href="#analysis"><code>Analysis</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L44" rel="noopener">ui/client/features/review/types.ts:44</a></p>
+<h5>author</h5>
+<blockquote>
+<p><strong>author</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L40" rel="noopener">ui/client/features/review/types.ts:40</a></p>
+<h5>current</h5>
+<blockquote>
+<p><strong>current</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L42" rel="noopener">ui/client/features/review/types.ts:42</a></p>
+<h5>date</h5>
+<blockquote>
+<p><strong>date</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L41" rel="noopener">ui/client/features/review/types.ts:41</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L37" rel="noopener">ui/client/features/review/types.ts:37</a></p>
+<h5>sha</h5>
+<blockquote>
+<p><strong>sha</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L38" rel="noopener">ui/client/features/review/types.ts:38</a></p>
+<h5>subject</h5>
+<blockquote>
+<p><strong>subject</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L39" rel="noopener">ui/client/features/review/types.ts:39</a></p>
+<hr>
+<h3 id="branchrowview">BranchRowView<a class="anchor" href="#branchrowview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>BranchRowView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L162" rel="noopener">ui/client/features/review/types.ts:162</a></p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>badges</h5>
+<blockquote>
+<p><strong>badges</strong>: <a href="#badge"><code>Badge</code></a>[] | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L168" rel="noopener">ui/client/features/review/types.ts:168</a></p>
+<p>Badges once analysed; null while the analysis is queued or running.</p>
+<h5>current</h5>
+<blockquote>
+<p><strong>current</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L166" rel="noopener">ui/client/features/review/types.ts:166</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L172" rel="noopener">ui/client/features/review/types.ts:172</a></p>
+<h5>meta</h5>
+<blockquote>
+<p><strong>meta</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L165" rel="noopener">ui/client/features/review/types.ts:165</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L163" rel="noopener">ui/client/features/review/types.ts:163</a></p>
+<h5>pending</h5>
+<blockquote>
+<p><strong>pending</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L169" rel="noopener">ui/client/features/review/types.ts:169</a></p>
+<h5>stopped</h5>
+<blockquote>
+<p><strong>stopped</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L171" rel="noopener">ui/client/features/review/types.ts:171</a></p>
+<p>Set when the analysis was cancelled (from the Processes drawer or here): the row says so, and does not restart by itself.</p>
+<h5>subject</h5>
+<blockquote>
+<p><strong>subject</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L164" rel="noopener">ui/client/features/review/types.ts:164</a></p>
+<hr>
+<h3 id="changedfile">ChangedFile<a class="anchor" href="#changedfile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ChangedFile</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<h5>layer</h5>
+<blockquote>
+<p><strong>layer</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<h5>scope</h5>
+<blockquote>
+<p><strong>scope</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>&quot;A&quot;</code> | <code>&quot;M&quot;</code> | <code>&quot;D&quot;</code> | <code>&quot;T&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L58" rel="noopener">ui/client/features/review/types.ts:58</a></p>
+<hr>
+<h3 id="changereport">ChangeReport<a class="anchor" href="#changereport" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ChangeReport</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L101" rel="noopener">ui/client/features/review/types.ts:101</a></p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>change</h5>
+<blockquote>
+<p><strong>change</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L104" rel="noopener">ui/client/features/review/types.ts:104</a></p>
+<h6>counts</h6>
+<blockquote>
+<p><strong>counts</strong>: <code>object</code></p>
+</blockquote>
+<h6>counts.added</h6>
+<blockquote>
+<p><strong>added</strong>: <code>number</code></p>
+</blockquote>
+<h6>counts.deleted</h6>
+<blockquote>
+<p><strong>deleted</strong>: <code>number</code></p>
+</blockquote>
+<h6>counts.files</h6>
+<blockquote>
+<p><strong>files</strong>: <code>number</code></p>
+</blockquote>
+<h6>counts.modified</h6>
+<blockquote>
+<p><strong>modified</strong>: <code>number</code></p>
+</blockquote>
+<h6>features</h6>
+<blockquote>
+<p><strong>features</strong>: <code>object</code>[]</p>
+</blockquote>
+<h6>files</h6>
+<blockquote>
+<p><strong>files</strong>: <a href="#changedfile"><code>ChangedFile</code></a>[]</p>
+</blockquote>
+<h5>counts</h5>
+<blockquote>
+<p><strong>counts</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L107" rel="noopener">ui/client/features/review/types.ts:107</a></p>
+<h6>conversation</h6>
+<blockquote>
+<p><strong>conversation</strong>: <code>number</code></p>
+</blockquote>
+<h6>mechanical</h6>
+<blockquote>
+<p><strong>mechanical</strong>: <code>number</code></p>
+</blockquote>
+<h5>degraded</h5>
+<blockquote>
+<p><strong>degraded</strong>: { <code>message?</code>: <code>string</code>; <code>truncated?</code>: <code>boolean</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L108" rel="noopener">ui/client/features/review/types.ts:108</a></p>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <a href="#finding"><code>Finding</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L106" rel="noopener">ui/client/features/review/types.ts:106</a></p>
+<h5>indicators</h5>
+<blockquote>
+<p><strong>indicators</strong>: <a href="#fullindicator"><code>FullIndicator</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L105" rel="noopener">ui/client/features/review/types.ts:105</a></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>true</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L102" rel="noopener">ui/client/features/review/types.ts:102</a></p>
+<h5>summary</h5>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L103" rel="noopener">ui/client/features/review/types.ts:103</a></p>
+<hr>
+<h3 id="changeresponse">ChangeResponse<a class="anchor" href="#changeresponse" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ChangeResponse</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L114" rel="noopener">ui/client/features/review/types.ts:114</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>base</h5>
+<blockquote>
+<p><strong>base</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L116" rel="noopener">ui/client/features/review/types.ts:116</a></p>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h6>sha</h6>
+<blockquote>
+<p><strong>sha</strong>: <code>string</code></p>
+</blockquote>
+<h5>error?</h5>
+<blockquote>
+<p><code>optional</code> <strong>error?</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L123" rel="noopener">ui/client/features/review/types.ts:123</a></p>
+<h6>code</h6>
+<blockquote>
+<p><strong>code</strong>: <code>string</code></p>
+</blockquote>
+<h6>message</h6>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<h5>head</h5>
+<blockquote>
+<p><strong>head</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L117" rel="noopener">ui/client/features/review/types.ts:117</a></p>
+<h6>author</h6>
+<blockquote>
+<p><strong>author</strong>: <code>string</code></p>
+</blockquote>
+<h6>date</h6>
+<blockquote>
+<p><strong>date</strong>: <code>string</code></p>
+</blockquote>
+<h6>name</h6>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h6>sha</h6>
+<blockquote>
+<p><strong>sha</strong>: <code>string</code></p>
+</blockquote>
+<h6>subject</h6>
+<blockquote>
+<p><strong>subject</strong>: <code>string</code></p>
+</blockquote>
+<h5>plan?</h5>
+<blockquote>
+<p><code>optional</code> <strong>plan?</strong>: { <code>id</code>: <code>string</code>; <code>title</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L119" rel="noopener">ui/client/features/review/types.ts:119</a></p>
+<p>The saved plan this change was compared with, or null: no plan is the normal case.</p>
+<h5>processId?</h5>
+<blockquote>
+<p><code>optional</code> <strong>processId?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L125" rel="noopener">ui/client/features/review/types.ts:125</a></p>
+<p>The analysis&#39;s Process, so the screen can point at the Processes drawer.</p>
+<h5>report?</h5>
+<blockquote>
+<p><code>optional</code> <strong>report?</strong>: <a href="#changereport"><code>ChangeReport</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L120" rel="noopener">ui/client/features/review/types.ts:120</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <a href="#changestate"><code>ChangeState</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L115" rel="noopener">ui/client/features/review/types.ts:115</a></p>
+<h5>units?</h5>
+<blockquote>
+<p><code>optional</code> <strong>units?</strong>: <a href="#unitsummary"><code>UnitSummary</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L121" rel="noopener">ui/client/features/review/types.ts:121</a></p>
+<h5>unitsOmitted?</h5>
+<blockquote>
+<p><code>optional</code> <strong>unitsOmitted?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L122" rel="noopener">ui/client/features/review/types.ts:122</a></p>
+<hr>
+<h3 id="changestate">ChangeState<a class="anchor" href="#changestate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ChangeState</strong> = <code>&quot;none&quot;</code> | <code>&quot;queued&quot;</code> | <code>&quot;running&quot;</code> | <code>&quot;paused&quot;</code> | <code>&quot;cancelled&quot;</code> | <code>&quot;done&quot;</code> | <code>&quot;error&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L113" rel="noopener">ui/client/features/review/types.ts:113</a></p>
+<hr>
+<h3 id="featuregroup">FeatureGroup<a class="anchor" href="#featuregroup" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>FeatureGroup</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>fileCount</h5>
+<blockquote>
+<p><strong>fileCount</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h5>key</h5>
+<blockquote>
+<p><strong>key</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h5>layers</h5>
+<blockquote>
+<p><strong>layers</strong>: <a href="#layergroup"><code>LayerGroup</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<h5>outside</h5>
+<blockquote>
+<p><strong>outside</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L140" rel="noopener">ui/client/features/review/types.ts:140</a></p>
+<hr>
+<h3 id="finding">Finding<a class="anchor" href="#finding" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Finding</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L60" rel="noopener">ui/client/features/review/types.ts:60</a></p>
+<h4 id="properties-12">Properties<a class="anchor" href="#properties-12" aria-label="Link to this section">#</a></h4>
+<h5>constraint?</h5>
+<blockquote>
+<p><code>optional</code> <strong>constraint?</strong>: { <code>canImport</code>: <code>string</code>[] | <code>null</code>; <code>layer</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L71" rel="noopener">ui/client/features/review/types.ts:71</a></p>
+<h5>files?</h5>
+<blockquote>
+<p><code>optional</code> <strong>files?</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L67" rel="noopener">ui/client/features/review/types.ts:67</a></p>
+<h5>fix?</h5>
+<blockquote>
+<p><code>optional</code> <strong>fix?</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L75" rel="noopener">ui/client/features/review/types.ts:75</a></p>
+<p>Present on mechanical findings: the Construct command that resolves it, and whether it exists yet.</p>
+<h6>available</h6>
+<blockquote>
+<p><strong>available</strong>: <code>boolean</code></p>
+</blockquote>
+<h6>via</h6>
+<blockquote>
+<p><strong>via</strong>: <code>string</code></p>
+</blockquote>
+<h6>why?</h6>
+<blockquote>
+<p><code>optional</code> <strong>why?</strong>: <code>string</code></p>
+</blockquote>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L61" rel="noopener">ui/client/features/review/types.ts:61</a></p>
+<h5>indicator</h5>
+<blockquote>
+<p><strong>indicator</strong>: <a href="#indicatorid"><code>IndicatorId</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L62" rel="noopener">ui/client/features/review/types.ts:62</a></p>
+<h5>layer?</h5>
+<blockquote>
+<p><code>optional</code> <strong>layer?</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L70" rel="noopener">ui/client/features/review/types.ts:70</a></p>
+<h5>line?</h5>
+<blockquote>
+<p><code>optional</code> <strong>line?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L68" rel="noopener">ui/client/features/review/types.ts:68</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L66" rel="noopener">ui/client/features/review/types.ts:66</a></p>
+<h5>resolution</h5>
+<blockquote>
+<p><strong>resolution</strong>: <code>&quot;mechanical&quot;</code> | <code>&quot;conversation&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L63" rel="noopener">ui/client/features/review/types.ts:63</a></p>
+<h5>rule?</h5>
+<blockquote>
+<p><code>optional</code> <strong>rule?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L69" rel="noopener">ui/client/features/review/types.ts:69</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <code>&quot;info&quot;</code> | <code>&quot;warning&quot;</code> | <code>&quot;error&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L64" rel="noopener">ui/client/features/review/types.ts:64</a></p>
+<h5>suggestedFix?</h5>
+<blockquote>
+<p><code>optional</code> <strong>suggestedFix?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L73" rel="noopener">ui/client/features/review/types.ts:73</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L65" rel="noopener">ui/client/features/review/types.ts:65</a></p>
+<h5>why?</h5>
+<blockquote>
+<p><code>optional</code> <strong>why?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L72" rel="noopener">ui/client/features/review/types.ts:72</a></p>
+<hr>
+<h3 id="fullindicator">FullIndicator<a class="anchor" href="#fullindicator" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>FullIndicator</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L89" rel="noopener">ui/client/features/review/types.ts:89</a></p>
+<p>One indicator of the full report: the computed sentence, where the number comes from, its findings.</p>
+<h4 id="properties-13">Properties<a class="anchor" href="#properties-13" aria-label="Link to this section">#</a></h4>
+<h5>evidence?</h5>
+<blockquote>
+<p><code>optional</code> <strong>evidence?</strong>: <code>unknown</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L97" rel="noopener">ui/client/features/review/types.ts:97</a></p>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <a href="#finding"><code>Finding</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L98" rel="noopener">ui/client/features/review/types.ts:98</a></p>
+<h5>headline</h5>
+<blockquote>
+<p><strong>headline</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L94" rel="noopener">ui/client/features/review/types.ts:94</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <a href="#indicatorid"><code>IndicatorId</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L90" rel="noopener">ui/client/features/review/types.ts:90</a></p>
+<h5>measured</h5>
+<blockquote>
+<p><strong>measured</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L93" rel="noopener">ui/client/features/review/types.ts:93</a></p>
+<h5>reason?</h5>
+<blockquote>
+<p><code>optional</code> <strong>reason?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L95" rel="noopener">ui/client/features/review/types.ts:95</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L96" rel="noopener">ui/client/features/review/types.ts:96</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#indicatorstatus"><code>IndicatorStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L92" rel="noopener">ui/client/features/review/types.ts:92</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L91" rel="noopener">ui/client/features/review/types.ts:91</a></p>
+<hr>
+<h3 id="glossaryentry">GlossaryEntry<a class="anchor" href="#glossaryentry" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>GlossaryEntry</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<h4 id="properties-14">Properties<a class="anchor" href="#properties-14" aria-label="Link to this section">#</a></h4>
+<h5>badge</h5>
+<blockquote>
+<p><strong>badge</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<h5>from</h5>
+<blockquote>
+<p><strong>from</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<h5>means</h5>
+<blockquote>
+<p><strong>means</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<h5>tone</h5>
+<blockquote>
+<p><strong>tone</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/review/types.md#tone-3"><code>Tone</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L146" rel="noopener">ui/client/features/review/types.ts:146</a></p>
+<hr>
+<h3 id="indicatorcard">IndicatorCard<a class="anchor" href="#indicatorcard" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>IndicatorCard</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L148" rel="noopener">ui/client/features/review/types.ts:148</a></p>
+<h4 id="properties-15">Properties<a class="anchor" href="#properties-15" aria-label="Link to this section">#</a></h4>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L157" rel="noopener">ui/client/features/review/types.ts:157</a></p>
+<h6>id</h6>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<h6>resolutionLabel</h6>
+<blockquote>
+<p><strong>resolutionLabel</strong>: <code>string</code></p>
+</blockquote>
+<h6>title</h6>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<h5>headline</h5>
+<blockquote>
+<p><strong>headline</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L153" rel="noopener">ui/client/features/review/types.ts:153</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L149" rel="noopener">ui/client/features/review/types.ts:149</a></p>
+<h5>reason</h5>
+<blockquote>
+<p><strong>reason</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L155" rel="noopener">ui/client/features/review/types.ts:155</a></p>
+<p>Why it is not measured (only present then), in the engine&#39;s neutral words.</p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L156" rel="noopener">ui/client/features/review/types.ts:156</a></p>
+<h5>statusLabel</h5>
+<blockquote>
+<p><strong>statusLabel</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L151" rel="noopener">ui/client/features/review/types.ts:151</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L150" rel="noopener">ui/client/features/review/types.ts:150</a></p>
+<h5>tone</h5>
+<blockquote>
+<p><strong>tone</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/review/types.md#tone-3"><code>Tone</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L152" rel="noopener">ui/client/features/review/types.ts:152</a></p>
+<hr>
+<h3 id="indicatorid">IndicatorId<a class="anchor" href="#indicatorid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>IndicatorId</strong> = <code>&quot;blast-radius&quot;</code> | <code>&quot;unexplained&quot;</code> | <code>&quot;rule-regressions&quot;</code> | <code>&quot;public-surface&quot;</code> | <code>&quot;flow-diff&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L5" rel="noopener">ui/client/features/review/types.ts:5</a></p>
+<hr>
+<h3 id="indicatorslim">IndicatorSlim<a class="anchor" href="#indicatorslim" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>IndicatorSlim</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L9" rel="noopener">ui/client/features/review/types.ts:9</a></p>
+<p>One indicator as the list needs it (a finished report, slimmed by the server).</p>
+<h4 id="properties-16">Properties<a class="anchor" href="#properties-16" aria-label="Link to this section">#</a></h4>
+<h5>findings</h5>
+<blockquote>
+<p><strong>findings</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L15" rel="noopener">ui/client/features/review/types.ts:15</a></p>
+<h5>headline</h5>
+<blockquote>
+<p><strong>headline</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L14" rel="noopener">ui/client/features/review/types.ts:14</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <a href="#indicatorid"><code>IndicatorId</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L10" rel="noopener">ui/client/features/review/types.ts:10</a></p>
+<h5>measured</h5>
+<blockquote>
+<p><strong>measured</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L13" rel="noopener">ui/client/features/review/types.ts:13</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#indicatorstatus"><code>IndicatorStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L12" rel="noopener">ui/client/features/review/types.ts:12</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L11" rel="noopener">ui/client/features/review/types.ts:11</a></p>
+<hr>
+<h3 id="indicatorstatus">IndicatorStatus<a class="anchor" href="#indicatorstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>IndicatorStatus</strong> = <code>&quot;clear&quot;</code> | <code>&quot;info&quot;</code> | <code>&quot;attention&quot;</code> | <code>&quot;not-measured&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L6" rel="noopener">ui/client/features/review/types.ts:6</a></p>
+<hr>
+<h3 id="layergroup">LayerGroup<a class="anchor" href="#layergroup" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LayerGroup</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L139" rel="noopener">ui/client/features/review/types.ts:139</a></p>
+<h4 id="properties-17">Properties<a class="anchor" href="#properties-17" aria-label="Link to this section">#</a></h4>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <a href="#treefile"><code>TreeFile</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L139" rel="noopener">ui/client/features/review/types.ts:139</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L139" rel="noopener">ui/client/features/review/types.ts:139</a></p>
+<h5>layer</h5>
+<blockquote>
+<p><strong>layer</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L139" rel="noopener">ui/client/features/review/types.ts:139</a></p>
+<hr>
+<h3 id="layerview">LayerView<a class="anchor" href="#layerview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LayerView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L141" rel="noopener">ui/client/features/review/types.ts:141</a></p>
+<h4 id="properties-18">Properties<a class="anchor" href="#properties-18" aria-label="Link to this section">#</a></h4>
+<h5>fileCount</h5>
+<blockquote>
+<p><strong>fileCount</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L141" rel="noopener">ui/client/features/review/types.ts:141</a></p>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <a href="#treefile"><code>TreeFile</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L141" rel="noopener">ui/client/features/review/types.ts:141</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L141" rel="noopener">ui/client/features/review/types.ts:141</a></p>
+<h5>layer</h5>
+<blockquote>
+<p><strong>layer</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L141" rel="noopener">ui/client/features/review/types.ts:141</a></p>
+<hr>
+<h3 id="listorder">ListOrder<a class="anchor" href="#listorder" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ListOrder</strong> = <code>&quot;risk&quot;</code> | <code>&quot;newest&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L135" rel="noopener">ui/client/features/review/types.ts:135</a></p>
+<hr>
+<h3 id="planchoice">PlanChoice<a class="anchor" href="#planchoice" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PlanChoice</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<p>A saved plan the change can be compared with (the processes&#39; plans, from /api/review/plans).</p>
+<h4 id="properties-19">Properties<a class="anchor" href="#properties-19" aria-label="Link to this section">#</a></h4>
+<h5>features</h5>
+<blockquote>
+<p><strong>features</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L129" rel="noopener">ui/client/features/review/types.ts:129</a></p>
+<hr>
+<h3 id="reviewsourcesprops">ReviewSourcesProps<a class="anchor" href="#reviewsourcesprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ReviewSourcesProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h4 id="properties-20">Properties<a class="anchor" href="#properties-20" aria-label="Link to this section">#</a></h4>
+<h5>base</h5>
+<blockquote>
+<p><strong>base</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h5>baseSha</h5>
+<blockquote>
+<p><strong>baseSha</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h5>count</h5>
+<blockquote>
+<p><strong>count</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h5>onBase</h5>
+<blockquote>
+<p><strong>onBase</strong>: (<code>name</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h6>Parameters</h6>
+<h6>name</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>refs</h5>
+<blockquote>
+<p><strong>refs</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<h5>sourceLabel</h5>
+<blockquote>
+<p><strong>sourceLabel</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L183" rel="noopener">ui/client/features/review/types.ts:183</a></p>
+<hr>
+<h3 id="tone">Tone<a class="anchor" href="#tone" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Tone</strong> = <code>&quot;danger&quot;</code> | <code>&quot;warn&quot;</code> | <code>&quot;info&quot;</code> | <code>&quot;ok&quot;</code> | <code>&quot;neutral&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L133" rel="noopener">ui/client/features/review/types.ts:133</a></p>
+<hr>
+<h3 id="treefile">TreeFile<a class="anchor" href="#treefile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TreeFile</strong> = <a href="#changedfile"><code>ChangedFile</code></a> &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L138" rel="noopener">ui/client/features/review/types.ts:138</a></p>
+<p>A changed file as the tree shows it: name and status already in words.</p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<h5>statusLabel</h5>
+<blockquote>
+<p><strong>statusLabel</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="unitrow">UnitRow<a class="anchor" href="#unitrow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>UnitRow</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h4 id="properties-21">Properties<a class="anchor" href="#properties-21" aria-label="Link to this section">#</a></h4>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h5>isNew</h5>
+<blockquote>
+<p><strong>isNew</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h5>layer</h5>
+<blockquote>
+<p><strong>layer</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L143" rel="noopener">ui/client/features/review/types.ts:143</a></p>
+<hr>
+<h3 id="unitsummariesprops">UnitSummariesProps<a class="anchor" href="#unitsummariesprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>UnitSummariesProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L184" rel="noopener">ui/client/features/review/types.ts:184</a></p>
+<h4 id="properties-22">Properties<a class="anchor" href="#properties-22" aria-label="Link to this section">#</a></h4>
+<h5>more</h5>
+<blockquote>
+<p><strong>more</strong>: <a href="#unitsview"><code>UnitsView</code></a>[<code>&quot;more&quot;</code>]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L184" rel="noopener">ui/client/features/review/types.ts:184</a></p>
+<h5>onSelect</h5>
+<blockquote>
+<p><strong>onSelect</strong>: (<code>path</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L184" rel="noopener">ui/client/features/review/types.ts:184</a></p>
+<h6>Parameters</h6>
+<h6>path</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#unitrow"><code>UnitRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L184" rel="noopener">ui/client/features/review/types.ts:184</a></p>
+<h5>selectedPath</h5>
+<blockquote>
+<p><strong>selectedPath</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L184" rel="noopener">ui/client/features/review/types.ts:184</a></p>
+<hr>
+<h3 id="unitsummary">UnitSummary<a class="anchor" href="#unitsummary" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>UnitSummary</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L111" rel="noopener">ui/client/features/review/types.ts:111</a></p>
+<h4 id="properties-23">Properties<a class="anchor" href="#properties-23" aria-label="Link to this section">#</a></h4>
+<h5>exports?</h5>
+<blockquote>
+<p><code>optional</code> <strong>exports?</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L111" rel="noopener">ui/client/features/review/types.ts:111</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L111" rel="noopener">ui/client/features/review/types.ts:111</a></p>
+<h5>purpose?</h5>
+<blockquote>
+<p><code>optional</code> <strong>purpose?</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L111" rel="noopener">ui/client/features/review/types.ts:111</a></p>
+<h5>summary</h5>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L111" rel="noopener">ui/client/features/review/types.ts:111</a></p>
+<hr>
+<h3 id="unitsview">UnitsView<a class="anchor" href="#unitsview" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>UnitsView</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L144" rel="noopener">ui/client/features/review/types.ts:144</a></p>
+<h4 id="properties-24">Properties<a class="anchor" href="#properties-24" aria-label="Link to this section">#</a></h4>
+<h5>more</h5>
+<blockquote>
+<p><strong>more</strong>: { <code>count</code>: <code>number</code>; <code>text</code>: <code>string</code>; } | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L144" rel="noopener">ui/client/features/review/types.ts:144</a></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#unitrow"><code>UnitRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/review/types.ts#L144" rel="noopener">ui/client/features/review/types.ts:144</a></p>
+<h2 id="references">References<a class="anchor" href="#references" aria-label="Link to this section">#</a></h2>
+<h3 id="blastradiusprops">BlastRadiusProps<a class="anchor" href="#blastradiusprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#blastradiusprops">BlastRadiusProps</a></p>
+<hr>
+<h3 id="blastrow">BlastRow<a class="anchor" href="#blastrow" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#blastrow">BlastRow</a></p>
+<hr>
+<h3 id="blastview">BlastView<a class="anchor" href="#blastview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#blastview">BlastView</a></p>
+<hr>
+<h3 id="changeaction">ChangeAction<a class="anchor" href="#changeaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/WorkflowTypes/#changeaction">ChangeAction</a></p>
+<hr>
+<h3 id="changetreeprops">ChangeTreeProps<a class="anchor" href="#changetreeprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/#changetreeprops">ChangeTreeProps</a></p>
+<hr>
+<h3 id="changeviewstate">ChangeViewState<a class="anchor" href="#changeviewstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/WorkflowTypes/#changeviewstate">ChangeViewState</a></p>
+<hr>
+<h3 id="failureaction">FailureAction<a class="anchor" href="#failureaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#failureaction">FailureAction</a></p>
+<hr>
+<h3 id="failurenoticeprops">FailureNoticeProps<a class="anchor" href="#failurenoticeprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#failurenoticeprops">FailureNoticeProps</a></p>
+<hr>
+<h3 id="failureview">FailureView<a class="anchor" href="#failureview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#failureview">FailureView</a></p>
+<hr>
+<h3 id="findingdetailprops">FindingDetailProps<a class="anchor" href="#findingdetailprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingdetailprops">FindingDetailProps</a></p>
+<hr>
+<h3 id="findingdetailview">FindingDetailView<a class="anchor" href="#findingdetailview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingdetailview">FindingDetailView</a></p>
+<hr>
+<h3 id="findingrow">FindingRow<a class="anchor" href="#findingrow" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingrow">FindingRow</a></p>
+<hr>
+<h3 id="findingspanelprops">FindingsPanelProps<a class="anchor" href="#findingspanelprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingspanelprops">FindingsPanelProps</a></p>
+<hr>
+<h3 id="findingssummaryprops">FindingsSummaryProps<a class="anchor" href="#findingssummaryprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingssummaryprops">FindingsSummaryProps</a></p>
+<hr>
+<h3 id="findingsview">FindingsView<a class="anchor" href="#findingsview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#findingsview">FindingsView</a></p>
+<hr>
+<h3 id="listaction">ListAction<a class="anchor" href="#listaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/WorkflowTypes/#listaction">ListAction</a></p>
+<hr>
+<h3 id="liststate">ListState<a class="anchor" href="#liststate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/WorkflowTypes/#liststate">ListState</a></p>
+<hr>
+<h3 id="planpickerprops">PlanPickerProps<a class="anchor" href="#planpickerprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/FindingsTypes/#planpickerprops">PlanPickerProps</a></p>
+<hr>
+<h3 id="treeaction">TreeAction<a class="anchor" href="#treeaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/#treeaction">TreeAction</a></p>
+<hr>
+<h3 id="treegrouping">TreeGrouping<a class="anchor" href="#treegrouping" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/#treegrouping">TreeGrouping</a></p>
+<hr>
+<h3 id="treenavprops">TreeNavProps<a class="anchor" href="#treenavprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/#treenavprops">TreeNavProps</a></p>
+<hr>
+<h3 id="treenodeview">TreeNodeView<a class="anchor" href="#treenodeview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../../developers/api/cockpit-client-features/ui/client/features/review/domain/TreeTypes/#treenodeview">TreeNodeView</a></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#type-aliases">Type Aliases</a></li><li><a href="#references">References</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/review/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/workflows/domain/MachineGraph · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/workflows/domain/MachineGraph.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/workflows/domain/MachineGraph · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/workflows/domain/MachineGraph.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/workflows/domain/MachineGraph/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/workflows/domain/MachineGraph/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../../">Home</a><a href="../../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/workflows/domain/MachineGraph</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/workflows/domain/MachineGraph</h1><div class="prose"><p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/workflows/domain/MachineGraph.tsx" rel="noopener"><code>ui/client/features/workflows/domain/MachineGraph.tsx</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="statenode">StateNode<a class="anchor" href="#statenode" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>StateNode</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L33" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:33</a></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>data</h5>
+<blockquote>
+<p><strong>data</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/workflows/domain/MachineGraph.md#statenodedata-1"><code>StateNodeData</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L33" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:33</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L33" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:33</a></p>
+<h5>position</h5>
+<blockquote>
+<p><strong>position</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L33" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:33</a></p>
+<h6>x</h6>
+<blockquote>
+<p><strong>x</strong>: <code>number</code></p>
+</blockquote>
+<h6>y</h6>
+<blockquote>
+<p><strong>y</strong>: <code>number</code></p>
+</blockquote>
+<h5>type</h5>
+<blockquote>
+<p><strong>type</strong>: <code>&quot;stateNode&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L33" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:33</a></p>
+<hr>
+<h3 id="statenodedata">StateNodeData<a class="anchor" href="#statenodedata" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>StateNodeData</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L20" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:20</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>compound</h5>
+<blockquote>
+<p><strong>compound</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L26" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:26</a></p>
+<h5>final</h5>
+<blockquote>
+<p><strong>final</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L25" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:25</a></p>
+<h5>initial</h5>
+<blockquote>
+<p><strong>initial</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L24" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:24</a></p>
+<h5>internal</h5>
+<blockquote>
+<p><strong>internal</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L29" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:29</a></p>
+<p>Transitions that don&#39;t move anywhere else visible: self-loops and
+targetless (actions-only) handlers, listed on the node itself.</p>
+<h5>kind</h5>
+<blockquote>
+<p><strong>kind</strong>: <code>&quot;state&quot;</code> | <code>&quot;start&quot;</code> | <code>&quot;missing&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L23" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:23</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L21" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:21</a></p>
+<h5>path</h5>
+<blockquote>
+<p><strong>path</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L22" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:22</a></p>
+<h5>width</h5>
+<blockquote>
+<p><strong>width</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L30" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:30</a></p>
+<hr>
+<h3 id="transitionedge">TransitionEdge<a class="anchor" href="#transitionedge" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TransitionEdge</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L35" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:35</a></p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>data</h5>
+<blockquote>
+<p><strong>data</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L46" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:46</a></p>
+<h6>editable</h6>
+<blockquote>
+<p><strong>editable</strong>: <code>boolean</code></p>
+</blockquote>
+<h6>event</h6>
+<blockquote>
+<p><strong>event</strong>: <code>string</code></p>
+</blockquote>
+<h6>from</h6>
+<blockquote>
+<p><strong>from</strong>: <code>string</code></p>
+</blockquote>
+<h6>guard?</h6>
+<blockquote>
+<p><code>optional</code> <strong>guard?</strong>: <code>string</code></p>
+</blockquote>
+<h6>kind</h6>
+<blockquote>
+<p><strong>kind</strong>: <code>string</code></p>
+</blockquote>
+<h6>labelX</h6>
+<blockquote>
+<p><strong>labelX</strong>: <code>number</code></p>
+</blockquote>
+<p>Where the label sits, centred — the layout reserved this box for it.</p>
+<h6>labelY</h6>
+<blockquote>
+<p><strong>labelY</strong>: <code>number</code></p>
+</blockquote>
+<h6>points</h6>
+<blockquote>
+<p><strong>points</strong>: <code>object</code>[]</p>
+</blockquote>
+<p>Route computed by the layout (start .. end, label point in the middle).</p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L36" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:36</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L41" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:41</a></p>
+<h5>markerEnd</h5>
+<blockquote>
+<p><strong>markerEnd</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L42" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:42</a></p>
+<h6>type</h6>
+<blockquote>
+<p><strong>type</strong>: <code>&quot;arrowclosed&quot;</code></p>
+</blockquote>
+<h5>reconnectable</h5>
+<blockquote>
+<p><strong>reconnectable</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L43" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:43</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L37" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:37</a></p>
+<h5>sourceHandle</h5>
+<blockquote>
+<p><strong>sourceHandle</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L39" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:39</a></p>
+<h5>style?</h5>
+<blockquote>
+<p><code>optional</code> <strong>style?</strong>: <code>Record</code>&lt;<code>string</code>, <code>string</code> | <code>number</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L45" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:45</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L38" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:38</a></p>
+<h5>targetHandle</h5>
+<blockquote>
+<p><strong>targetHandle</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L40" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:40</a></p>
+<h5>type</h5>
+<blockquote>
+<p><strong>type</strong>: <code>&quot;flowEdge&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L44" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:44</a></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="startnodeid">START_NODE_ID<a class="anchor" href="#startnodeid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>START_NODE_ID</strong>: <code>&quot;__start__&quot;</code> = <code>&#39;__start__&#39;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L12" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:12</a></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="buildmachineflow">buildMachineFlow()<a class="anchor" href="#buildmachineflow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>buildMachineFlow</strong>(<code>machine</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L74" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:74</a></p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>machine</h5>
+<p><a href="../../../../../../../../../developers/api/cockpit-client-features/ui/client/features/workflows/types/#workflowmachine"><code>WorkflowMachine</code></a></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>edges</h5>
+<blockquote>
+<p><strong>edges</strong>: <a href="#transitionedge"><code>TransitionEdge</code></a>[]</p>
+</blockquote>
+<h5>nodes</h5>
+<blockquote>
+<p><strong>nodes</strong>: <a href="#statenode"><code>StateNode</code></a>[]</p>
+</blockquote>
+<hr>
+<h3 id="transitionlabel">transitionLabel()<a class="anchor" href="#transitionlabel" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>transitionLabel</strong>(<code>t</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/workflows/domain/MachineGraph.tsx#L62" rel="noopener">ui/client/features/workflows/domain/MachineGraph.tsx:62</a></p>
+<p>Human label for one transition: <code>EVENT [guard]</code>, with a kind prefix for
+the non-<code>on</code> forms (after/always/onDone/invoke).</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>t</h5>
+<h6>event</h6>
+<p><code>string</code></p>
+<h6>guard?</h6>
+<p><code>string</code></p>
+<h6>kind</h6>
+<p><code>string</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#type-aliases">Type Aliases</a></li><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/workflows/domain/MachineGraph.tsx">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

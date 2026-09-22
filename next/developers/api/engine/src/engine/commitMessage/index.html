@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/commitMessage · Developer Docs</title>
+<meta name="description" content="Deterministic commit messages for Cockpit saves (#283).">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/commitMessage · Developer Docs">
+<meta property="og:description" content="Deterministic commit messages for Cockpit saves (#283).">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/engine/src/engine/commitMessage/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/engine/src/engine/commitMessage/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../">Home</a><a href="../../../../../../user-guide/">Guide</a><a href="../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/commitMessage</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/commitMessage</h1><div class="prose"><p>Deterministic commit messages for Cockpit saves.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/commitMessage.mjs" rel="noopener"><code>src/engine/commitMessage.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="commitmodes">COMMIT_MODES<a class="anchor" href="#commitmodes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>COMMIT_MODES</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L52" rel="noopener">src/engine/commitMessage.mjs:52</a></p>
+<p>Commit granularity modes. The trigger implements them; they are named here so core and ui agree.</p>
+<hr>
+<h3 id="defaultcoalescems">DEFAULT_COALESCE_MS<a class="anchor" href="#defaultcoalescems" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DEFAULT_COALESCE_MS</strong>: <code>30000</code> = <code>30_000</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L54" rel="noopener">src/engine/commitMessage.mjs:54</a></p>
+<p>Default coalescing window.</p>
+<hr>
+<h3 id="defaultcommitconfig">DEFAULT_COMMIT_CONFIG<a class="anchor" href="#defaultcommitconfig" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>DEFAULT_COMMIT_CONFIG</strong>: <code>Readonly</code>&lt;{ <code>branchPrefix</code>: <code>&quot;cockpit&quot;</code>; <code>branchSuffix</code>: <code>&quot;&quot;</code>; <code>coalesceMs</code>: <code>30000</code>; <code>enabled</code>: <code>true</code>; <code>messagePrefix</code>: <code>&quot;CON&quot;</code>; <code>mode</code>: <code>&quot;coalesce&quot;</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L56" rel="noopener">src/engine/commitMessage.mjs:56</a></p>
+<p>What the Cockpit uses when the user has not configured anything. Auto-commit is ON by default.</p>
+<hr>
+<h3 id="maxfilelines">MAX_FILE_LINES<a class="anchor" href="#maxfilelines" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>MAX_FILE_LINES</strong>: <code>12</code> = <code>12</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L50" rel="noopener">src/engine/commitMessage.mjs:50</a></p>
+<p>How many changed files get their own line in the body before the rest are counted instead.</p>
+<hr>
+<h3 id="maxslug">MAX_SLUG<a class="anchor" href="#maxslug" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>MAX_SLUG</strong>: <code>40</code> = <code>40</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L46" rel="noopener">src/engine/commitMessage.mjs:46</a></p>
+<p>Slug length cap, so <code>git branch</code> output and a PR list stay readable.</p>
+<hr>
+<h3 id="schemaversion">SCHEMA_VERSION<a class="anchor" href="#schemaversion" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>SCHEMA_VERSION</strong>: <code>1</code> = <code>1</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L42" rel="noopener">src/engine/commitMessage.mjs:42</a></p>
+<hr>
+<h3 id="serialdigits">SERIAL_DIGITS<a class="anchor" href="#serialdigits" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>SERIAL_DIGITS</strong>: <code>4</code> = <code>4</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L44" rel="noopener">src/engine/commitMessage.mjs:44</a></p>
+<p>Zero-padding for the serial: <code>0007</code>. Wider serials are not truncated, only un-padded numbers grow.</p>
+<hr>
+<h3 id="subjectlimit">SUBJECT_LIMIT<a class="anchor" href="#subjectlimit" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>SUBJECT_LIMIT</strong>: <code>72</code> = <code>72</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L48" rel="noopener">src/engine/commitMessage.mjs:48</a></p>
+<p>Soft cap on the subject line — the git convention, applied by trimming the unit list, never mid-word.</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="buildcommitmessage">buildCommitMessage()<a class="anchor" href="#buildcommitmessage" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>buildCommitMessage</strong>(<code>root</code>, <code>opts?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L370" rel="noopener">src/engine/commitMessage.mjs:370</a></p>
+<p>Build the whole commit message for one Cockpit save.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>project root</p>
+<h5>opts?</h5>
+<h6>changedFiles</h6>
+<p><code>string</code>[]</p>
+<p>project-relative paths this save wrote (the counted set)</p>
+<h6>changes?</h6>
+<p>{ }</p>
+<p>per-path change kind (default update)</p>
+<h6>depth?</h6>
+<p><code>number</code></p>
+<p>importer hops for the wider-impact line (default: impact.mjs&#39;s)</p>
+<h6>plan?</h6>
+<p><code>any</code></p>
+<p>a Construct plan, when the session started from one</p>
+<h6>planTitle?</h6>
+<p><code>string</code></p>
+<h6>preexisting?</h6>
+<p><code>string</code>[]</p>
+<p>files carried onto the session branch from a dirty tree —
+  committed alongside, listed in the body, and deliberately NOT counted, so the impact block
+  never claims work the session did not do</p>
+<h6>prefix?</h6>
+<p><code>string</code></p>
+<p>user&#39;s message prefix; may be empty</p>
+<h6>serial</h6>
+<p><code>number</code></p>
+<p>from <code>nextSerialFrom(subjectsOnBranch)</code></p>
+<h6>sessionId</h6>
+<p><code>string</code></p>
+<p>short random hash for this session</p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p>or <code>{ok:false, error}</code>. Never throws, never writes, never calls a model.</p>
+<h5>body</h5>
+<blockquote>
+<p><strong>body</strong>: <code>string</code></p>
+</blockquote>
+<h5>impact</h5>
+<blockquote>
+<p><strong>impact</strong>: <code>any</code></p>
+</blockquote>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>true</code></p>
+</blockquote>
+<h5>report</h5>
+<blockquote>
+<p><strong>report</strong>: <code>any</code></p>
+</blockquote>
+<h5>schemaVersion</h5>
+<blockquote>
+<p><strong>schemaVersion</strong>: <code>number</code></p>
+</blockquote>
+<h5>subject</h5>
+<blockquote>
+<p><strong>subject</strong>: <code>string</code></p>
+</blockquote>
+<hr>
+<h3 id="commitimpact">commitImpact()<a class="anchor" href="#commitimpact" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>commitImpact</strong>(<code>report</code>, <code>opts?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L232" rel="noopener">src/engine/commitMessage.mjs:232</a></p>
+<p>Turn an impact report into the counts a commit message states.</p>
+<p>Counted = the report&#39;s <code>direction: &quot;seed&quot;</code> rows, i.e. the files this save wrote. Everything else
+in the report is the blast radius and is reported separately as &quot;wider impact&quot; — never folded
+into &quot;N features, M layers&quot;, which must describe what the save DID.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>report</h5>
+<p><code>any</code></p>
+<p>an <code>analyzeImpact</code> / <code>impactFromChangedFiles</code> result</p>
+<h5>opts?</h5>
+<p>files carried in from before the session; listed, never counted</p>
+<h6>preexisting?</h6>
+<p><code>string</code>[] = <code>[]</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p><code>{available, features, featureCount, layerCount, fileCount, layers, wider, warnings, preexisting, reason?}</code>: the counts a commit message states; <code>available: false</code> (with <code>reason</code>) when the report is missing or failed.</p>
+<hr>
+<h3 id="commitmessageapimanifest">commitMessageApiManifest()<a class="anchor" href="#commitmessageapimanifest" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>commitMessageApiManifest</strong>(): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L435" rel="noopener">src/engine/commitMessage.mjs:435</a></p>
+<p>Machine-readable usage note, same shape as the other core APIs.</p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>calls</h5>
+<blockquote>
+<p><strong>calls</strong>: <code>object</code></p>
+</blockquote>
+<h6>calls.buildCommitMessage</h6>
+<blockquote>
+<p><strong>buildCommitMessage</strong>: <code>string</code> = <code>&#39;(root, {changedFiles, preexisting?, changes?, sessionId, serial, prefix?, plan?, planTitle?, depth?}) -&gt; {subject, body, message, impact}&#39;</code></p>
+</blockquote>
+<h6>calls.commitImpact</h6>
+<blockquote>
+<p><strong>commitImpact</strong>: <code>string</code> = <code>&#39;(impactReport, {preexisting?}) -&gt; counted features/layers/files + wider impact&#39;</code></p>
+</blockquote>
+<h6>calls.deriveSlug</h6>
+<blockquote>
+<p><strong>deriveSlug</strong>: <code>string</code> = <code>&#39;({planTitle?, plan?, impact?, changedFiles?, now?}) -&gt; {slug, source}&#39;</code></p>
+</blockquote>
+<h6>calls.newSessionId</h6>
+<blockquote>
+<p><strong>newSessionId</strong>: <code>string</code> = <code>&#39;(bytes?) -&gt; short random hex (never a timestamp)&#39;</code></p>
+</blockquote>
+<h6>calls.nextSerialFrom</h6>
+<blockquote>
+<p><strong>nextSerialFrom</strong>: <code>string</code> = <code>&#39;(subjects[], {sessionId}) -&gt; number (monotonic within the branch, gaps allowed)&#39;</code></p>
+</blockquote>
+<h6>calls.parseSerial</h6>
+<blockquote>
+<p><strong>parseSerial</strong>: <code>string</code> = &#39;(subject, {sessionId}) -&gt; number|null&#39;</p>
+</blockquote>
+<h6>calls.serialLabel</h6>
+<blockquote>
+<p><strong>serialLabel</strong>: <code>string</code> = <code>&#39;({prefix, sessionId, serial}) -&gt; &quot;CON-a3f7-0007&quot;&#39;</code></p>
+</blockquote>
+<h6>calls.sessionBranchName</h6>
+<blockquote>
+<p><strong>sessionBranchName</strong>: <code>string</code> = <code>&#39;({prefix, slug, sessionId, suffix}) -&gt; &quot;&lt;prefix&gt;/&lt;slug&gt;-&lt;id&gt;&lt;suffix&gt;&quot;&#39;</code></p>
+</blockquote>
+<h6>calls.slugify</h6>
+<blockquote>
+<p><strong>slugify</strong>: <code>string</code> = <code>&#39;(text, {max?}) -&gt; branch-safe slug&#39;</code></p>
+</blockquote>
+<h5>defaults</h5>
+<blockquote>
+<p><strong>defaults</strong>: <code>Readonly</code>&lt;{ <code>branchPrefix</code>: <code>&quot;cockpit&quot;</code>; <code>branchSuffix</code>: <code>&quot;&quot;</code>; <code>coalesceMs</code>: <code>30000</code>; <code>enabled</code>: <code>true</code>; <code>messagePrefix</code>: <code>&quot;CON&quot;</code>; <code>mode</code>: <code>&quot;coalesce&quot;</code>; }&gt; = <code>DEFAULT_COMMIT_CONFIG</code></p>
+</blockquote>
+<h5>errorCodes</h5>
+<blockquote>
+<p><strong>errorCodes</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>exceptions</h5>
+<blockquote>
+<p><strong>exceptions</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>modes</h5>
+<blockquote>
+<p><strong>modes</strong>: <code>string</code>[] = <code>COMMIT_MODES</code></p>
+</blockquote>
+<h5>purpose</h5>
+<blockquote>
+<p><strong>purpose</strong>: <code>string</code> = <code>&#39;Deterministic commit messages for Cockpit saves: a branch-scoped serial, impact counts consumed from src/engine/impact.mjs, and prose from src/engine/unitSummary.mjs. No LLM, offline, byte-identical for the same tree.&#39;</code></p>
+</blockquote>
+<h5>schemaVersion</h5>
+<blockquote>
+<p><strong>schemaVersion</strong>: <code>number</code> = <code>SCHEMA_VERSION</code></p>
+</blockquote>
+<h5>trailers</h5>
+<blockquote>
+<p><strong>trailers</strong>: <code>string</code>[]</p>
+</blockquote>
+<hr>
+<h3 id="deriveslug">deriveSlug()<a class="anchor" href="#deriveslug" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>deriveSlug</strong>(<code>input?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L132" rel="noopener">src/engine/commitMessage.mjs:132</a></p>
+<p>The session branch slug, first match wins:</p>
+<ol>
+<li>the plan or ticket title, slugified — best case, the branch says what the work IS;</li>
+<li>the feature + unit first touched (<code>billing-invoice-layer</code>);</li>
+<li>the feature alone, when one save touched several units;</li>
+<li>the date, only if nothing above can be determined.</li>
+</ol>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>input?</h5>
+<h6>changedFiles?</h6>
+<p><code>string</code>[] = <code>[]</code></p>
+<p>Files changed in the save.</p>
+<h6>impact?</h6>
+<p><code>any</code></p>
+<p>An impact report.</p>
+<h6>now?</h6>
+<p><code>Date</code> = <code>...</code></p>
+<p>Clock, for the date fallback.</p>
+<h6>plan?</h6>
+<p><code>any</code></p>
+<p>The plan (its touched features and files are used).</p>
+<h6>planTitle?</h6>
+<p><code>string</code></p>
+<p>Plan or ticket title.</p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>slug</h5>
+<blockquote>
+<p><strong>slug</strong>: <code>string</code></p>
+</blockquote>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>&quot;plan-title&quot;</code> | <code>&quot;plan&quot;</code> | <code>&quot;unit&quot;</code> | <code>&quot;feature&quot;</code> | <code>&quot;file&quot;</code> | <code>&quot;date&quot;</code></p>
+</blockquote>
+<hr>
+<h3 id="newsessionid">newSessionId()<a class="anchor" href="#newsessionid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>newSessionId</strong>(<code>bytes?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L82" rel="noopener">src/engine/commitMessage.mjs:82</a></p>
+<p>A new session id: a short random hash, deliberately NOT a timestamp. Parallel agents start within
+the same second on this project routinely, so a timestamp both collides and leaks wall-clock into
+every commit subject.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>bytes?</h5>
+<p><code>number</code> = <code>2</code></p>
+<p>entropy in bytes (2 -&gt; 4 hex chars)</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p><code>bytes * 2</code> random hex characters.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">newSessionId(); // =&gt; &#39;a3f7&#39;
+</code></pre>
+<hr>
+<h3 id="nextserialfrom">nextSerialFrom()<a class="anchor" href="#nextserialfrom" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>nextSerialFrom</strong>(<code>subjects</code>, <code>options?</code>): <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L214" rel="noopener">src/engine/commitMessage.mjs:214</a></p>
+<p>Next serial for a session, from that branch&#39;s own commit subjects (newest-first or oldest-first,
+it does not matter — the max is taken). Monotonic with gaps, never gapless: gapless needs an
+allocator and a shared resource, which is exactly what branch-scoping removed.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>subjects</h5>
+<p><code>string</code>[]</p>
+<p>Commit subjects of the session branch, one per entry.</p>
+<h5>options?</h5>
+<p>Session whose numbering to continue.</p>
+<h6>sessionId?</h6>
+<p><code>string</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>number</code></p>
+<p>One more than the highest serial seen, or 1.</p>
+<hr>
+<h3 id="parseserial">parseSerial()<a class="anchor" href="#parseserial" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parseSerial</strong>(<code>subject</code>, <code>options?</code>): <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L199" rel="noopener">src/engine/commitMessage.mjs:199</a></p>
+<p>The serial in a commit subject, or null. Matched on the SESSION ID rather than the prefix, so a
+user who changes their prefix mid-session does not silently restart the numbering at 1.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>subject</h5>
+<p><code>string</code></p>
+<p>A commit subject.</p>
+<h5>options?</h5>
+<p>Session whose numbering to read.</p>
+<h6>sessionId?</h6>
+<p><code>string</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>number</code></p>
+<p>The serial, or <code>null</code> when the subject has none for this session.</p>
+<hr>
+<h3 id="seriallabel">serialLabel()<a class="anchor" href="#seriallabel" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>serialLabel</strong>(<code>parts</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L186" rel="noopener">src/engine/commitMessage.mjs:186</a></p>
+<p><code>CON-a3f7-0007</code>, or <code>a3f7-0007</code> when the user&#39;s prefix is empty.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>parts</h5>
+<p><code>any</code></p>
+<p><code>{prefix?, sessionId, serial}</code>.</p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>The zero-padded serial label.</p>
+<h4 id="example-2">Example<a class="anchor" href="#example-2" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">serialLabel({ prefix: &#39;CON&#39;, sessionId: &#39;a3f7&#39;, serial: 7 }); // =&gt; &#39;CON-a3f7-0007&#39;
+</code></pre>
+<hr>
+<h3 id="sessionbranchname">sessionBranchName()<a class="anchor" href="#sessionbranchname" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>sessionBranchName</strong>(<code>parts?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L167" rel="noopener">src/engine/commitMessage.mjs:167</a></p>
+<p><code>&lt;prefix&gt;/&lt;slug&gt;-&lt;session-id&gt;&lt;suffix&gt;</code> — e.g. <code>cockpit/billing-invoice-layer-a3f7</code>.
+Prefix and suffix are the user&#39;s (either may be empty); the id is ours and is what guarantees the
+name never collides with an existing branch. The name is fixed once created: later saves in the
+same session may touch other features, and renaming mid-session breaks anything already pointing
+at the branch. The name says where the session started; the commits say the rest.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>parts?</h5>
+<p><code>any</code> = <code>{}</code></p>
+<p><code>{prefix?, slug?, sessionId?, suffix?}</code>.</p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>The branch name.</p>
+<h4 id="example-3">Example<a class="anchor" href="#example-3" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">sessionBranchName({ prefix: &#39;cockpit&#39;, slug: &#39;billing-invoice-layer&#39;, sessionId: &#39;a3f7&#39; }); // =&gt; &#39;cockpit/billing-invoice-layer-a3f7&#39;
+</code></pre>
+<hr>
+<h3 id="slugify">slugify()<a class="anchor" href="#slugify" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>slugify</strong>(<code>text</code>, <code>options?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/commitMessage.mjs#L96" rel="noopener">src/engine/commitMessage.mjs:96</a></p>
+<p>lowercase, <code>[a-z0-9-]</code> only, runs collapsed, trimmed to <code>max</code> chars without a trailing dash.</p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>text</h5>
+<p><code>string</code></p>
+<p>Text to slugify.</p>
+<h5>options?</h5>
+<p>Maximum length.</p>
+<h6>max?</h6>
+<p><code>number</code> = <code>MAX_SLUG</code></p>
+<h4 id="returns-10">Returns<a class="anchor" href="#returns-10" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>The slug (<code>[a-z0-9-]</code> only).</p>
+<h4 id="example-4">Example<a class="anchor" href="#example-4" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">slugify(&#39;ProductsPage&#39;); // =&gt; &#39;products-page&#39;
+</code></pre>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/commitMessage.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

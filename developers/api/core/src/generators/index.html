@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/generators · Developer Docs</title>
+<meta name="description" content="API of src/generators.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/generators · Developer Docs">
+<meta property="og:description" content="API of src/generators.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/generators/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/generators/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../">Home</a><a href="../../../../../user-guide/">Guide</a><a href="../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../developers/api/">All packages</a></li><li><a href="../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/generators</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/generators</h1><div class="prose"><p><em>Core engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/generators.mjs" rel="noopener"><code>src/generators.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="foldertolayer">FOLDER_TO_LAYER<a class="anchor" href="#foldertolayer" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>FOLDER_TO_LAYER</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L33" rel="noopener">src/generators.mjs:33</a></p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>components</h5>
+<blockquote>
+<p><strong>components</strong>: <code>string</code> = <code>&#39;component&#39;</code></p>
+</blockquote>
+<h5>controllers</h5>
+<blockquote>
+<p><strong>controllers</strong>: <code>string</code> = <code>&#39;controller&#39;</code></p>
+</blockquote>
+<h5>domain</h5>
+<blockquote>
+<p><strong>domain</strong>: <code>string</code> = <code>&#39;domain&#39;</code></p>
+</blockquote>
+<h5>hooks</h5>
+<blockquote>
+<p><strong>hooks</strong>: <code>string</code> = <code>&#39;hook&#39;</code></p>
+</blockquote>
+<h5>pages</h5>
+<blockquote>
+<p><strong>pages</strong>: <code>string</code> = <code>&#39;page&#39;</code></p>
+</blockquote>
+<h5>services</h5>
+<blockquote>
+<p><strong>services</strong>: <code>string</code> = <code>&#39;service&#39;</code></p>
+</blockquote>
+<h5>workflows</h5>
+<blockquote>
+<p><strong>workflows</strong>: <code>string</code> = <code>&#39;workflow&#39;</code></p>
+</blockquote>
+<hr>
+<h3 id="layerconstraints">LAYER_CONSTRAINTS<a class="anchor" href="#layerconstraints" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>LAYER_CONSTRAINTS</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L47" rel="noopener">src/generators.mjs:47</a></p>
+<h4 id="type-declaration-2">Type Declaration<a class="anchor" href="#type-declaration-2" aria-label="Link to this section">#</a></h4>
+<h5>component</h5>
+<blockquote>
+<p><strong>component</strong>: <code>string</code> = <code>&#39;Presentation-only, from props. Never write the substring &quot;controllers/&quot;, &quot;workflows/&quot;, &quot;services/&quot;, or &quot;domain/&quot; anywhere in the file, even in a comment.&#39;</code></p>
+</blockquote>
+<h5>controller</h5>
+<blockquote>
+<p><strong>controller</strong>: <code>string</code> = <code>&#39;Composes hooks/domain/pages for a route. No import restrictions.&#39;</code></p>
+</blockquote>
+<h5>domain</h5>
+<blockquote>
+<p><strong>domain</strong>: <code>string</code> = <code>&#39;Pure function(s) only. Never write the words fetch, window, document, localStorage, sessionStorage, or navigator anywhere in the file, even in a comment. No React import.&#39;</code></p>
+</blockquote>
+<h5>hook</h5>
+<blockquote>
+<p><strong>hook</strong>: <code>string</code> = <code>&#39;A React hook — the exported function name must start with &quot;use&quot;. May import anything.&#39;</code></p>
+</blockquote>
+<h5>page</h5>
+<blockquote>
+<p><strong>page</strong>: <code>string</code> = <code>&#39;Presentation composition from props only. Never write &quot;workflows/&quot;, &quot;services/&quot;, or &quot;domain/&quot; anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine.&#39;</code></p>
+</blockquote>
+<h5>service</h5>
+<blockquote>
+<p><strong>service</strong>: <code>string</code> = <code>&#39;Owns an external effect on behalf of the feature. Never import React or any react-related package.&#39;</code></p>
+</blockquote>
+<h5>workflow</h5>
+<blockquote>
+<p><strong>workflow</strong>: <code>string</code> = &#39;A state machine (e.g. via xstate&#39;s setup/createMachine). Never import &quot;react&quot; or any package path containing &quot;react/&quot;.&#39;</p>
+</blockquote>
+<hr>
+<h3 id="layerorder">LAYER_ORDER<a class="anchor" href="#layerorder" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>LAYER_ORDER</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L217" rel="noopener">src/generators.mjs:217</a></p>
+<hr>
+<h3 id="layerprerequisites">LAYER_PREREQUISITES<a class="anchor" href="#layerprerequisites" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>LAYER_PREREQUISITES</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L225" rel="noopener">src/generators.mjs:225</a></p>
+<h4 id="type-declaration-3">Type Declaration<a class="anchor" href="#type-declaration-3" aria-label="Link to this section">#</a></h4>
+<h5>controller</h5>
+<blockquote>
+<p><strong>controller</strong>: <code>string</code>[]</p>
+</blockquote>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="assertlayerprerequisites">assertLayerPrerequisites()<a class="anchor" href="#assertlayerprerequisites" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>assertLayerPrerequisites</strong>(<code>root</code>, <code>name</code>, <code>feature</code>, <code>layers</code>): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L256" rel="noopener">src/generators.mjs:256</a></p>
+<p>Reject an unbuildable layer combination BEFORE anything is written, with a
+message that names the real problem and what to do about it — rather than
+letting the half-written result trip selfCheck&#39;s IMPORT-001 afterwards.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h5>layers</h5>
+<p><code>any</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="createfeature">createFeature()<a class="anchor" href="#createfeature" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createFeature</strong>(<code>root</code>, <code>name</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L146" rel="noopener">src/generators.mjs:146</a></p>
+<p>Scaffold a feature folder: the seven layer directories plus <code>types.ts</code> and <code>index.ts</code> (the public API). Validates the name before writing anything, then self-checks the result against the architecture rules.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>name</h5>
+<p><code>string</code></p>
+<p>Feature name (must be a legal identifier).</p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>Absolute path of the new feature directory.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">createFeature(root, &#39;billing&#39;); // =&gt; &#39;&lt;root&gt;/features/billing&#39;
+</code></pre>
+<hr>
+<h3 id="fillgeneratedfile">fillGeneratedFile()<a class="anchor" href="#fillgeneratedfile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>fillGeneratedFile</strong>(<code>root</code>, <code>file</code>, <code>layer</code>, <code>options?</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L357" rel="noopener">src/generators.mjs:357</a></p>
+<p>Overwrite one already-generated file&#39;s stub content with <code>llm</code>&#39;s real
+implementation. <code>root</code> is only used to build the file&#39;s prompt-relative
+path (for the same reason import.mjs&#39;s fill does — a clearer prompt, not
+a behavior difference); <code>file</code> must already exist (i.e. call this after
+generateLayer/generateVertical, never instead of it). <code>llmOptions</code> is
+passed straight through to callLlm — see llm.mjs&#39;s ollama provider for
+what it can carry (model/baseUrl). Returns
+<code>{ file, status: &#39;filled&#39;|&#39;rejected&#39;|&#39;failed&#39;, reason?, attempts }</code> —
+see llm-fill.mjs; anything but &#39;filled&#39; leaves the stub untouched.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root (used for the prompt-relative path).</p>
+<h5>file</h5>
+<p><code>string</code></p>
+<p>An already-generated file; must exist.</p>
+<h5>layer</h5>
+<p><code>string</code></p>
+<p>The file&#39;s layer, whose constraint goes into the prompt.</p>
+<h5>options?</h5>
+<p><code>llm</code> names the provider; <code>llmOptions</code> (model, baseUrl) is passed to it.</p>
+<h6>feature?</h6>
+<p><code>string</code></p>
+<h6>llm?</h6>
+<p><code>string</code></p>
+<h6>llmOptions?</h6>
+<p><code>any</code></p>
+<h6>name?</h6>
+<p><code>string</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<p><code>{file, status: &#39;filled&#39;|&#39;rejected&#39;|&#39;failed&#39;, reason?, attempts}</code>; anything but <code>filled</code> leaves the stub untouched.</p>
+<hr>
+<h3 id="folderfor">folderFor()<a class="anchor" href="#folderfor" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>folderFor</strong>(<code>layer</code>): <code>&quot;domain&quot;</code> | <code>&quot;hooks&quot;</code> | <code>&quot;controllers&quot;</code> | <code>&quot;workflows&quot;</code> | <code>&quot;services&quot;</code> | <code>&quot;pages&quot;</code> | <code>&quot;components&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L25" rel="noopener">src/generators.mjs:25</a></p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>layer</h5>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>&quot;domain&quot;</code> | <code>&quot;hooks&quot;</code> | <code>&quot;controllers&quot;</code> | <code>&quot;workflows&quot;</code> | <code>&quot;services&quot;</code> | <code>&quot;pages&quot;</code> | <code>&quot;components&quot;</code></p>
+<hr>
+<h3 id="generatelayer">generateLayer()<a class="anchor" href="#generatelayer" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>generateLayer</strong>(<code>root</code>, <code>layer</code>, <code>name</code>, <code>feature</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L200" rel="noopener">src/generators.mjs:200</a></p>
+<p>Generate one layer file (for example a service or a page) for a feature from its template, write it, and self-check it against the architecture rules. Nothing is written when the request is invalid or a prerequisite layer is missing.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>layer</h5>
+<p><code>string</code></p>
+<p>Layer name (<code>domain</code>, <code>service</code>, <code>workflow</code>, <code>hook</code>, <code>component</code>, <code>page</code>, <code>controller</code>).</p>
+<h5>name</h5>
+<p><code>string</code></p>
+<p>Unit name (turned into a valid identifier).</p>
+<h5>feature</h5>
+<p><code>string</code></p>
+<p>Feature that owns the file.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>Absolute path of the file written.</p>
+<h4 id="example-2">Example<a class="anchor" href="#example-2" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">generateLayer(root, &#39;service&#39;, &#39;invoice&#39;, &#39;billing&#39;);
+</code></pre>
+<hr>
+<h3 id="generatevertical">generateVertical()<a class="anchor" href="#generatevertical" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>generateVertical</strong>(<code>root</code>, <code>name</code>, <code>feature</code>, <code>layers</code>, <code>options?</code>): <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L297" rel="noopener">src/generators.mjs:297</a></p>
+<p>Generate several layers of one unit in dependency order (a vertical slice). The whole set is validated up front, so a bad request writes nothing.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>string</code></p>
+<p>Project root.</p>
+<h5>name</h5>
+<p><code>string</code></p>
+<p>Unit name.</p>
+<h5>feature</h5>
+<p><code>string</code></p>
+<p>Feature that owns the files.</p>
+<h5>layers</h5>
+<p><code>string</code>[]</p>
+<p>Layers to generate; duplicates are ignored.</p>
+<h5>options?</h5>
+<p>Called after each layer, for per-layer timing output.</p>
+<h6>onLayer?</h6>
+<p>(<code>info</code>) =&gt; <code>void</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>string</code>[]</p>
+<p>Absolute paths written, in dependency order.</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>For an unknown layer or an unbuildable combination (for example a controller without a page).</p>
+<h4 id="example-3">Example<a class="anchor" href="#example-3" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">generateVertical(root, &#39;invoice&#39;, &#39;billing&#39;, [&#39;domain&#39;, &#39;service&#39;, &#39;workflow&#39;]);
+</code></pre>
+<hr>
+<h3 id="layerfilebasename">layerFileBaseName()<a class="anchor" href="#layerfilebasename" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>layerFileBaseName</strong>(<code>layer</code>, <code>cap</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L60" rel="noopener">src/generators.mjs:60</a></p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>layer</h5>
+<p><code>any</code></p>
+<h5>cap</h5>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="layerfromgeneratedfile">layerFromGeneratedFile()<a class="anchor" href="#layerfromgeneratedfile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>layerFromGeneratedFile</strong>(<code>file</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L40" rel="noopener">src/generators.mjs:40</a></p>
+<p>The layer a generated file belongs to, read from its folder name.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>file</h5>
+<p><code>string</code></p>
+<p>Path of a generated file.</p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<p>The layer name, or <code>&#39;component&#39;</code> when the folder is not a known layer folder.</p>
+<hr>
+<h3 id="layertargetfile">layerTargetFile()<a class="anchor" href="#layertargetfile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>layerTargetFile</strong>(<code>root</code>, <code>layer</code>, <code>name</code>, <code>feature</code>, <code>config?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L169" rel="noopener">src/generators.mjs:169</a></p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>layer</h5>
+<p><code>any</code></p>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h5>config?</h5>
+<h6>exceptions</h6>
+<p><code>any</code>[]</p>
+<h6>features</h6>
+<p>{ <code>root</code>: <code>string</code>; }</p>
+<h6>features.root</h6>
+<p><code>string</code></p>
+<h6>frozen</h6>
+<p><code>string</code>[]</p>
+<h6>layers</h6>
+<p><code>any</code></p>
+<h6>nonLayer</h6>
+<p><code>string</code>[]</p>
+<h6>preset</h6>
+<p><code>string</code></p>
+<h6>project</h6>
+<p><code>any</code></p>
+<h6>rules</h6>
+<p><code>any</code></p>
+<h6>version</h6>
+<p><code>number</code></p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="missinglayerprerequisites">missingLayerPrerequisites()<a class="anchor" href="#missinglayerprerequisites" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>missingLayerPrerequisites</strong>(<code>root</code>, <code>name</code>, <code>feature</code>, <code>layers</code>): <code>object</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L240" rel="noopener">src/generators.mjs:240</a></p>
+<p>Which prerequisite layers are missing for <code>layers</code> — <code>[{layer, requires}]</code>,
+empty when the set is buildable. Pure/read-only: never writes.</p>
+<h4 id="parameters-10">Parameters<a class="anchor" href="#parameters-10" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h5>layers</h5>
+<p><code>any</code></p>
+<h4 id="returns-10">Returns<a class="anchor" href="#returns-10" aria-label="Link to this section">#</a></h4>
+<p><code>object</code>[]</p>
+<hr>
+<h3 id="pascalcase">pascalCase()<a class="anchor" href="#pascalcase" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>pascalCase</strong>(<code>name</code>, <code>label?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L127" rel="noopener">src/generators.mjs:127</a></p>
+<h4 id="parameters-11">Parameters<a class="anchor" href="#parameters-11" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>label?</h5>
+<p><code>string</code> = <code>&#39;Feature&#39;</code></p>
+<h4 id="returns-11">Returns<a class="anchor" href="#returns-11" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="renderlayer">renderLayer()<a class="anchor" href="#renderlayer" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>renderLayer</strong>(<code>root</code>, <code>layer</code>, <code>name</code>, <code>feature</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L178" rel="noopener">src/generators.mjs:178</a></p>
+<h4 id="parameters-12">Parameters<a class="anchor" href="#parameters-12" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>layer</h5>
+<p><code>any</code></p>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h4 id="returns-12">Returns<a class="anchor" href="#returns-12" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>content</h5>
+<blockquote>
+<p><strong>content</strong>: <code>any</code></p>
+</blockquote>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="selfcheck">selfCheck()<a class="anchor" href="#selfcheck" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>selfCheck</strong>(<code>root</code>, <code>absFiles</code>): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/generators.mjs#L87" rel="noopener">src/generators.mjs:87</a></p>
+<h4 id="parameters-13">Parameters<a class="anchor" href="#parameters-13" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>absFiles</h5>
+<p><code>any</code></p>
+<h4 id="returns-13">Returns<a class="anchor" href="#returns-13" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/generators.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

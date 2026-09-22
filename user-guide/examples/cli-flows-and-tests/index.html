@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Every route through a flow, tested · User Guide</title>
+<meta name="description" content="Explain a state machine and generate one locked test per route.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Every route through a flow, tested · User Guide">
+<meta property="og:description" content="Explain a state machine and generate one locked test per route.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/user-guide/examples/cli-flows-and-tests/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/user-guide/examples/cli-flows-and-tests/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../">Home</a><a href="../../../user-guide/" aria-current="page">Guide</a><a href="../../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../../user-guide/getting-started/">Getting started</a></li><li><a href="../../../user-guide/line/">What Line is</a></li><li><a href="../../../user-guide/concepts/">The five ideas</a></li><li><a href="../../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../../user-guide/construct/">What Construct is</a></li><li><a href="../../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../../user-guide/cli/">Using the command line</a></li><li><a href="../../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../../user-guide/examples/cli-flows-and-tests/" aria-current="page"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Every route through a flow, tested</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">CLI</p><h1>Every route through a flow, tested</h1><p class="lede">Explain a state machine and generate one locked test per route.</p><div class="prose"><p><strong>Problem.</strong> A workflow (a state machine) is the part of an app nobody can read at a glance, and its tests are either missing or written once by hand and never updated when the flow changes. &quot;Does it cover every path?&quot; is answered by hope.</p>
+<p>It reads the state machine from the code, enumerates every route through it, explains each in plain English, and writes one locked Playwright test per route. Change the flow, regenerate, and the tests follow. No model is involved.</p>
+<p>This page is CLI only. The Tests screen, cloning and the step editor are in the <a href="../../../user-guide/examples/cockpit-tests/">Cockpit examples</a>.</p>
+<h2 id="do-this">Do this<a class="anchor" href="#do-this" aria-label="Link to this section">#</a></h2>
+<h3 id="1-every-route-through-a-flow-in-english">1. Every route through a flow, in English<a class="anchor" href="#1-every-route-through-a-flow-in-english" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-bash">construct research workflow login --format scenarios
+</code></pre>
+<pre><code class="language-text">== features/login/workflows/Login.tsx ==
+
+Happy path
+  Route: idle → success
+  Given the flow starts in *idle*
+  When &quot;submit&quot; happens — only if it is valid
+  Then the flow moves to *success*
+  And the flow ends — *success* is an end state
+
+Otherwise, then submit is valid (ends in success)
+  Route: idle → rejected → success
+  Given the flow starts in *idle*
+  When &quot;submit&quot; happens, when none of the conditions above apply
+  Then the flow moves to *rejected*
+  And when &quot;submit&quot; happens — only if it is valid
+  Then the flow moves to *success*
+  And the flow ends — *success* is an end state
+  Note: in *rejected* the flow can start that step over when &quot;submit&quot; happens, so this part can repeat.
+
+Explained 1 machine(s) in 1 file(s) (0.03s)
+[tool: produced the read-only report above] [llm: 0 calls]
+</code></pre>
+<h3 id="2-one-locked-test-per-route">2. One locked test per route<a class="anchor" href="#2-one-locked-test-per-route" aria-label="Link to this section">#</a></h3>
+<p>Generated tests live in a region only the generator may write, outside the normal parts. Declare both once in <code>architecture.yml</code>:</p>
+<pre><code class="language-yaml">frozen:
+  - features/*/tests/generated/**
+nonLayer:
+  - features/*/tests/**
+</code></pre>
+<p>Without them the command refuses and prints exactly these lines. With them:</p>
+<pre><code class="language-bash">construct generate tests login
+</code></pre>
+<pre><code class="language-text">Wrote features/login/tests/generated/login--ends-success-via-submit-otherwise-then-submit-if-is-valid.spec.ts
+Wrote features/login/tests/generated/login--happy-path.spec.ts
+2 spec(s) for feature &quot;login&quot; (2 written, 0 unchanged; 2 pending a fixture), start URL /login (0.08s)
+</code></pre>
+<p>Run it again and nothing changes:</p>
+<pre><code class="language-text">Unchanged features/login/tests/generated/login--ends-success-via-submit-otherwise-then-submit-if-is-valid.spec.ts
+Unchanged features/login/tests/generated/login--happy-path.spec.ts
+2 spec(s) for feature &quot;login&quot; (0 written, 2 unchanged; 2 pending a fixture), start URL /login (0.08s)
+</code></pre>
+<p>Each file starts with the scenario in the same Given/When/Then words as step 1, records a hash of the flow it came from, and is marked locked. The test finds your page elements by a naming convention (<code>data-testid</code> is the event name in kebab-case, <code>data-flow-state</code> shows the current state). If an attribute is missing, the failure says so and tells you not to file a product bug. &quot;Pending a fixture&quot; means a branch needs something the page cannot choose (a failing service, a guard); those are written as <code>test.fixme</code> naming what is needed.</p>
+<p>Options: <code>--dry-run</code> shows what would be written, <code>--prune</code> removes generated files for routes that no longer exist. Only <code>features/&lt;feature&gt;/tests/generated/</code> is ever written, and a file without the generated marker is never overwritten.</p>
+<h2 id="you-get">You get<a class="anchor" href="#you-get" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>You get</th>
+<th>Evidence above</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Every path through the flow, listed</td>
+<td><code>Happy path</code>, <code>Otherwise, then submit is valid (ends in success)</code></td>
+</tr>
+<tr>
+<td>Tests that follow the flow</td>
+<td>regenerate after a change; untouched routes stay <code>Unchanged</code></td>
+</tr>
+<tr>
+<td>Your own edits are safe</td>
+<td>generated tests are locked; clone one to change it</td>
+</tr>
+<tr>
+<td>No model</td>
+<td><code>[llm: 0 calls]</code></td>
+</tr>
+</tbody></table>
+<h2 id="why-it-matters">Why it matters<a class="anchor" href="#why-it-matters" aria-label="Link to this section">#</a></h2>
+<p>Every route through a flow is explained and tested, and the tests follow the flow when it changes.</p>
+<p>Checked against commit <code>081150b</code> on 2026-09-20 (wording revised for plain language on the same day).</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../../user-guide/examples/cli-impact-and-review/"><span>Previous</span>What a change touches, and branch review</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#do-this">Do this</a></li><li><a href="#you-get">You get</a></li><li><a href="#why-it-matters">Why it matters</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/examples/cli-flows-and-tests.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

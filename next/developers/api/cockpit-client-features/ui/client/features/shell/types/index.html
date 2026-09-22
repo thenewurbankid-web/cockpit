@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/shell/types · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/shell/types.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/shell/types · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/shell/types.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/shell/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/shell/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/shell/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/shell/types</h1><div class="prose"><p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/shell/types.ts" rel="noopener"><code>ui/client/features/shell/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="activitybarprops">ActivityBarProps<a class="anchor" href="#activitybarprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ActivityBarProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L149" rel="noopener">ui/client/features/shell/types.ts:149</a></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>activeScreenId</h5>
+<blockquote>
+<p><strong>activeScreenId</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L151" rel="noopener">ui/client/features/shell/types.ts:151</a></p>
+<h5>collapsed</h5>
+<blockquote>
+<p><strong>collapsed</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L155" rel="noopener">ui/client/features/shell/types.ts:155</a></p>
+<p>Icons only (vertical rail). Remembered per person by the controller.</p>
+<h5>onToggleCollapsed</h5>
+<blockquote>
+<p><strong>onToggleCollapsed</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L156" rel="noopener">ui/client/features/shell/types.ts:156</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>orientation</h5>
+<blockquote>
+<p><strong>orientation</strong>: <code>&quot;vertical&quot;</code> | <code>&quot;horizontal&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L158" rel="noopener">ui/client/features/shell/types.ts:158</a></p>
+<p>Vertical on the left of the frame; horizontal above the pane tabs in the narrow layout.</p>
+<h5>screenBadges?</h5>
+<blockquote>
+<p><code>optional</code> <strong>screenBadges?</strong>: <code>Record</code>&lt;<code>string</code>, <code>number</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L153" rel="noopener">ui/client/features/shell/types.ts:153</a></p>
+<p>Little counts beside a screen&#39;s name, by screen id (Git: the branches under review). Absent or 0 shows none.</p>
+<h5>screens</h5>
+<blockquote>
+<p><strong>screens</strong>: <a href="#primaryscreen"><code>PrimaryScreen</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L150" rel="noopener">ui/client/features/shell/types.ts:150</a></p>
+<hr>
+<h3 id="gatetopbarprops">GateTopBarProps<a class="anchor" href="#gatetopbarprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>GateTopBarProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L162" rel="noopener">ui/client/features/shell/types.ts:162</a></p>
+<p>Minimal top bar shown while no project is open: brand and the profile menu only.</p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>userMenu?</h5>
+<blockquote>
+<p><code>optional</code> <strong>userMenu?</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L162" rel="noopener">ui/client/features/shell/types.ts:162</a></p>
+<hr>
+<h3 id="modelstatus">ModelStatus<a class="anchor" href="#modelstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ModelStatus</strong> = <code>&quot;checking&quot;</code> | <code>&quot;ready&quot;</code> | <code>&quot;offline&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L74" rel="noopener">ui/client/features/shell/types.ts:74</a></p>
+<hr>
+<h3 id="narrowpane">NarrowPane<a class="anchor" href="#narrowpane" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrowPane</strong> = <code>&quot;left&quot;</code> | <code>&quot;mid&quot;</code> | <code>&quot;right&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L90" rel="noopener">ui/client/features/shell/types.ts:90</a></p>
+<p>The single pane showing in the narrow layout: Browser (left), stage (mid) or Tools (right).</p>
+<hr>
+<h3 id="narrowprops">NarrowProps<a class="anchor" href="#narrowprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrowProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L98" rel="noopener">ui/client/features/shell/types.ts:98</a></p>
+<p>Narrow-layout controls shared by the layout and the page that feeds it.</p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>narrow?</h5>
+<blockquote>
+<p><code>optional</code> <strong>narrow?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L100" rel="noopener">ui/client/features/shell/types.ts:100</a></p>
+<p>Viewport below 900px: one pane at a time with a bottom tab bar.</p>
+<h5>narrowPane?</h5>
+<blockquote>
+<p><code>optional</code> <strong>narrowPane?</strong>: <a href="#narrowpane"><code>NarrowPane</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L101" rel="noopener">ui/client/features/shell/types.ts:101</a></p>
+<h5>onNarrowPane?</h5>
+<blockquote>
+<p><code>optional</code> <strong>onNarrowPane?</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L102" rel="noopener">ui/client/features/shell/types.ts:102</a></p>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#narrowpane"><code>NarrowPane</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<hr>
+<h3 id="narrowtabbarprops">NarrowTabBarProps<a class="anchor" href="#narrowtabbarprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>NarrowTabBarProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L92" rel="noopener">ui/client/features/shell/types.ts:92</a></p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>onSelect</h5>
+<blockquote>
+<p><strong>onSelect</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L94" rel="noopener">ui/client/features/shell/types.ts:94</a></p>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#narrowpane"><code>NarrowPane</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>pane</h5>
+<blockquote>
+<p><strong>pane</strong>: <a href="#narrowpane"><code>NarrowPane</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L93" rel="noopener">ui/client/features/shell/types.ts:93</a></p>
+<hr>
+<h3 id="paneid">PaneId<a class="anchor" href="#paneid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PaneId</strong> = <code>&quot;left&quot;</code> | <code>&quot;right&quot;</code> | <code>&quot;drawer&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L14" rel="noopener">ui/client/features/shell/types.ts:14</a></p>
+<p>The resizable regions of the frame: Browser (left), Tools (right), Drawer (bottom).</p>
+<hr>
+<h3 id="panelimit">PaneLimit<a class="anchor" href="#panelimit" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PaneLimit</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L21" rel="noopener">ui/client/features/shell/types.ts:21</a></p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>default</h5>
+<blockquote>
+<p><strong>default</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L21" rel="noopener">ui/client/features/shell/types.ts:21</a></p>
+<h5>max</h5>
+<blockquote>
+<p><strong>max</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L21" rel="noopener">ui/client/features/shell/types.ts:21</a></p>
+<h5>min</h5>
+<blockquote>
+<p><strong>min</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L21" rel="noopener">ui/client/features/shell/types.ts:21</a></p>
+<hr>
+<h3 id="paneresizerprops">PaneResizerProps<a class="anchor" href="#paneresizerprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PaneResizerProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L122" rel="noopener">ui/client/features/shell/types.ts:122</a></p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>controls?</h5>
+<blockquote>
+<p><code>optional</code> <strong>controls?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L133" rel="noopener">ui/client/features/shell/types.ts:133</a></p>
+<h5>invert?</h5>
+<blockquote>
+<p><code>optional</code> <strong>invert?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L130" rel="noopener">ui/client/features/shell/types.ts:130</a></p>
+<p>True when growing the pane means moving the pointer toward the start (right pane, drawer).</p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L125" rel="noopener">ui/client/features/shell/types.ts:125</a></p>
+<h5>max</h5>
+<blockquote>
+<p><strong>max</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L128" rel="noopener">ui/client/features/shell/types.ts:128</a></p>
+<h5>min</h5>
+<blockquote>
+<p><strong>min</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L127" rel="noopener">ui/client/features/shell/types.ts:127</a></p>
+<h5>onResize</h5>
+<blockquote>
+<p><strong>onResize</strong>: (<code>size</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L131" rel="noopener">ui/client/features/shell/types.ts:131</a></p>
+<h6>Parameters</h6>
+<h6>size</h6>
+<p><code>number</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onToggle</h5>
+<blockquote>
+<p><strong>onToggle</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L132" rel="noopener">ui/client/features/shell/types.ts:132</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>orientation</h5>
+<blockquote>
+<p><strong>orientation</strong>: <code>&quot;vertical&quot;</code> | <code>&quot;horizontal&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L124" rel="noopener">ui/client/features/shell/types.ts:124</a></p>
+<p>&#39;vertical&#39; separates side-by-side panes (drag left/right); &#39;horizontal&#39; separates the drawer.</p>
+<h5>value</h5>
+<blockquote>
+<p><strong>value</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L126" rel="noopener">ui/client/features/shell/types.ts:126</a></p>
+<hr>
+<h3 id="panestate">PaneState<a class="anchor" href="#panestate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PaneState</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L17" rel="noopener">ui/client/features/shell/types.ts:17</a></p>
+<p><code>size</code> is px width (left/right) or px height (drawer); <code>open</code> is not-collapsed.</p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>open</h5>
+<blockquote>
+<p><strong>open</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L17" rel="noopener">ui/client/features/shell/types.ts:17</a></p>
+<h5>size</h5>
+<blockquote>
+<p><strong>size</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L17" rel="noopener">ui/client/features/shell/types.ts:17</a></p>
+<hr>
+<h3 id="primaryscreen">PrimaryScreen<a class="anchor" href="#primaryscreen" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PrimaryScreen</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L70" rel="noopener">ui/client/features/shell/types.ts:70</a></p>
+<p>One of the five top-bar screens (Features, Pages, Components, Git, Tests); <code>activeOn</code> lists the existing routes it owns.</p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>activeOn</h5>
+<blockquote>
+<p><strong>activeOn</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L70" rel="noopener">ui/client/features/shell/types.ts:70</a></p>
+<h5>href</h5>
+<blockquote>
+<p><strong>href</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L70" rel="noopener">ui/client/features/shell/types.ts:70</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L70" rel="noopener">ui/client/features/shell/types.ts:70</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L70" rel="noopener">ui/client/features/shell/types.ts:70</a></p>
+<hr>
+<h3 id="profilemenuitemsprops">ProfileMenuItemsProps<a class="anchor" href="#profilemenuitemsprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ProfileMenuItemsProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L76" rel="noopener">ui/client/features/shell/types.ts:76</a></p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>modelStatus</h5>
+<blockquote>
+<p><strong>modelStatus</strong>: <a href="#modelstatus"><code>ModelStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L78" rel="noopener">ui/client/features/shell/types.ts:78</a></p>
+<h5>onPreference</h5>
+<blockquote>
+<p><strong>onPreference</strong>: (<code>preference</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L80" rel="noopener">ui/client/features/shell/types.ts:80</a></p>
+<h6>Parameters</h6>
+<h6>preference</h6>
+<p><a href="#themepreference"><code>ThemePreference</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>pathname</h5>
+<blockquote>
+<p><strong>pathname</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L77" rel="noopener">ui/client/features/shell/types.ts:77</a></p>
+<h5>preference</h5>
+<blockquote>
+<p><strong>preference</strong>: <a href="#themepreference"><code>ThemePreference</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L79" rel="noopener">ui/client/features/shell/types.ts:79</a></p>
+<hr>
+<h3 id="projectinfopanelprops">ProjectInfoPanelProps<a class="anchor" href="#projectinfopanelprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ProjectInfoPanelProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L193" rel="noopener">ui/client/features/shell/types.ts:193</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>dir</h5>
+<blockquote>
+<p><strong>dir</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L194" rel="noopener">ui/client/features/shell/types.ts:194</a></p>
+<h5>modelStatus</h5>
+<blockquote>
+<p><strong>modelStatus</strong>: <a href="#modelstatus"><code>ModelStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L196" rel="noopener">ui/client/features/shell/types.ts:196</a></p>
+<h5>screenLabel</h5>
+<blockquote>
+<p><strong>screenLabel</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L195" rel="noopener">ui/client/features/shell/types.ts:195</a></p>
+<h5>shortcuts</h5>
+<blockquote>
+<p><strong>shortcuts</strong>: <a href="#shortcutinfo"><code>ShortcutInfo</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L197" rel="noopener">ui/client/features/shell/types.ts:197</a></p>
+<hr>
+<h3 id="projectswitcherprops">ProjectSwitcherProps<a class="anchor" href="#projectswitcherprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ProjectSwitcherProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L136" rel="noopener">ui/client/features/shell/types.ts:136</a></p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>dir</h5>
+<blockquote>
+<p><strong>dir</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L138" rel="noopener">ui/client/features/shell/types.ts:138</a></p>
+<h5>error?</h5>
+<blockquote>
+<p><code>optional</code> <strong>error?</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L144" rel="noopener">ui/client/features/shell/types.ts:144</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L137" rel="noopener">ui/client/features/shell/types.ts:137</a></p>
+<h5>onClose</h5>
+<blockquote>
+<p><strong>onClose</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L141" rel="noopener">ui/client/features/shell/types.ts:141</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onCloseProject?</h5>
+<blockquote>
+<p><code>optional</code> <strong>onCloseProject?</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L146" rel="noopener">ui/client/features/shell/types.ts:146</a></p>
+<p>#365: closes the open project (the Cockpit then shows &quot;Open a project&quot;).</p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onToggle</h5>
+<blockquote>
+<p><strong>onToggle</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L140" rel="noopener">ui/client/features/shell/types.ts:140</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>open</h5>
+<blockquote>
+<p><strong>open</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L139" rel="noopener">ui/client/features/shell/types.ts:139</a></p>
+<h5>picker</h5>
+<blockquote>
+<p><strong>picker</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L143" rel="noopener">ui/client/features/shell/types.ts:143</a></p>
+<p>Folder picker supplied by the controller (another feature).</p>
+<hr>
+<h3 id="shellid">ShellId<a class="anchor" href="#shellid" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellId</strong> = <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L3" rel="noopener">ui/client/features/shell/types.ts:3</a></p>
+<hr>
+<h3 id="shelllayoutaction">ShellLayoutAction<a class="anchor" href="#shelllayoutaction" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellLayoutAction</strong> = { <code>layout</code>: <a href="#shelllayoutstate"><code>ShellLayoutState</code></a>; <code>type</code>: <code>&quot;LOAD&quot;</code>; } | { <code>pane</code>: <a href="#paneid"><code>PaneId</code></a>; <code>size</code>: <code>number</code>; <code>type</code>: <code>&quot;RESIZE&quot;</code>; } | { <code>open?</code>: <code>boolean</code>; <code>pane</code>: <a href="#paneid"><code>PaneId</code></a>; <code>type</code>: <code>&quot;TOGGLE&quot;</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L23" rel="noopener">ui/client/features/shell/types.ts:23</a></p>
+<hr>
+<h3 id="shelllayoutprops">ShellLayoutProps<a class="anchor" href="#shelllayoutprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellLayoutProps</strong> = <a href="#narrowprops"><code>NarrowProps</code></a> &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L105" rel="noopener">ui/client/features/shell/types.ts:105</a></p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>drawer</h5>
+<blockquote>
+<p><strong>drawer</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>focus?</h5>
+<blockquote>
+<p><code>optional</code> <strong>focus?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Focus mode: the chrome stands down so the stage owns the viewport. See useShellFocus.</p>
+<h5>layout</h5>
+<blockquote>
+<p><strong>layout</strong>: <a href="#shelllayoutstate"><code>ShellLayoutState</code></a></p>
+</blockquote>
+<h5>left</h5>
+<blockquote>
+<p><strong>left</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>limits</h5>
+<blockquote>
+<p><strong>limits</strong>: <code>Record</code>&lt;<a href="#paneid"><code>PaneId</code></a>, <a href="#panelimit"><code>PaneLimit</code></a>&gt;</p>
+</blockquote>
+<h5>mid</h5>
+<blockquote>
+<p><strong>mid</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>onResize</h5>
+<blockquote>
+<p><strong>onResize</strong>: (<code>pane</code>, <code>size</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>size</h6>
+<p><code>number</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onTogglePane</h5>
+<blockquote>
+<p><strong>onTogglePane</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>rail</h5>
+<blockquote>
+<p><strong>rail</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>The screens rail (vertical left in the wide layout, a bar above the pane tabs when narrow).</p>
+<h5>right</h5>
+<blockquote>
+<p><strong>right</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>top</h5>
+<blockquote>
+<p><strong>top</strong>: <code>ReactNode</code></p>
+</blockquote>
+<hr>
+<h3 id="shelllayoutstate">ShellLayoutState<a class="anchor" href="#shelllayoutstate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellLayoutState</strong> = <code>Record</code>&lt;<a href="#paneid"><code>PaneId</code></a>, <a href="#panestate"><code>PaneState</code></a>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L19" rel="noopener">ui/client/features/shell/types.ts:19</a></p>
+<hr>
+<h3 id="shellmode">ShellMode<a class="anchor" href="#shellmode" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellMode</strong> = <code>&quot;loading&quot;</code> | <code>&quot;gate&quot;</code> | <code>&quot;page&quot;</code> | <code>&quot;full&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L231" rel="noopener">ui/client/features/shell/types.ts:231</a></p>
+<hr>
+<h3 id="shellpageprops">ShellPageProps<a class="anchor" href="#shellpageprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellPageProps</strong> = <a href="#narrowprops"><code>NarrowProps</code></a> &amp; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L200" rel="noopener">ui/client/features/shell/types.ts:200</a></p>
+<h4 id="type-declaration-2">Type Declaration<a class="anchor" href="#type-declaration-2" aria-label="Link to this section">#</a></h4>
+<h5>activeScreenId</h5>
+<blockquote>
+<p><strong>activeScreenId</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<h5>activeTabs</h5>
+<blockquote>
+<p><strong>activeTabs</strong>: <code>Record</code>&lt;<a href="#shellregion"><code>ShellRegion</code></a>, <code>string</code> | <code>null</code>&gt;</p>
+</blockquote>
+<h5>children</h5>
+<blockquote>
+<p><strong>children</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>focus?</h5>
+<blockquote>
+<p><code>optional</code> <strong>focus?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Focus mode — see ShellLayoutProps.</p>
+<h5>layout</h5>
+<blockquote>
+<p><strong>layout</strong>: <a href="#shelllayoutstate"><code>ShellLayoutState</code></a></p>
+</blockquote>
+<h5>limits</h5>
+<blockquote>
+<p><strong>limits</strong>: <code>Record</code>&lt;<a href="#paneid"><code>PaneId</code></a>, <a href="#panelimit"><code>PaneLimit</code></a>&gt;</p>
+</blockquote>
+<h5>modelStatus</h5>
+<blockquote>
+<p><strong>modelStatus</strong>: <a href="#modelstatus"><code>ModelStatus</code></a></p>
+</blockquote>
+<h5>onOpenDiagnostics</h5>
+<blockquote>
+<p><strong>onOpenDiagnostics</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onOpenPalette</h5>
+<blockquote>
+<p><strong>onOpenPalette</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onOpenProcesses</h5>
+<blockquote>
+<p><strong>onOpenProcesses</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onResize</h5>
+<blockquote>
+<p><strong>onResize</strong>: (<code>pane</code>, <code>size</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>size</h6>
+<p><code>number</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onSelectTab</h5>
+<blockquote>
+<p><strong>onSelectTab</strong>: (<code>region</code>, <code>id</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>region</h6>
+<p><a href="#shellregion"><code>ShellRegion</code></a></p>
+<h6>id</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onTogglePane</h5>
+<blockquote>
+<p><strong>onTogglePane</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onToggleRail</h5>
+<blockquote>
+<p><strong>onToggleRail</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>projectSwitcher</h5>
+<blockquote>
+<p><strong>projectSwitcher</strong>: <code>ReactNode</code></p>
+</blockquote>
+<h5>railCollapsed</h5>
+<blockquote>
+<p><strong>railCollapsed</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>runningProcesses</h5>
+<blockquote>
+<p><strong>runningProcesses</strong>: <code>number</code></p>
+</blockquote>
+<h5>screenBadges?</h5>
+<blockquote>
+<p><code>optional</code> <strong>screenBadges?</strong>: <code>Record</code>&lt;<code>string</code>, <code>number</code>&gt;</p>
+</blockquote>
+<p>Little counts beside a screen&#39;s name, by screen id (Git: the branches under review). Absent or 0 shows none.</p>
+<h5>screens</h5>
+<blockquote>
+<p><strong>screens</strong>: <a href="#primaryscreen"><code>PrimaryScreen</code></a>[]</p>
+</blockquote>
+<h5>shortcuts</h5>
+<blockquote>
+<p><strong>shortcuts</strong>: <a href="#shortcutinfo"><code>ShortcutInfo</code></a>[]</p>
+</blockquote>
+<h5>tabs</h5>
+<blockquote>
+<p><strong>tabs</strong>: <code>Record</code>&lt;<a href="#shellregion"><code>ShellRegion</code></a>, <a href="#shelltab"><code>ShellTab</code></a>[]&gt;</p>
+</blockquote>
+<h5>userMenu?</h5>
+<blockquote>
+<p><code>optional</code> <strong>userMenu?</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>The signed-in account slot — see TopBarProps.</p>
+<h5>validateStatus</h5>
+<blockquote>
+<p><strong>validateStatus</strong>: <code>string</code></p>
+</blockquote>
+<h5>validateStatusChars?</h5>
+<blockquote>
+<p><code>optional</code> <strong>validateStatusChars?</strong>: <code>number</code></p>
+</blockquote>
+<p>See StatusBarProps.</p>
+<hr>
+<h3 id="shellregion">ShellRegion<a class="anchor" href="#shellregion" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellRegion</strong> = <code>&quot;browser&quot;</code> | <code>&quot;tools&quot;</code> | <code>&quot;drawer&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L31" rel="noopener">ui/client/features/shell/types.ts:31</a></p>
+<p>Where a tab lives: the Browser (left), the Tools panel (right) or the bottom drawer.</p>
+<hr>
+<h3 id="shellscreen">ShellScreen<a class="anchor" href="#shellscreen" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellScreen</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L72" rel="noopener">ui/client/features/shell/types.ts:72</a></p>
+<h4 id="properties-12">Properties<a class="anchor" href="#properties-12" aria-label="Link to this section">#</a></h4>
+<h5>activeOn</h5>
+<blockquote>
+<p><strong>activeOn</strong>: <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L72" rel="noopener">ui/client/features/shell/types.ts:72</a></p>
+<h5>href</h5>
+<blockquote>
+<p><strong>href</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L72" rel="noopener">ui/client/features/shell/types.ts:72</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L72" rel="noopener">ui/client/features/shell/types.ts:72</a></p>
+<hr>
+<h3 id="shelltab">ShellTab<a class="anchor" href="#shelltab" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShellTab</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L35" rel="noopener">ui/client/features/shell/types.ts:35</a></p>
+<p>The small interface every pane/tab implements (principles.md #10): a
+feature registers one of these and never reaches into another feature&#39;s panel.</p>
+<h4 id="properties-13">Properties<a class="anchor" href="#properties-13" aria-label="Link to this section">#</a></h4>
+<h5>badge?</h5>
+<blockquote>
+<p><code>optional</code> <strong>badge?</strong>: <code>number</code> | <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L50" rel="noopener">ui/client/features/shell/types.ts:50</a></p>
+<p>The little count next to the title. Three states, deliberately:
+<code>undefined</code> -- this tab never has one; <code>null</code> -- it has one whose value is
+not known yet; a value -- show it.</p>
+<p><code>null</code> exists because of #252. A tab fed by background work (Diagnostics by
+<code>construct validate</code>, Diff by a file changing on disk) has no badge until
+that work lands, and a badge appearing widens the tab and shoves every tab
+after it sideways -- out from under a pointer already reaching for one.
+Declaring the badge up front reserves its room, so the value can arrive
+whenever it likes without moving anything.</p>
+<h5>disabled?</h5>
+<blockquote>
+<p><code>optional</code> <strong>disabled?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L51" rel="noopener">ui/client/features/shell/types.ts:51</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L36" rel="noopener">ui/client/features/shell/types.ts:36</a></p>
+<h5>preferred?</h5>
+<blockquote>
+<p><code>optional</code> <strong>preferred?</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L53" rel="noopener">ui/client/features/shell/types.ts:53</a></p>
+<p>Shown by default (before the user picks a tab) instead of the first enabled one.</p>
+<h5>render</h5>
+<blockquote>
+<p><strong>render</strong>: () =&gt; <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L54" rel="noopener">ui/client/features/shell/types.ts:54</a></p>
+<h6>Returns</h6>
+<p><code>ReactNode</code></p>
+<h5>title</h5>
+<blockquote>
+<p><strong>title</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L37" rel="noopener">ui/client/features/shell/types.ts:37</a></p>
+<hr>
+<h3 id="shortcutaction">ShortcutAction<a class="anchor" href="#shortcutaction" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShortcutAction</strong> = <code>&quot;toggle-left&quot;</code> | <code>&quot;toggle-right&quot;</code> | <code>&quot;toggle-drawer&quot;</code> | <code>&quot;cycle-pane&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L83" rel="noopener">ui/client/features/shell/types.ts:83</a></p>
+<hr>
+<h3 id="shortcutinfo">ShortcutInfo<a class="anchor" href="#shortcutinfo" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ShortcutInfo</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L85" rel="noopener">ui/client/features/shell/types.ts:85</a></p>
+<h4 id="properties-14">Properties<a class="anchor" href="#properties-14" aria-label="Link to this section">#</a></h4>
+<h5>action</h5>
+<blockquote>
+<p><strong>action</strong>: <a href="#shortcutaction"><code>ShortcutAction</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L85" rel="noopener">ui/client/features/shell/types.ts:85</a></p>
+<h5>keys</h5>
+<blockquote>
+<p><strong>keys</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L85" rel="noopener">ui/client/features/shell/types.ts:85</a></p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L85" rel="noopener">ui/client/features/shell/types.ts:85</a></p>
+<hr>
+<h3 id="statusbarprops">StatusBarProps<a class="anchor" href="#statusbarprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>StatusBarProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L179" rel="noopener">ui/client/features/shell/types.ts:179</a></p>
+<h4 id="properties-15">Properties<a class="anchor" href="#properties-15" aria-label="Link to this section">#</a></h4>
+<h5>layout</h5>
+<blockquote>
+<p><strong>layout</strong>: <a href="#shelllayoutstate"><code>ShellLayoutState</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L180" rel="noopener">ui/client/features/shell/types.ts:180</a></p>
+<h5>onOpenDiagnostics</h5>
+<blockquote>
+<p><strong>onOpenDiagnostics</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L189" rel="noopener">ui/client/features/shell/types.ts:189</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onTogglePane</h5>
+<blockquote>
+<p><strong>onTogglePane</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L181" rel="noopener">ui/client/features/shell/types.ts:181</a></p>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>shortcuts</h5>
+<blockquote>
+<p><strong>shortcuts</strong>: <a href="#shortcutinfo"><code>ShortcutInfo</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L182" rel="noopener">ui/client/features/shell/types.ts:182</a></p>
+<h5>validateStatus</h5>
+<blockquote>
+<p><strong>validateStatus</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L184" rel="noopener">ui/client/features/shell/types.ts:184</a></p>
+<p>Short validate result, e.g. <code>validate: 3 problems</code>.</p>
+<h5>validateStatusChars?</h5>
+<blockquote>
+<p><code>optional</code> <strong>validateStatusChars?</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L188" rel="noopener">ui/client/features/shell/types.ts:188</a></p>
+<p>How many characters the longest text that readout can show takes. The
+button reserves that much from the start, so a background result landing
+cannot resize its own hit area.</p>
+<hr>
+<h3 id="tabhostprops">TabHostProps<a class="anchor" href="#tabhostprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TabHostProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L57" rel="noopener">ui/client/features/shell/types.ts:57</a></p>
+<h4 id="properties-16">Properties<a class="anchor" href="#properties-16" aria-label="Link to this section">#</a></h4>
+<h5>activeId</h5>
+<blockquote>
+<p><strong>activeId</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L61" rel="noopener">ui/client/features/shell/types.ts:61</a></p>
+<h5>empty?</h5>
+<blockquote>
+<p><code>optional</code> <strong>empty?</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L64" rel="noopener">ui/client/features/shell/types.ts:64</a></p>
+<p>Shown when the region has no enabled tab.</p>
+<h5>label</h5>
+<blockquote>
+<p><strong>label</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L59" rel="noopener">ui/client/features/shell/types.ts:59</a></p>
+<p>Accessible name of the tab list (also used for the panel group).</p>
+<h5>onSelect</h5>
+<blockquote>
+<p><strong>onSelect</strong>: (<code>id</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L62" rel="noopener">ui/client/features/shell/types.ts:62</a></p>
+<h6>Parameters</h6>
+<h6>id</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>tabs</h5>
+<blockquote>
+<p><strong>tabs</strong>: <a href="#shelltab"><code>ShellTab</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L60" rel="noopener">ui/client/features/shell/types.ts:60</a></p>
+<hr>
+<h3 id="theme">Theme<a class="anchor" href="#theme" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Theme</strong> = <code>&quot;dark&quot;</code> | <code>&quot;light&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L6" rel="noopener">ui/client/features/shell/types.ts:6</a></p>
+<p>The two supported colour themes. Dark is the default (owner decision).</p>
+<hr>
+<h3 id="themepreference">ThemePreference<a class="anchor" href="#themepreference" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ThemePreference</strong> = <a href="#theme"><code>Theme</code></a> | <code>&quot;system&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L9" rel="noopener">ui/client/features/shell/types.ts:9</a></p>
+<p>What the person chose in the profile menu: a fixed theme, or follow the operating system.</p>
+<hr>
+<h3 id="topbarprops">TopBarProps<a class="anchor" href="#topbarprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>TopBarProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L164" rel="noopener">ui/client/features/shell/types.ts:164</a></p>
+<h4 id="properties-17">Properties<a class="anchor" href="#properties-17" aria-label="Link to this section">#</a></h4>
+<h5>layout</h5>
+<blockquote>
+<p><strong>layout</strong>: <a href="#shelllayoutstate"><code>ShellLayoutState</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L172" rel="noopener">ui/client/features/shell/types.ts:172</a></p>
+<h5>modelStatus</h5>
+<blockquote>
+<p><strong>modelStatus</strong>: <a href="#modelstatus"><code>ModelStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L170" rel="noopener">ui/client/features/shell/types.ts:170</a></p>
+<h5>onOpenPalette</h5>
+<blockquote>
+<p><strong>onOpenPalette</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L176" rel="noopener">ui/client/features/shell/types.ts:176</a></p>
+<p>Opens the command palette (the search-style trigger in the middle of the bar).</p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onOpenProcesses</h5>
+<blockquote>
+<p><strong>onOpenProcesses</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L174" rel="noopener">ui/client/features/shell/types.ts:174</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onTogglePane</h5>
+<blockquote>
+<p><strong>onTogglePane</strong>: (<code>pane</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L173" rel="noopener">ui/client/features/shell/types.ts:173</a></p>
+<h6>Parameters</h6>
+<h6>pane</h6>
+<p><a href="#paneid"><code>PaneId</code></a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>projectSwitcher</h5>
+<blockquote>
+<p><strong>projectSwitcher</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L165" rel="noopener">ui/client/features/shell/types.ts:165</a></p>
+<h5>runningProcesses</h5>
+<blockquote>
+<p><strong>runningProcesses</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L171" rel="noopener">ui/client/features/shell/types.ts:171</a></p>
+<h5>userMenu?</h5>
+<blockquote>
+<p><code>optional</code> <strong>userMenu?</strong>: <code>ReactNode</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/shell/types.ts#L169" rel="noopener">ui/client/features/shell/types.ts:169</a></p>
+<p>The signed-in account slot. A slot, not a dependency: the shell
+knows a node goes here, not that the auth feature exists. Renders
+nothing on a server with no login gate.</p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/shell/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

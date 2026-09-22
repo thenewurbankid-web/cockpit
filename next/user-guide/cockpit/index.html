@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Using the Cockpit · User Guide</title>
+<meta name="description" content="The browser app: what each screen does and how to start it.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Using the Cockpit · User Guide">
+<meta property="og:description" content="The browser app: what each screen does and how to start it.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/cockpit/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/cockpit/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../">Home</a><a href="../../user-guide/" aria-current="page">Guide</a><a href="../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../user-guide/getting-started/">Getting started</a></li><li><a href="../../user-guide/line/">What Line is</a></li><li><a href="../../user-guide/concepts/">The five ideas</a></li><li><a href="../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../user-guide/construct/">What Construct is</a></li><li><a href="../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../user-guide/cockpit/" aria-current="page">Using the Cockpit</a></li><li><a href="../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../user-guide/cli/">Using the command line</a></li><li><a href="../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Home</a> <span aria-hidden="true">/</span> <a href="../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Using the Cockpit</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Cockpit</p><h1>Using the Cockpit</h1><p class="lede">The browser app: what each screen does and how to start it.</p><div class="prose"><p>The Cockpit is the browser app in the package: the same small tools <a href="../../user-guide/construct/">Construct</a> runs on the <a href="../../user-guide/cli/">command line</a>, as screens you can watch and steer instead of typing each command. Worked examples with real screenshots are in the <a href="../../user-guide/examples/cockpit-plan-and-run/">Cockpit examples</a>.</p>
+<h2 id="start-it">Start it<a class="anchor" href="#start-it" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-bash">cd ui/server &amp;&amp; npm install &amp;&amp; npm start      # backend on http://localhost:4000
+cd ui/client &amp;&amp; npm install &amp;&amp; npm run dev    # frontend on http://localhost:3000
+</code></pre>
+<p>Open <a href="http://localhost:3000" rel="noopener">http://localhost:3000</a>. Pick the project it works on with the project switcher in the top bar (or <strong>Settings</strong>). The choice is held in memory, so restarting the backend resets it.</p>
+<h2 id="what-each-screen-is-for">What each screen is for<a class="anchor" href="#what-each-screen-is-for" aria-label="Link to this section">#</a></h2>
+<p>The top bar has four entries.</p>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>What you do there</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Explore</strong></td>
+<td>Read what exists: pages and their elements, workflows drawn as diagrams with a plain-English narrative, and tests for every route through a flow.</td>
+</tr>
+<tr>
+<td><strong>Plan</strong></td>
+<td>Describe a change, see what it touches, run it in its own copy of the repository, and approve each changed file.</td>
+</tr>
+<tr>
+<td><strong>Build</strong></td>
+<td>Import an existing route step by step, and approve the proposed plan before anything is written.</td>
+</tr>
+<tr>
+<td><strong>Review</strong></td>
+<td>Compare a branch against a base: what each change means, five indicators from your own rules, and findings split into mechanical fixes and decisions.</td>
+</tr>
+</tbody></table>
+<p>Other screens: <strong>Local Model</strong> (the local model used for small scoped steps), <strong>Settings</strong> (project folder and which AI provider each optional capability uses) and <strong>Help</strong> (the in-product guide and the command reference).</p>
+<h2 id="a-model-only-when-you-say-so">A model only when you say so<a class="anchor" href="#a-model-only-when-you-say-so" aria-label="Link to this section">#</a></h2>
+<p>Choosing a provider in Settings never triggers a call by itself. A step calls a model only when you tick an explicit box on that form, or when a plan step says its executor is a local model. The Build wizard always asks for your approval before writing files.</p>
+<h2 id="more-detail">More detail<a class="anchor" href="#more-detail" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Layout.</strong> A <strong>Browser</strong> pane on the left, the main area in the middle and a <strong>Tools</strong> pane on the right. <code>Ctrl K</code> opens the command palette, <code>Ctrl J</code> the bottom drawer (Diagnostics, Logs and Processes), <code>Ctrl B</code> and <code>Ctrl Alt B</code> hide the side panes. Below 900 px wide one pane shows at a time. There is a light and a dark theme.</li>
+<li><strong>Serving elsewhere.</strong> The backend only accepts requests from <code>http://localhost:3000</code>; if you serve the frontend elsewhere, start the backend with <code>UI_CLIENT_ORIGIN</code> set to that address.</li>
+<li><strong>Login.</strong> It binds to <code>127.0.0.1</code> with no login by default. A non-loopback host refuses to start without a GitHub login and an allowlist; see <a href="../../user-guide/examples/cockpit-sign-in-and-commits/">Sign-in allowlist and commit on save</a>.</li>
+</ul>
+<h2 id="where-it-fits">Where it fits<a class="anchor" href="#where-it-fits" aria-label="Link to this section">#</a></h2>
+<p>The Cockpit adds no behaviour of its own: every screen calls the same functions the command line calls, so a change made here is the same change made there. Unlike the framework and the command line, the Cockpit is not open source — see <a href="../../user-guide/line/">what Line is</a>.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<p><a href="../../user-guide/examples/cockpit-plan-and-run/">Plan, run and approve</a>, <a href="../../user-guide/examples/cockpit-review/">review</a>, <a href="../../user-guide/examples/cockpit-tests/">tests</a> and <a href="../../user-guide/examples/cockpit-sign-in-and-commits/">sign-in and commits</a>.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../user-guide/examples/core-review-tests-commits/"><span>Previous</span>Review, tests and commit messages as an API</a><a class="next" href="../../user-guide/examples/cockpit-plan-and-run/"><span>Next</span>Plan, run in a branch, approve per file</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#start-it">Start it</a></li><li><a href="#what-each-screen-is-for">What each screen is for</a></li><li><a href="#a-model-only-when-you-say-so">A model only when you say so</a></li><li><a href="#more-detail">More detail</a></li><li><a href="#where-it-fits">Where it fits</a></li><li><a href="#examples">Examples</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/cockpit.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

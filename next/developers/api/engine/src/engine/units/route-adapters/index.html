@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/units/route-adapters · Developer Docs</title>
+<meta name="description" content="Route discovery as a per-framework adapter (#334).">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/units/route-adapters · Developer Docs">
+<meta property="og:description" content="Route discovery as a per-framework adapter (#334).">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/engine/src/engine/units/route-adapters/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/engine/src/engine/units/route-adapters/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/units/route-adapters</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/units/route-adapters</h1><div class="prose"><p>Route discovery as a per-framework adapter.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/units/route-adapters.mjs" rel="noopener"><code>src/engine/units/route-adapters.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="routeadapters">ROUTE_ADAPTERS<a class="anchor" href="#routeadapters" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>ROUTE_ADAPTERS</strong>: <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L230" rel="noopener">src/engine/units/route-adapters.mjs:230</a></p>
+<h4 id="type-declaration">Type Declaration<a class="anchor" href="#type-declaration" aria-label="Link to this section">#</a></h4>
+<h5>nextjs</h5>
+<blockquote>
+<p><strong>nextjs</strong>: <code>object</code> = <code>nextjsAdapter</code></p>
+</blockquote>
+<h6>nextjs.framework</h6>
+<blockquote>
+<p><strong>framework</strong>: <code>string</code> = <code>&#39;nextjs&#39;</code></p>
+</blockquote>
+<h6>nextjs.featureRoutes()</h6>
+<blockquote>
+<p><strong>featureRoutes</strong>(<code>ctx</code>, <code>name</code>): <code>object</code>[]</p>
+</blockquote>
+<p>Byte-for-byte the pre-#334 behaviour: any page that imports into the feature is one of its routes.</p>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>name</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h6>nextjs.routes()</h6>
+<blockquote>
+<p><strong>routes</strong>(<code>ctx</code>): <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h5>react-spa</h5>
+<blockquote>
+<p><strong>react-spa</strong>: <code>object</code> = <code>reactSpaAdapter</code></p>
+</blockquote>
+<h6>react-spa.framework</h6>
+<blockquote>
+<p><strong>framework</strong>: <code>string</code> = <code>&#39;react-spa&#39;</code></p>
+</blockquote>
+<h6>react-spa.featureRoutes()</h6>
+<blockquote>
+<p><strong>featureRoutes</strong>(<code>ctx</code>, <code>name</code>): <code>object</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>name</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>object</code>[]</p>
+<h6>react-spa.routes()</h6>
+<blockquote>
+<p><strong>routes</strong>(<code>ctx</code>): <code>any</code>[]</p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>ctx</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><code>any</code>[]</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="discoverroutes">discoverRoutes()<a class="anchor" href="#discoverroutes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>discoverRoutes</strong>(<code>ctx</code>, <code>adapters</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L240" rel="noopener">src/engine/units/route-adapters.mjs:240</a></p>
+<p>All routes of the project, <code>[{ route, file, entries }]</code>; <code>[]</code> when the framework has no adapter.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h5>adapters</h5>
+<p><code>any</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="featureroutes">featureRoutes()<a class="anchor" href="#featureroutes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>featureRoutes</strong>(<code>ctx</code>, <code>name</code>, <code>adapters</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L243" rel="noopener">src/engine/units/route-adapters.mjs:243</a></p>
+<p>The <code>{ route, file }</code> list a feature reports as <code>contracts.routes</code>; <code>[]</code> when there is no adapter.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h5>name</h5>
+<p><code>any</code></p>
+<h5>adapters</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="frameworkof">frameworkOf()<a class="anchor" href="#frameworkof" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>frameworkOf</strong>(<code>ctx</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L232" rel="noopener">src/engine/units/route-adapters.mjs:232</a></p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="importbindings">importBindings()<a class="anchor" href="#importbindings" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>importBindings</strong>(<code>ctx</code>, <code>relPath</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L32" rel="noopener">src/engine/units/route-adapters.mjs:32</a></p>
+<p>A file&#39;s import bindings in SOURCE (import) order:
+<code>[{ local, imported, spec, resolved, order }]</code>. <code>imported</code> is the exported name (&#39;default&#39; / &#39;*&#39; / a
+name). Static imports plus <code>const X = lazy(() =&gt; import(&#39;...&#39;))</code>. <code>resolved</code> is project-relative or null.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h5>relPath</h5>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="isstructuralfile">isStructuralFile()<a class="anchor" href="#isstructuralfile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>isStructuralFile</strong>(<code>p</code>): <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L22" rel="noopener">src/engine/units/route-adapters.mjs:22</a></p>
+<p><code>types.ts</code> and <code>index.ts</code> are structure, not behaviour: the flow view leaves them out.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>p</h5>
+<p><code>any</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>boolean</code></p>
+<hr>
+<h3 id="readroutetable">readRouteTable()<a class="anchor" href="#readroutetable" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>readRouteTable</strong>(<code>source</code>): <code>any</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L124" rel="noopener">src/engine/units/route-adapters.mjs:124</a></p>
+<p>Read a react-spa route table out of one route file&#39;s source: <code>[{ route, tags: [componentName] }]</code>.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>any</code>[]</p>
+<hr>
+<h3 id="routeadapterfor">routeAdapterFor()<a class="anchor" href="#routeadapterfor" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>routeAdapterFor</strong>(<code>ctx</code>, <code>adapters?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L235" rel="noopener">src/engine/units/route-adapters.mjs:235</a></p>
+<p>The adapter for this project&#39;s framework, or <code>null</code> (=&gt; no routes, never a guess).</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h5>adapters?</h5>
+<h6>nextjs</h6>
+<p>{ <code>framework</code>: <code>string</code>; <code>featureRoutes</code>: <code>object</code>[]; <code>routes</code>: <code>object</code>[]; } = <code>nextjsAdapter</code></p>
+<h6>nextjs.framework</h6>
+<p><code>string</code> = <code>&#39;nextjs&#39;</code></p>
+<h6>nextjs.featureRoutes</h6>
+<h6>nextjs.routes</h6>
+<h6>react-spa</h6>
+<p>{ <code>framework</code>: <code>string</code>; <code>featureRoutes</code>: <code>object</code>[]; <code>routes</code>: <code>any</code>[]; } = <code>reactSpaAdapter</code></p>
+<h6>react-spa.framework</h6>
+<p><code>string</code> = <code>&#39;react-spa&#39;</code></p>
+<h6>react-spa.featureRoutes</h6>
+<h6>react-spa.routes</h6>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="throughbarrel">throughBarrel()<a class="anchor" href="#throughbarrel" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>throughBarrel</strong>(<code>ctx</code>, <code>file</code>, <code>names?</code>, <code>depth?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/units/route-adapters.mjs#L76" rel="noopener">src/engine/units/route-adapters.mjs:76</a></p>
+<p>A feature <code>index.ts</code> barrel is not a place code lives: follow it to the file(s) that define what was
+imported. Match by the imported names against the barrel targets&#39; own exports; if none match (renamed
+re-exports, <code>import *</code>), fall back to all of the barrel&#39;s targets. Non-barrels pass straight through.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>ctx</h5>
+<p><code>any</code></p>
+<h5>file</h5>
+<p><code>any</code></p>
+<h5>names?</h5>
+<p><code>string</code>[] = <code>...</code></p>
+<h5>depth?</h5>
+<p><code>number</code> = <code>0</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/units/route-adapters.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

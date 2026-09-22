@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/server/src/pagesEditor · Developer Docs</title>
+<meta name="description" content="Backend for epic #48 (visual page/JSX tree editor) — #49 pages browser, #50 JSX tree parse, #52 snippet save-back, #53 props inspector, #54 auto-map, #56 enforcement guard.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/server/src/pagesEditor · Developer Docs">
+<meta property="og:description" content="Backend for epic #48 (visual page/JSX tree editor) — #49 pages browser, #50 JSX tree parse, #52 snippet save-back, #53 props inspector, #54 auto-map, #56 enforcement guard.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-server/ui/server/src/pagesEditor/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-server/ui/server/src/pagesEditor/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/server/src/pagesEditor</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/server/src/pagesEditor</h1><div class="prose"><p>Backend for epic #48 (visual page/JSX tree editor) — #49 pages browser, #50 JSX tree parse, #52 snippet save-back, #53 props inspector, #54 auto-map, #56 enforcement guard.</p>
+<p><em>Cockpit server, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/server/src/pagesEditor.mjs" rel="noopener"><code>ui/server/src/pagesEditor.mjs</code></a>.</em></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="pageseditorerror">PagesEditorError<a class="anchor" href="#pageseditorerror" aria-label="Link to this section">#</a></h3>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L33" rel="noopener">ui/server/src/pagesEditor.mjs:33</a></p>
+<h4 id="extends">Extends<a class="anchor" href="#extends" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><code>Error</code></li>
+</ul>
+<h4 id="constructors">Constructors<a class="anchor" href="#constructors" aria-label="Link to this section">#</a></h4>
+<h5>Constructor</h5>
+<blockquote>
+<p><strong>new PagesEditorError</strong>(<code>message</code>, <code>__namedParameters?</code>): <a href="#pageseditorerror"><code>PagesEditorError</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L34" rel="noopener">ui/server/src/pagesEditor.mjs:34</a></p>
+<h6>Parameters</h6>
+<h6>message</h6>
+<p><code>any</code></p>
+<h6>__namedParameters?</h6>
+<h6>status?</h6>
+<p><code>number</code> = <code>400</code></p>
+<h6>Returns</h6>
+<p><a href="#pageseditorerror"><code>PagesEditorError</code></a></p>
+<h6>Overrides</h6>
+<p><code>Error.constructor</code></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L36" rel="noopener">ui/server/src/pagesEditor.mjs:36</a></p>
+<h5>violations</h5>
+<blockquote>
+<p><strong>violations</strong>: <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L37" rel="noopener">ui/server/src/pagesEditor.mjs:37</a></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="addchildinsnippet">addChildInSnippet()<a class="anchor" href="#addchildinsnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>addChildInSnippet</strong>(<code>snippetSource</code>, <code>parentId</code>): { <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L414" rel="noopener">ui/server/src/pagesEditor.mjs:414</a></p>
+<p>Ticket F.3 — append a new (fixed, deliberately minimal
+— <code>&lt;div /&gt;</code>) child right before a node&#39;s closing tag, reusing the
+start/end offsets parsePageTree already computed (no second AST walk).
+Only supported when the node already has an opening/closing tag pair or
+is a fragment (<code>&lt;Tag&gt;...&lt;/Tag&gt;</code> / <code>&lt;&gt;...&lt;/&gt;</code>) — a self-closing element
+(<code>&lt;Tag /&gt;</code>) is rejected rather than the tool guessing how to split <code>/&gt;</code>
+into an open/close pair on the caller&#39;s behalf. Never throws.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>snippetSource</h5>
+<p><code>any</code></p>
+<h5>parentId</h5>
+<p><code>any</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p>{ <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+<hr>
+<h3 id="applyautomap">applyAutoMap()<a class="anchor" href="#applyautomap" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>applyAutoMap</strong>(<code>source</code>, <code>nodeId</code>, <code>propNames</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L553" rel="noopener">ui/server/src/pagesEditor.mjs:553</a></p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>propNames</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="buildattributesnippet">buildAttributeSnippet()<a class="anchor" href="#buildattributesnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>buildAttributeSnippet</strong>(<code>source</code>, <code>nodeId</code>, <code>propName</code>, <code>kind</code>, <code>value</code>, <code>index</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L259" rel="noopener">ui/server/src/pagesEditor.mjs:259</a></p>
+<p>Update a single JSXAttribute&#39;s value on a node by
+textually replacing just that attribute (or appending a new one if it
+doesn&#39;t exist yet) inside the node&#39;s opening tag, then delegating to the
+same splice-based patchNode used by #52 so both go through one
+mechanism (and one #56 enforcement gate).</p>
+<p>#77 follow-up to #53 — a <code>kind === &#39;spread&#39;</code> edit is a different shape
+(<code>{...expr}</code>, no attribute name, no <code>=</code>) and has no name to look it up
+by, so it takes its own branch keyed on <code>index</code> (its position in the
+opening tag&#39;s attribute list, from the prop record&#39;s <code>index</code> field) instead of
+going through the name lookup below. Only edits an
+<em>existing</em> spread — this doesn&#39;t support inserting a brand new one.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>propName</h5>
+<p><code>any</code></p>
+<h5>kind</h5>
+<p><code>any</code></p>
+<h5>value</h5>
+<p><code>any</code></p>
+<h5>index</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="checkenforcement">checkEnforcement()<a class="anchor" href="#checkenforcement" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>checkEnforcement</strong>(<code>root</code>, <code>relPath</code>, <code>patchedSource</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L571" rel="noopener">ui/server/src/pagesEditor.mjs:571</a></p>
+<p>#56 — run the existing PAGE-* / COMPONENT-* architecture rules and the
+separation-of-concerns rules against a prospective file, scoped to just
+that one file, and surface any <em>error</em>-severity violation before it
+lands (the caller writes <code>patched</code> to disk only if this returns
+<code>ok: true</code>, and reverts otherwise — see server route below).</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>relPath</h5>
+<p><code>any</code></p>
+<h5>patchedSource</h5>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>errors</h5>
+<blockquote>
+<p><strong>errors</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>violations</h5>
+<blockquote>
+<p><strong>violations</strong>: <code>any</code>[]</p>
+</blockquote>
+<hr>
+<h3 id="collectcomponentscopenames">collectComponentScopeNames()<a class="anchor" href="#collectcomponentscopenames" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>collectComponentScopeNames</strong>(<code>ast</code>): <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/../../../src/ast/jsxScope.mjs#L52" rel="noopener">src/ast/jsxScope.mjs:52</a></p>
+<p>In-scope names of a page: every function&#39;s destructured/plain parameter names plus every
+<code>const [value, setValue] = useState(...)</code> binding, in source order, de-duplicated.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>ast</h5>
+<p><code>any</code></p>
+<p>A parsed Program.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>string</code>[]</p>
+<p>The in-scope names, in source order, de-duplicated.</p>
+<hr>
+<h3 id="featuresrootof">featuresRootOf()<a class="anchor" href="#featuresrootof" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>featuresRootOf</strong>(<code>root</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L41" rel="noopener">ui/server/src/pagesEditor.mjs:41</a></p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="findunmappedprops">findUnmappedProps()<a class="anchor" href="#findunmappedprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>findUnmappedProps</strong>(<code>source</code>, <code>nodeId</code>, <code>root</code>, <code>pageAbsPath</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L508" rel="noopener">ui/server/src/pagesEditor.mjs:508</a></p>
+<p>#54 — for a selected custom-component node, find scope names (parent
+page&#39;s own props/state) that are NOT currently passed down to it as a
+same-named attribute, and propose the shorthand <code>{name}</code> wiring for each.
+#77 follow-up: when the child component&#39;s own declared props can be
+resolved across files (see resolveDeclaredPropNames above), candidates
+are further filtered to names the child actually declares — e.g. a
+state setter like <code>setCount</code> is no longer offered for a child that
+doesn&#39;t destructure a same-named prop. <code>root</code>/<code>pageAbsPath</code> are optional
+so in-memory single-string callers (existing tests) keep working; omit
+them to keep the old, fully permissive behavior.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>pageAbsPath</h5>
+<p><code>any</code></p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>candidates</h5>
+<blockquote>
+<p><strong>candidates</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>childPropsResolved</h5>
+<blockquote>
+<p><strong>childPropsResolved</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>nodeId</h5>
+<blockquote>
+<p><strong>nodeId</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="getnodeprops">getNodeProps()<a class="anchor" href="#getnodeprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>getNodeProps</strong>(<code>source</code>, <code>nodeId</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L238" rel="noopener">ui/server/src/pagesEditor.mjs:238</a></p>
+<p>#53 read-only helper: same shape as a tree node&#39;s <code>props</code>, for a single
+node, plus the enclosing page component&#39;s own in-scope prop/state names
+(used by #54&#39;s auto-mapper).</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>nodeId</h5>
+<blockquote>
+<p><strong>nodeId</strong>: <code>any</code></p>
+</blockquote>
+<h5>props</h5>
+<blockquote>
+<p><strong>props</strong>: <code>any</code> = <code>node.props</code></p>
+</blockquote>
+<h5>scopeNames</h5>
+<blockquote>
+<p><strong>scopeNames</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>tag</h5>
+<blockquote>
+<p><strong>tag</strong>: <code>any</code> = <code>node.tag</code></p>
+</blockquote>
+<hr>
+<h3 id="getnodesnippet">getNodeSnippet()<a class="anchor" href="#getnodesnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>getNodeSnippet</strong>(<code>source</code>, <code>nodeId</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L190" rel="noopener">ui/server/src/pagesEditor.mjs:190</a></p>
+<p>The exact source snippet for one node plus its parent
+chain&#39;s tag names for breadcrumb display.</p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>contentHash</h5>
+<blockquote>
+<p><strong>contentHash</strong>: <code>any</code></p>
+</blockquote>
+<h5>nodeId</h5>
+<blockquote>
+<p><strong>nodeId</strong>: <code>any</code></p>
+</blockquote>
+<h5>snippet</h5>
+<blockquote>
+<p><strong>snippet</strong>: <code>any</code></p>
+</blockquote>
+<hr>
+<h3 id="getscopelinks">getScopeLinks()<a class="anchor" href="#getscopelinks" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>getScopeLinks</strong>(<code>source</code>, <code>nodeId</code>, <code>root</code>, <code>pageAbsPath</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L534" rel="noopener">ui/server/src/pagesEditor.mjs:534</a></p>
+<p>Scope/binding link graph for one element: thin glue over the core <code>buildScopeLinks</code> block --
+this only does the path-scoped cross-file lookup of the child component&#39;s source (bare/package
+imports and anything outside <code>root</code> resolve to null, leaving <code>childProps</code> unknown).</p>
+<h4 id="parameters-10">Parameters<a class="anchor" href="#parameters-10" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>pageAbsPath</h5>
+<p><code>any</code></p>
+<h4 id="returns-10">Returns<a class="anchor" href="#returns-10" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="hashof">hashOf()<a class="anchor" href="#hashof" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>hashOf</strong>(<code>source</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L160" rel="noopener">ui/server/src/pagesEditor.mjs:160</a></p>
+<h4 id="parameters-11">Parameters<a class="anchor" href="#parameters-11" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h4 id="returns-11">Returns<a class="anchor" href="#returns-11" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="listallpages">listAllPages()<a class="anchor" href="#listallpages" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>listAllPages</strong>(<code>root</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L70" rel="noopener">ui/server/src/pagesEditor.mjs:70</a></p>
+<p>Every page of the project, <code>[{ feature, file }]</code>: what the Browser lists on the Pages screen. Only names
+the client may later send back to the per-feature routes, each of which re-checks it with resolvePageFile.</p>
+<h4 id="parameters-12">Parameters<a class="anchor" href="#parameters-12" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-12">Returns<a class="anchor" href="#returns-12" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="listfeatures">listFeatures()<a class="anchor" href="#listfeatures" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>listFeatures</strong>(<code>root</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L46" rel="noopener">ui/server/src/pagesEditor.mjs:46</a></p>
+<p>Every feature directory under the configured features root.</p>
+<h4 id="parameters-13">Parameters<a class="anchor" href="#parameters-13" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h4 id="returns-13">Returns<a class="anchor" href="#returns-13" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="listpages">listPages()<a class="anchor" href="#listpages" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>listPages</strong>(<code>root</code>, <code>feature</code>): <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L58" rel="noopener">ui/server/src/pagesEditor.mjs:58</a></p>
+<p>Every file under features/<feature>/pages/**, relative to that pages/
+folder (e.g. &quot;Home.jsx&quot;, &quot;billing/Detail.tsx&quot;).</p>
+<h4 id="parameters-14">Parameters<a class="anchor" href="#parameters-14" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h4 id="returns-14">Returns<a class="anchor" href="#returns-14" aria-label="Link to this section">#</a></h4>
+<p><code>string</code>[]</p>
+<hr>
+<h3 id="movenodeinsnippet">moveNodeInSnippet()<a class="anchor" href="#movenodeinsnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>moveNodeInSnippet</strong>(<code>snippetSource</code>, <code>nodeId</code>, <code>direction</code>): { <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L380" rel="noopener">ui/server/src/pagesEditor.mjs:380</a></p>
+<p>Ticket F.3 — move a node one position up/down among its
+own siblings, expressed as swapping its text with the adjacent sibling&#39;s
+(whatever sits between the two — other text/elements — stays exactly
+where it is; only the two elements&#39; own text spans trade places).
+Rejects a root (no siblings to move among) or a node already at the
+first/last position for the requested direction. Never throws.</p>
+<h4 id="parameters-15">Parameters<a class="anchor" href="#parameters-15" aria-label="Link to this section">#</a></h4>
+<h5>snippetSource</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>direction</h5>
+<p><code>any</code></p>
+<h4 id="returns-15">Returns<a class="anchor" href="#returns-15" aria-label="Link to this section">#</a></h4>
+<p>{ <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+<hr>
+<h3 id="parsepagetree">parsePageTree()<a class="anchor" href="#parsepagetree" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parsePageTree</strong>(<code>source</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L135" rel="noopener">ui/server/src/pagesEditor.mjs:135</a></p>
+<p>Parse a page file&#39;s JSX into a navigable, serializable element tree.
+Node ids are assigned in source (document) order during one traversal —
+<code>n0</code>, <code>n1</code>, ... — which is what every later save/props/auto-map lookup
+uses to re-find &quot;the same&quot; node on a fresh re-parse. Ids are only valid
+for the exact source text they were computed from, which is why every
+mutating endpoint re-parses fresh and includes <code>contentHash</code> (sha256 of
+the file&#39;s current text) so a stale client can&#39;t silently patch the
+wrong node after the file changed underneath it.</p>
+<h4 id="parameters-16">Parameters<a class="anchor" href="#parameters-16" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h4 id="returns-16">Returns<a class="anchor" href="#returns-16" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>ast</h5>
+<blockquote>
+<p><strong>ast</strong>: <code>any</code></p>
+</blockquote>
+<h5>byId</h5>
+<blockquote>
+<p><strong>byId</strong>: <code>Map</code>&lt;<code>string</code>, <code>any</code>&gt;</p>
+</blockquote>
+<h5>roots</h5>
+<blockquote>
+<p><strong>roots</strong>: <code>any</code>[]</p>
+</blockquote>
+<hr>
+<h3 id="parsesnippettotree">parseSnippetToTree()<a class="anchor" href="#parsesnippettotree" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>parseSnippetToTree</strong>(<code>snippetSource</code>): { <code>contentHash</code>: <code>any</code>; <code>error</code>: <code>any</code>; <code>roots</code>: <code>object</code>[]; } | { <code>error</code>: <code>any</code>; <code>roots</code>: <code>any</code>[]; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L179" rel="noopener">ui/server/src/pagesEditor.mjs:179</a></p>
+<p>Ticket F.1 — parse a bare snippet&#39;s <em>own</em> text (not a
+whole page file) into the same node tree shape serializeTree produces, so
+the visual composer can derive its graph live from exactly the text
+currently sitting in the snippet editor, with zero persisted metadata: no
+<code>.flyde</code>-style side file, no cached JSON layout, just a fresh parse of
+whatever text is passed in. Reuses parsePageTree/serializeTree completely
+unchanged — a standalone JSX snippet (e.g. <code>&lt;div&gt;&lt;Foo/&gt;&lt;/div&gt;</code>) is already
+valid module source on its own (it parses as an ExpressionStatement
+wrapping the JSXElement/JSXFragment), so no wrapping hack is needed.
+Parse failures are expected transiently while the user is mid-edit (an
+unclosed tag, etc.) — reported as <code>{roots: [], error}</code> rather than thrown,
+so the canvas can just keep showing its last-good graph instead of
+crashing on every keystroke.</p>
+<h4 id="parameters-17">Parameters<a class="anchor" href="#parameters-17" aria-label="Link to this section">#</a></h4>
+<h5>snippetSource</h5>
+<p><code>any</code></p>
+<h4 id="returns-17">Returns<a class="anchor" href="#returns-17" aria-label="Link to this section">#</a></h4>
+<p>{ <code>contentHash</code>: <code>any</code>; <code>error</code>: <code>any</code>; <code>roots</code>: <code>object</code>[]; } | { <code>error</code>: <code>any</code>; <code>roots</code>: <code>any</code>[]; }</p>
+<hr>
+<h3 id="patchnode">patchNode()<a class="anchor" href="#patchnode" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>patchNode</strong>(<code>source</code>, <code>nodeId</code>, <code>newSnippet</code>, <code>expectedHash</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L212" rel="noopener">ui/server/src/pagesEditor.mjs:212</a></p>
+<p>Patch one node&#39;s JSX back into the file. We re-parse the <em>current</em> disk
+content, re-locate the node by id, verify the caller&#39;s <code>contentHash</code>
+still matches (optimistic-concurrency guard), verify the replacement
+parses as a standalone JSX expression on its own, then splice
+<code>source.slice(0, node.start) + newSnippet + source.slice(node.end)</code>.
+Splicing the original text (rather than handing the whole file to a
+generator) is what guarantees every <em>other</em> line in the file — imports,
+comments, unrelated formatting — comes out byte-for-byte unchanged.</p>
+<h4 id="parameters-18">Parameters<a class="anchor" href="#parameters-18" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>newSnippet</h5>
+<p><code>any</code></p>
+<h5>expectedHash</h5>
+<p><code>any</code></p>
+<h4 id="returns-18">Returns<a class="anchor" href="#returns-18" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="removeattributesnippet">removeAttributeSnippet()<a class="anchor" href="#removeattributesnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>removeAttributeSnippet</strong>(<code>source</code>, <code>nodeId</code>, <code>propName</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L284" rel="noopener">ui/server/src/pagesEditor.mjs:284</a></p>
+<p>Ticket F.2 — remove one named attribute from a node&#39;s
+opening tag, returning that node&#39;s whole replacement text (same &quot;whole
+node&#39;s new text&quot; contract buildAttributeSnippet above already uses, so
+patchNode splices it back the same way). Also consumes one
+immediately-preceding whitespace run so the removal doesn&#39;t
+leave a double space behind in the tag. Only for a named (non-spread)
+attribute that currently exists.</p>
+<h4 id="parameters-19">Parameters<a class="anchor" href="#parameters-19" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h5>propName</h5>
+<p><code>any</code></p>
+<h4 id="returns-19">Returns<a class="anchor" href="#returns-19" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="removenodeinsnippet">removeNodeInSnippet()<a class="anchor" href="#removenodeinsnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>removeNodeInSnippet</strong>(<code>snippetSource</code>, <code>nodeId</code>): { <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L354" rel="noopener">ui/server/src/pagesEditor.mjs:354</a></p>
+<p>Ticket F.3 — remove a node (and its whole subtree) from
+the snippet, expressed as a plain text-range deletion plus a small
+whitespace cleanup (one run of leading indentation, one trailing newline)
+so it doesn&#39;t leave a blank line behind. Rejects removing the snippet&#39;s
+own single root — a snippet is always exactly one root element/fragment
+(the same invariant patchNode&#39;s own save-time validation enforces), so
+there is nothing left to save if the root itself were removed. Never
+throws — <code>{ok:false, error}</code> on any rejection.</p>
+<h4 id="parameters-20">Parameters<a class="anchor" href="#parameters-20" aria-label="Link to this section">#</a></h4>
+<h5>snippetSource</h5>
+<p><code>any</code></p>
+<h5>nodeId</h5>
+<p><code>any</code></p>
+<h4 id="returns-20">Returns<a class="anchor" href="#returns-20" aria-label="Link to this section">#</a></h4>
+<p>{ <code>error</code>: <code>string</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; } | { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; }</p>
+<hr>
+<h3 id="resolvedeclaredpropnames">resolveDeclaredPropNames()<a class="anchor" href="#resolvedeclaredpropnames" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolveDeclaredPropNames</strong>(<code>root</code>, <code>pageAbsPath</code>, <code>pageAst</code>, <code>tagName</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L480" rel="noopener">ui/server/src/pagesEditor.mjs:480</a></p>
+<p>#77 follow-up to #54 — resolve the child component actually rendered by
+JSX tag <code>tagName</code> (via the page file&#39;s own import of it) and return its
+declared prop names, so findUnmappedProps can filter candidates to ones
+the child can actually use instead of every in-scope name. Returns null
+when the child can&#39;t be resolved (bare/package import, dynamic tag, no
+matching export) or its param shape isn&#39;t recognized — callers treat
+null as &quot;unknown, don&#39;t filter&quot; (today&#39;s permissive behavior). The AST
+work (import lookup, finding the component function, reading its declared
+props) is src/ast&#39;s; this function only does the file resolution, scoped to <code>root</code>.</p>
+<h4 id="parameters-21">Parameters<a class="anchor" href="#parameters-21" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>pageAbsPath</h5>
+<p><code>any</code></p>
+<h5>pageAst</h5>
+<p><code>any</code></p>
+<h5>tagName</h5>
+<p><code>any</code></p>
+<h4 id="returns-21">Returns<a class="anchor" href="#returns-21" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="resolvepagefile">resolvePageFile()<a class="anchor" href="#resolvepagefile" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolvePageFile</strong>(<code>root</code>, <code>feature</code>, <code>file</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L79" rel="noopener">ui/server/src/pagesEditor.mjs:79</a></p>
+<p>Resolve + validate a (feature, file) pair to an absolute path strictly
+inside that feature&#39;s pages/ folder. Throws PagesEditorError on any attempt to escape it — a <code>..</code> segment, an absolute file
+path, a symlink-free resolution that lands outside pages/, or a
+feature/file that simply doesn&#39;t exist.</p>
+<h4 id="parameters-22">Parameters<a class="anchor" href="#parameters-22" aria-label="Link to this section">#</a></h4>
+<h5>root</h5>
+<p><code>any</code></p>
+<h5>feature</h5>
+<p><code>any</code></p>
+<h5>file</h5>
+<p><code>any</code></p>
+<h4 id="returns-22">Returns<a class="anchor" href="#returns-22" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>absPath</h5>
+<blockquote>
+<p><strong>absPath</strong>: <code>any</code> = <code>resolved</code></p>
+</blockquote>
+<h5>relPath</h5>
+<blockquote>
+<p><strong>relPath</strong>: <code>string</code> = <code>relFromRoot</code></p>
+</blockquote>
+<hr>
+<h3 id="rewirewireinsnippet">rewireWireInSnippet()<a class="anchor" href="#rewirewireinsnippet" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>rewireWireInSnippet</strong>(<code>snippetSource</code>, <code>__namedParameters</code>): { <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; } | { <code>error</code>: <code>any</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L309" rel="noopener">ui/server/src/pagesEditor.mjs:309</a></p>
+<p>Ticket F.2 — the visual composer&#39;s wire-rewrite: moves
+an existing prop from one child to a different sibling under the same
+parent, expressed as an unambiguous source-text edit (remove the
+attribute from the old child, add the identical attribute — same kind
+and value — to the new one), reusing removeAttributeSnippet/
+buildAttributeSnippet/patchNode unchanged rather than a second splicing
+mechanism. Operates purely on the snippet&#39;s own text (never a file) so
+the result can be handed straight to the existing save-back-to-source +
+diff-preview flow. Never throws — an invalid drag (stale ids, a
+cross-parent target, a name collision on the target) comes back as
+<code>{ok: false, error}</code> so the canvas can show a clear inline message and
+leave the snippet untouched, per #119&#39;s &quot;reject rather than write broken
+code&quot; instruction.</p>
+<h4 id="parameters-23">Parameters<a class="anchor" href="#parameters-23" aria-label="Link to this section">#</a></h4>
+<h5>snippetSource</h5>
+<p><code>any</code></p>
+<h5>__namedParameters</h5>
+<h6>fromChildId</h6>
+<p><code>any</code></p>
+<h6>parentId</h6>
+<p><code>any</code></p>
+<h6>propName</h6>
+<p><code>any</code></p>
+<h6>toChildId</h6>
+<p><code>any</code></p>
+<h4 id="returns-23">Returns<a class="anchor" href="#returns-23" aria-label="Link to this section">#</a></h4>
+<p>{ <code>error?</code>: <code>undefined</code>; <code>ok</code>: <code>boolean</code>; <code>snippet</code>: <code>string</code>; } | { <code>error</code>: <code>any</code>; <code>ok</code>: <code>boolean</code>; <code>snippet?</code>: <code>undefined</code>; }</p>
+<hr>
+<h3 id="serializetree">serializeTree()<a class="anchor" href="#serializetree" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>serializeTree</strong>(<code>source</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/pagesEditor.mjs#L142" rel="noopener">ui/server/src/pagesEditor.mjs:142</a></p>
+<p>Lightweight JSON-safe projection of parsePageTree&#39;s node records (drops
+<code>start</code>/<code>end</code>/internal fields the frontend doesn&#39;t need, but keeps a
+content hash so the client can detect the tree going stale).</p>
+<h4 id="parameters-24">Parameters<a class="anchor" href="#parameters-24" aria-label="Link to this section">#</a></h4>
+<h5>source</h5>
+<p><code>any</code></p>
+<h4 id="returns-24">Returns<a class="anchor" href="#returns-24" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>contentHash</h5>
+<blockquote>
+<p><strong>contentHash</strong>: <code>any</code></p>
+</blockquote>
+<h5>roots</h5>
+<blockquote>
+<p><strong>roots</strong>: <code>object</code>[]</p>
+</blockquote>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#classes">Classes</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/server/src/pagesEditor.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

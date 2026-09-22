@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What a change touches, and branch review · User Guide</title>
+<meta name="description" content="What a change reaches, and what a branch means, without a model.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What a change touches, and branch review · User Guide">
+<meta property="og:description" content="What a change reaches, and what a branch means, without a model.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/cli-impact-and-review/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/examples/cli-impact-and-review/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../">Home</a><a href="../../../user-guide/" aria-current="page">Guide</a><a href="../../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../../user-guide/getting-started/">Getting started</a></li><li><a href="../../../user-guide/line/">What Line is</a></li><li><a href="../../../user-guide/concepts/">The five ideas</a></li><li><a href="../../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../../user-guide/construct/">What Construct is</a></li><li><a href="../../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../../user-guide/how-to/import/">Import an existing app</a></li><li><a href="../../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../../user-guide/cli/">Using the command line</a></li><li><a href="../../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../../user-guide/examples/cli-impact-and-review/" aria-current="page"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>What a change touches, and branch review</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">CLI</p><h1>What a change touches, and branch review</h1><p class="lede">What a change reaches, and what a branch means, without a model.</p><div class="prose"><p><strong>Problem.</strong> A change that looks local is not. Someone edits a shared component and three other features break. A pull request shows a pile of changed lines, not what they mean. Asking a model &quot;what does this touch?&quot; costs tokens and gives a different answer each time.</p>
+<p>It already knows which feature and part every file belongs to and who imports whom. <code>research impact</code> computes the what it touches from that graph, and <code>review</code> compares two git refs against your own rules. Both are read-only, offline and repeatable.</p>
+<p>This page is CLI only. The Review screen is in the <a href="../../../user-guide/examples/cockpit-review/">Cockpit examples</a>.</p>
+<h2 id="do-this">Do this<a class="anchor" href="#do-this" aria-label="Link to this section">#</a></h2>
+<h3 id="1-what-does-changing-this-file-touch">1. What does changing this file touch?<a class="anchor" href="#1-what-does-changing-this-file-touch" aria-label="Link to this section">#</a></h3>
+<p>The repository ships a small fixture with a shared component used by three features:</p>
+<pre><code class="language-bash">construct research impact features/shared/components/CurrencyLabel.tsx \
+  --dir fixtures/impact-shared --format markdown
+</code></pre>
+<p>Trimmed output (the full report also lists every file with the reason it is included):</p>
+<pre><code class="language-text">Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.
+
+## Warnings
+
+- **CROSS-FEATURE** (warning, derived): The seeds live in 1 feature(s) (shared) but the impact reaches 3 more: billing, checkout, reporting.
+- **PUBLIC-API** (warning, derived): 1 implicated file(s) are re-exported from features/shared/index.ts: changing them changes feature &quot;shared&quot;&#39;s public API.
+- **SHARED-COMPONENT** (warning, derived): features/shared/components/CurrencyLabel.tsx is used by 3 other feature(s): billing, checkout, reporting. A change here is not feature-local.
+</code></pre>
+<p>Same input, same tree, same bytes. Running the JSON form twice and hashing it:</p>
+<pre><code class="language-text">$ construct research impact features/shared/components/CurrencyLabel.tsx --dir fixtures/impact-shared --format json | sha256sum
+23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
+$ construct research impact features/shared/components/CurrencyLabel.tsx --dir fixtures/impact-shared --format json | sha256sum
+23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
+</code></pre>
+<p>Other ways to seed the same report: a git range (<code>--since main</code>), a list of files (<code>--files a,b</code>), or the change described in English (<code>--ticket &quot;...&quot;</code>). Anything guessed from note text is marked <code>inferred</code>; anything reached from a unit you named is <code>derived</code>.</p>
+<h3 id="2-what-does-this-branch-actually-change">2. What does this branch actually change?<a class="anchor" href="#2-what-does-this-branch-actually-change" aria-label="Link to this section">#</a></h3>
+<p>On a branch where a page gained a <code>fetch()</code> call:</p>
+<pre><code class="language-bash">construct review main feature/invoice-fetch --format markdown
+</code></pre>
+<p>Trimmed output:</p>
+<pre><code class="language-text"># PR health
+
+1 file changed across 1 feature (billing): 1 finding (0 mechanical, 1 for a conversation).
+
+## Declared vs actual scope (not measured)
+
+Scope is not measured for this change.
+
+No plan is linked. That is normal for hand-written work and outside contributions. Every other check still runs.
+
+## Rule regressions
+
+1 new rule violation on this change (6 already there, not counted).
+
+- **conversation** [error] PAGE-004 is newly violated in features/billing/pages/InvoicePage.tsx — Page calls fetch().
+
+## Public surface
+
+1 public file changed; no export was removed (0 added).
+
+## What the flow now does
+
+No workflow files changed, so the flows behave as before.
+</code></pre>
+<p>Rule regressions counts only violations that are new on the head branch: the 6 that were already there are a number, never blamed on this change. Findings are split into those a Construct block can fix mechanically and those that need a human decision; the two are never mixed. Pass <code>--plan &lt;file&gt;</code> and the scope check compares what the plan declared with what the branch touched.</p>
+<p>Nothing is written. Refs are validated, git runs from temporary detached checkouts that are removed afterwards, and your working tree, index and branches are unchanged after the run.</p>
+<h2 id="you-get">You get<a class="anchor" href="#you-get" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>You get</th>
+<th>Evidence above</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A what it touches without asking a model</td>
+<td><code>every entry derived the same way every time</code></td>
+</tr>
+<tr>
+<td>The same answer every time</td>
+<td>identical <code>sha256</code> on two runs</td>
+</tr>
+<tr>
+<td>Review that knows your rules</td>
+<td><code>1 new rule violation ... (6 already there, not counted)</code></td>
+</tr>
+<tr>
+<td>No side effects</td>
+<td>read-only by construction</td>
+</tr>
+</tbody></table>
+<h2 id="why-it-matters">Why it matters<a class="anchor" href="#why-it-matters" aria-label="Link to this section">#</a></h2>
+<p>You know what a change reaches, and what a branch means, before you approve it, and the answer is the same every time.</p>
+<p>Checked against commit <code>081150b</code> on 2026-09-20 (wording revised for plain language on the same day).</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../../user-guide/examples/cli-scaffold-and-validate/"><span>Previous</span>Scaffold, then catch a rule break</a><a class="next" href="../../../user-guide/examples/cli-flows-and-tests/"><span>Next</span>Every route through a flow, tested</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#do-this">Do this</a></li><li><a href="#you-get">You get</a></li><li><a href="#why-it-matters">Why it matters</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/examples/cli-impact-and-review.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

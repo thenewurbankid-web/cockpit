@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/diagnostics/types · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/diagnostics/types.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/diagnostics/types · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/diagnostics/types.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/diagnostics/types/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/cockpit-client-features/ui/client/features/diagnostics/types/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../../">Home</a><a href="../../../../../../../../user-guide/">Guide</a><a href="../../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/diagnostics/types</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/diagnostics/types</h1><div class="prose"><p><em>Cockpit client (features), next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/diagnostics/types.ts" rel="noopener"><code>ui/client/features/diagnostics/types.ts</code></a>.</em></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="diagnosticrow">DiagnosticRow<a class="anchor" href="#diagnosticrow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticRow</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L47" rel="noopener">ui/client/features/diagnostics/types.ts:47</a></p>
+<p>One row of the Diagnostics list, already in display form.</p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>ariaLabel</h5>
+<blockquote>
+<p><strong>ariaLabel</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L57" rel="noopener">ui/client/features/diagnostics/types.ts:57</a></p>
+<h5>fix?</h5>
+<blockquote>
+<p><code>optional</code> <strong>fix?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L59" rel="noopener">ui/client/features/diagnostics/types.ts:59</a></p>
+<h5>key</h5>
+<blockquote>
+<p><strong>key</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L48" rel="noopener">ui/client/features/diagnostics/types.ts:48</a></p>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L56" rel="noopener">ui/client/features/diagnostics/types.ts:56</a></p>
+<h5>location</h5>
+<blockquote>
+<p><strong>location</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L53" rel="noopener">ui/client/features/diagnostics/types.ts:53</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L52" rel="noopener">ui/client/features/diagnostics/types.ts:52</a></p>
+<h5>rule</h5>
+<blockquote>
+<p><strong>rule</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L51" rel="noopener">ui/client/features/diagnostics/types.ts:51</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/diagnostics/types.md#severity-1"><code>Severity</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L49" rel="noopener">ui/client/features/diagnostics/types.ts:49</a></p>
+<h5>severityLabel</h5>
+<blockquote>
+<p><strong>severityLabel</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L50" rel="noopener">ui/client/features/diagnostics/types.ts:50</a></p>
+<h5>target</h5>
+<blockquote>
+<p><strong>target</strong>: <a href="#pagetarget"><code>PageTarget</code></a> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L55" rel="noopener">ui/client/features/diagnostics/types.ts:55</a></p>
+<p>Set when the row&#39;s file is a page the Pages editor can open.</p>
+<h5>why?</h5>
+<blockquote>
+<p><code>optional</code> <strong>why?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L58" rel="noopener">ui/client/features/diagnostics/types.ts:58</a></p>
+<hr>
+<h3 id="diagnosticsaction">DiagnosticsAction<a class="anchor" href="#diagnosticsaction" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsAction</strong> = { <code>type</code>: <code>&quot;RUN&quot;</code>; } | { <code>durationMs</code>: <code>number</code>; <code>total</code>: <code>number</code>; <code>truncated</code>: <code>boolean</code>; <code>type</code>: <code>&quot;RESULT&quot;</code>; <code>violations</code>: <a href="#violation"><code>Violation</code></a>[]; } | { <code>error</code>: <code>string</code>; <code>type</code>: <code>&quot;FAIL&quot;</code>; }</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L29" rel="noopener">ui/client/features/diagnostics/types.ts:29</a></p>
+<hr>
+<h3 id="diagnosticsapi">DiagnosticsApi<a class="anchor" href="#diagnosticsapi" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsApi</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L41" rel="noopener">ui/client/features/diagnostics/types.ts:41</a></p>
+<h4 id="properties-2">Properties<a class="anchor" href="#properties-2" aria-label="Link to this section">#</a></h4>
+<h5>run</h5>
+<blockquote>
+<p><strong>run</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L43" rel="noopener">ui/client/features/diagnostics/types.ts:43</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>state</h5>
+<blockquote>
+<p><strong>state</strong>: <a href="#diagnosticsstate"><code>DiagnosticsState</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L42" rel="noopener">ui/client/features/diagnostics/types.ts:42</a></p>
+<hr>
+<h3 id="diagnosticsstate">DiagnosticsState<a class="anchor" href="#diagnosticsstate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsState</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L19" rel="noopener">ui/client/features/diagnostics/types.ts:19</a></p>
+<h4 id="properties-3">Properties<a class="anchor" href="#properties-3" aria-label="Link to this section">#</a></h4>
+<h5>durationMs</h5>
+<blockquote>
+<p><strong>durationMs</strong>: <code>number</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L25" rel="noopener">ui/client/features/diagnostics/types.ts:25</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L26" rel="noopener">ui/client/features/diagnostics/types.ts:26</a></p>
+<h5>status</h5>
+<blockquote>
+<p><strong>status</strong>: <a href="#diagnosticsstatus"><code>DiagnosticsStatus</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L20" rel="noopener">ui/client/features/diagnostics/types.ts:20</a></p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L23" rel="noopener">ui/client/features/diagnostics/types.ts:23</a></p>
+<p>Total reported by the server (can exceed violations.length when truncated).</p>
+<h5>truncated</h5>
+<blockquote>
+<p><strong>truncated</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L24" rel="noopener">ui/client/features/diagnostics/types.ts:24</a></p>
+<h5>violations</h5>
+<blockquote>
+<p><strong>violations</strong>: <a href="#violation"><code>Violation</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L21" rel="noopener">ui/client/features/diagnostics/types.ts:21</a></p>
+<hr>
+<h3 id="diagnosticsstatus">DiagnosticsStatus<a class="anchor" href="#diagnosticsstatus" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsStatus</strong> = <code>&quot;idle&quot;</code> | <code>&quot;running&quot;</code> | <code>&quot;ready&quot;</code> | <code>&quot;error&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L17" rel="noopener">ui/client/features/diagnostics/types.ts:17</a></p>
+<hr>
+<h3 id="diagnosticsviewmodel">DiagnosticsViewModel<a class="anchor" href="#diagnosticsviewmodel" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsViewModel</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L62" rel="noopener">ui/client/features/diagnostics/types.ts:62</a></p>
+<h4 id="properties-4">Properties<a class="anchor" href="#properties-4" aria-label="Link to this section">#</a></h4>
+<h5>duration</h5>
+<blockquote>
+<p><strong>duration</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L67" rel="noopener">ui/client/features/diagnostics/types.ts:67</a></p>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L69" rel="noopener">ui/client/features/diagnostics/types.ts:69</a></p>
+<p>Error text: the whole state when mode is &#39;error&#39;, a banner over the previous result otherwise.</p>
+<h5>mode</h5>
+<blockquote>
+<p><strong>mode</strong>: <code>&quot;list&quot;</code> | <code>&quot;clean&quot;</code> | <code>&quot;error&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L65" rel="noopener">ui/client/features/diagnostics/types.ts:65</a></p>
+<p>&#39;list&#39; shows rows; &#39;clean&#39; and &#39;error&#39; are the designed empty states.</p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#diagnosticrow"><code>DiagnosticRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L70" rel="noopener">ui/client/features/diagnostics/types.ts:70</a></p>
+<h5>running</h5>
+<blockquote>
+<p><strong>running</strong>: <code>boolean</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L66" rel="noopener">ui/client/features/diagnostics/types.ts:66</a></p>
+<h5>summary</h5>
+<blockquote>
+<p><strong>summary</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L63" rel="noopener">ui/client/features/diagnostics/types.ts:63</a></p>
+<hr>
+<h3 id="diagnosticsviewprops">DiagnosticsViewProps<a class="anchor" href="#diagnosticsviewprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>DiagnosticsViewProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L73" rel="noopener">ui/client/features/diagnostics/types.ts:73</a></p>
+<h4 id="properties-5">Properties<a class="anchor" href="#properties-5" aria-label="Link to this section">#</a></h4>
+<h5>onOpenPage</h5>
+<blockquote>
+<p><strong>onOpenPage</strong>: (<code>target</code>, <code>line</code>) =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L77" rel="noopener">ui/client/features/diagnostics/types.ts:77</a></p>
+<p>Called when a row that points at a page file is chosen.</p>
+<h6>Parameters</h6>
+<h6>target</h6>
+<p><a href="#pagetarget"><code>PageTarget</code></a></p>
+<h6>line</h6>
+<p><code>number</code></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onRun</h5>
+<blockquote>
+<p><strong>onRun</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L75" rel="noopener">ui/client/features/diagnostics/types.ts:75</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>view</h5>
+<blockquote>
+<p><strong>view</strong>: <a href="#diagnosticsviewmodel"><code>DiagnosticsViewModel</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L74" rel="noopener">ui/client/features/diagnostics/types.ts:74</a></p>
+<hr>
+<h3 id="logentry">LogEntry<a class="anchor" href="#logentry" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LogEntry</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<h4 id="properties-6">Properties<a class="anchor" href="#properties-6" aria-label="Link to this section">#</a></h4>
+<h5>at</h5>
+<blockquote>
+<p><strong>at</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<h5>level</h5>
+<blockquote>
+<p><strong>level</strong>: <a href="#loglevel"><code>LogLevel</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L39" rel="noopener">ui/client/features/diagnostics/types.ts:39</a></p>
+<hr>
+<h3 id="loglevel">LogLevel<a class="anchor" href="#loglevel" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LogLevel</strong> = <code>&quot;info&quot;</code> | <code>&quot;warn&quot;</code> | <code>&quot;error&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L37" rel="noopener">ui/client/features/diagnostics/types.ts:37</a></p>
+<hr>
+<h3 id="logrow">LogRow<a class="anchor" href="#logrow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LogRow</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<h4 id="properties-7">Properties<a class="anchor" href="#properties-7" aria-label="Link to this section">#</a></h4>
+<h5>id</h5>
+<blockquote>
+<p><strong>id</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<h5>level</h5>
+<blockquote>
+<p><strong>level</strong>: <a href="#loglevel"><code>LogLevel</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<h5>source</h5>
+<blockquote>
+<p><strong>source</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<h5>text</h5>
+<blockquote>
+<p><strong>text</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<h5>time</h5>
+<blockquote>
+<p><strong>time</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L80" rel="noopener">ui/client/features/diagnostics/types.ts:80</a></p>
+<hr>
+<h3 id="logsviewprops">LogsViewProps<a class="anchor" href="#logsviewprops" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>LogsViewProps</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L82" rel="noopener">ui/client/features/diagnostics/types.ts:82</a></p>
+<h4 id="properties-8">Properties<a class="anchor" href="#properties-8" aria-label="Link to this section">#</a></h4>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>string</code> | <code>null</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L84" rel="noopener">ui/client/features/diagnostics/types.ts:84</a></p>
+<h5>onClear</h5>
+<blockquote>
+<p><strong>onClear</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L86" rel="noopener">ui/client/features/diagnostics/types.ts:86</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>onRefresh</h5>
+<blockquote>
+<p><strong>onRefresh</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L85" rel="noopener">ui/client/features/diagnostics/types.ts:85</a></p>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>rows</h5>
+<blockquote>
+<p><strong>rows</strong>: <a href="#logrow"><code>LogRow</code></a>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L83" rel="noopener">ui/client/features/diagnostics/types.ts:83</a></p>
+<hr>
+<h3 id="pagetarget">PageTarget<a class="anchor" href="#pagetarget" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>PageTarget</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L35" rel="noopener">ui/client/features/diagnostics/types.ts:35</a></p>
+<p>A page file the Pages editor can open.</p>
+<h4 id="properties-9">Properties<a class="anchor" href="#properties-9" aria-label="Link to this section">#</a></h4>
+<h5>feature</h5>
+<blockquote>
+<p><strong>feature</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L35" rel="noopener">ui/client/features/diagnostics/types.ts:35</a></p>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L35" rel="noopener">ui/client/features/diagnostics/types.ts:35</a></p>
+<hr>
+<h3 id="severity">Severity<a class="anchor" href="#severity" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Severity</strong> = <code>&quot;error&quot;</code> | <code>&quot;warning&quot;</code> | <code>&quot;info&quot;</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L1" rel="noopener">ui/client/features/diagnostics/types.ts:1</a></p>
+<hr>
+<h3 id="severitycounts">SeverityCounts<a class="anchor" href="#severitycounts" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>SeverityCounts</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L15" rel="noopener">ui/client/features/diagnostics/types.ts:15</a></p>
+<h4 id="properties-10">Properties<a class="anchor" href="#properties-10" aria-label="Link to this section">#</a></h4>
+<h5>error</h5>
+<blockquote>
+<p><strong>error</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L15" rel="noopener">ui/client/features/diagnostics/types.ts:15</a></p>
+<h5>info</h5>
+<blockquote>
+<p><strong>info</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L15" rel="noopener">ui/client/features/diagnostics/types.ts:15</a></p>
+<h5>total</h5>
+<blockquote>
+<p><strong>total</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L15" rel="noopener">ui/client/features/diagnostics/types.ts:15</a></p>
+<h5>warning</h5>
+<blockquote>
+<p><strong>warning</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L15" rel="noopener">ui/client/features/diagnostics/types.ts:15</a></p>
+<hr>
+<h3 id="violation">Violation<a class="anchor" href="#violation" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>Violation</strong> = <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L4" rel="noopener">ui/client/features/diagnostics/types.ts:4</a></p>
+<p>One rule violation as <code>construct validate</code> reports it (ui/server GET /api/validate).</p>
+<h4 id="properties-11">Properties<a class="anchor" href="#properties-11" aria-label="Link to this section">#</a></h4>
+<h5>file</h5>
+<blockquote>
+<p><strong>file</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L8" rel="noopener">ui/client/features/diagnostics/types.ts:8</a></p>
+<h5>line</h5>
+<blockquote>
+<p><strong>line</strong>: <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L9" rel="noopener">ui/client/features/diagnostics/types.ts:9</a></p>
+<h5>message</h5>
+<blockquote>
+<p><strong>message</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L10" rel="noopener">ui/client/features/diagnostics/types.ts:10</a></p>
+<h5>module</h5>
+<blockquote>
+<p><strong>module</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L6" rel="noopener">ui/client/features/diagnostics/types.ts:6</a></p>
+<h5>rule</h5>
+<blockquote>
+<p><strong>rule</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L5" rel="noopener">ui/client/features/diagnostics/types.ts:5</a></p>
+<h5>severity</h5>
+<blockquote>
+<p><strong>severity</strong>: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/__api__/cockpit-client-features/ui/client/features/diagnostics/types.md#severity-1"><code>Severity</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L7" rel="noopener">ui/client/features/diagnostics/types.ts:7</a></p>
+<h5>suggestedFix?</h5>
+<blockquote>
+<p><code>optional</code> <strong>suggestedFix?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L12" rel="noopener">ui/client/features/diagnostics/types.ts:12</a></p>
+<h5>why?</h5>
+<blockquote>
+<p><code>optional</code> <strong>why?</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/diagnostics/types.ts#L11" rel="noopener">ui/client/features/diagnostics/types.ts:11</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/ui/client/features/diagnostics/types.ts">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

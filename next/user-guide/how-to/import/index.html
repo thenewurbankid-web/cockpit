@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import an existing app · User Guide</title>
+<meta name="description" content="Bring existing pages across, one file, one route or one plan at a time.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Import an existing app · User Guide">
+<meta property="og:description" content="Bring existing pages across, one file, one route or one plan at a time.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/user-guide/how-to/import/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/user-guide/how-to/import/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../">Home</a><a href="../../../user-guide/" aria-current="page">Guide</a><a href="../../../developers/">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="User Guide navigation"><details class="side-menu" open><summary>User Guide menu</summary><nav><ul><li><a href="../../../user-guide/">Overview</a></li></ul><p class="side-h">Start</p><ul><li><a href="../../../user-guide/getting-started/">Getting started</a></li><li><a href="../../../user-guide/line/">What Line is</a></li><li><a href="../../../user-guide/concepts/">The five ideas</a></li><li><a href="../../../user-guide/examples/">All examples</a></li></ul><p class="side-h">Construct</p><ul><li><a href="../../../user-guide/construct/">What Construct is</a></li><li><a href="../../../user-guide/how-to/">All how-to guides</a></li><li><a href="../../../user-guide/how-to/create/">Create features and files</a></li><li><a href="../../../user-guide/how-to/tune-rules/">Validate and tune the rules</a></li><li><a href="../../../user-guide/how-to/refactor/">Move and rename safely</a></li><li><a href="../../../user-guide/how-to/import/" aria-current="page">Import an existing app</a></li><li><a href="../../../user-guide/how-to/explain-workflows/">Explain workflows in English</a></li><li><a href="../../../user-guide/how-to/frozen-ui/">Wrap design-tool output</a></li><li><a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a></li><li><a href="../../../user-guide/examples/core-plans-and-impact/"><small class="side-tag">Example</small>Plans and impact as an API</a></li><li><a href="../../../user-guide/examples/core-review-tests-commits/"><small class="side-tag">Example</small>Review, tests and commit messages as an API</a></li></ul><p class="side-h">Cockpit</p><ul><li><a href="../../../user-guide/cockpit/">Using the Cockpit</a></li><li><a href="../../../user-guide/examples/cockpit-plan-and-run/"><small class="side-tag">Example</small>Plan, run in a branch, approve per file</a></li><li><a href="../../../user-guide/examples/cockpit-review/"><small class="side-tag">Example</small>Review a branch by what it means</a></li><li><a href="../../../user-guide/examples/cockpit-tests/"><small class="side-tag">Example</small>Tests: coverage, clone, step editor</a></li><li><a href="../../../user-guide/examples/cockpit-sign-in-and-commits/"><small class="side-tag">Example</small>Sign-in allowlist and commit on save</a></li></ul><p class="side-h">Videos</p><ul><li><a href="../../../user-guide/videos/ticket-to-story/">Build a feature, start to finish</a></li></ul><p class="side-h">CLI</p><ul><li><a href="../../../user-guide/cli/">Using the command line</a></li><li><a href="../../../user-guide/examples/cli-scaffold-and-validate/"><small class="side-tag">Example</small>Scaffold, then catch a rule break</a></li><li><a href="../../../user-guide/examples/cli-impact-and-review/"><small class="side-tag">Example</small>What a change touches, and branch review</a></li><li><a href="../../../user-guide/examples/cli-flows-and-tests/"><small class="side-tag">Example</small>Every route through a flow, tested</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../user-guide/">User Guide</a> <span aria-hidden="true">/</span> <span>Import an existing app</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:User Guide">
+<p class="kicker">Construct</p><h1>Import an existing app</h1><p class="lede">Bring existing pages across, one file, one route or one plan at a time.</p><div class="prose"><p><code>import</code> brings existing code into a Construct project: it scaffolds the layers you ask for and leaves a <code>TODO(import)</code> note in each pointing at the old source file. Porting the logic is a separate step, by you or, optionally, a model.</p>
+<h2 id="one-file">One file<a class="anchor" href="#one-file" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-bash">construct import PriceCheck --feature pricing --layers domain,hook --from ./old/PriceCheck.tsx
+</code></pre>
+<h2 id="a-whole-page-guided">A whole page, guided<a class="anchor" href="#a-whole-page-guided" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-bash">construct import --route /v2/home
+</code></pre>
+<p>The route wizard traces the real import graph from that route&#39;s page, proposes a plan for the whole feature, and asks <strong>&quot;Approve this plan and build it now?&quot;</strong> before writing anything. It makes exactly one analysis call, to a hosted model, to produce the plan. Afterwards it runs <code>validate</code> and tells you what is left to fill in. The same wizard is available as the Import Wizard in the <a href="../../../user-guide/cockpit/">Cockpit UI</a>.</p>
+<h2 id="from-an-approved-plan">From an approved plan<a class="anchor" href="#from-an-approved-plan" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-bash">construct import --plan ./plan.json
+</code></pre>
+<p>A plan is <code>{ feature, units: [{ name, layers, from }, ...] }</code>; the command runs the same scaffold once per unit.</p>
+<h2 id="add-llm-to-have-a-model-write-the-ported-logic">Add <code>--llm</code> to have a model write the ported logic<a class="anchor" href="#add-llm-to-have-a-model-write-the-ported-logic" aria-label="Link to this section">#</a></h2>
+<p>Adding <code>--llm &lt;provider&gt;</code> (<code>claude</code> or <code>ollama</code>) makes one call per generated file. See <a href="../../../user-guide/how-to/use-an-llm/">Using an AI model, optionally</a>.</p>
+<h2 id="adopting-construct-inside-an-existing-project">Adopting Construct inside an existing project<a class="anchor" href="#adopting-construct-inside-an-existing-project" aria-label="Link to this section">#</a></h2>
+<p>Construct doesn&#39;t need to own your whole repository. <code>construct init</code> accepts a directory, so you can scope it to one subdirectory of a larger, unrelated project — no changes required anywhere else in that project:</p>
+<pre><code class="language-bash"># from the root of an existing, non-Construct app:
+construct init tools/construct
+cd tools/construct &amp;&amp; npm install &amp;&amp; construct sync
+</code></pre>
+<p>Every other command accepts <code>--dir &lt;path&gt;</code> to target that subdirectory without <code>cd</code>-ing into it first (handy for CI, scripts, or running from the parent app&#39;s root):</p>
+<pre><code class="language-bash">construct generate domain PriceCheck --feature pricing --dir tools/construct
+construct validate --dir tools/construct
+</code></pre>
+<p><code>--dir</code> resolves the same way <code>cd</code>-ing in would — walking upward from that path to find the nearest <code>architecture.yml</code> — and every command still only ever reads or writes inside that project; nothing outside it is touched.</p>
+</div>
+</article>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="../../../user-guide/how-to/refactor/"><span>Previous</span>Move and rename safely</a><a class="next" href="../../../user-guide/how-to/explain-workflows/"><span>Next</span>Explain workflows in English</a></nav>
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#one-file">One file</a></li><li><a href="#a-whole-page-guided">A whole page, guided</a></li><li><a href="#from-an-approved-plan">From an approved plan</a></li><li><a href="#add-llm-to-have-a-model-write-the-ported-logic">Add --llm to have a model write the ported logic</a></li><li><a href="#adopting-construct-inside-an-existing-project">Adopting Construct inside an existing project</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/site/content/user/import.md">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

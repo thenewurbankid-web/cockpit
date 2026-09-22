@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/cli · Developer Docs</title>
+<meta name="description" content="API of src/cli.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/cli · Developer Docs">
+<meta property="og:description" content="API of src/cli.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/cli/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/cli/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../">Home</a><a href="../../../../../user-guide/">Guide</a><a href="../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../developers/api/">All packages</a></li><li><a href="../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/cli</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/cli</h1><div class="prose"><p><em>Core engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/cli.mjs" rel="noopener"><code>src/cli.mjs</code></a>.</em></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="create">create()<a class="anchor" href="#create" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>create</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L475" rel="noopener">src/cli.mjs:475</a></p>
+<p><code>construct create feature &lt;name&gt;</code> | <code>construct create layer &lt;name&gt; --layers ... [--llm &lt;provider&gt;]</code>
+| <code>construct create &lt;layer&gt; &lt;name&gt; --feature &lt;feature&gt; [--llm &lt;provider&gt;]</code>
+| <code>construct create service &lt;name&gt; --feature &lt;feature&gt; --openapi &lt;spec&gt;</code> (Ticket 7.5).
+<code>feature</code> creation has nothing fillable (just types.ts/index.ts
+boilerplate) so <code>--llm</code> only ever applies to the layer/single-layer
+forms, which <code>generate(args)</code> itself already handles (see its own doc
+comment) — this just reports whether that happened.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>string</code>[]</p>
+<p><code>feature &lt;name&gt;</code>, <code>layer &lt;name&gt; --layers ...</code>, <code>&lt;layer&gt; &lt;name&gt; --feature &lt;f&gt;</code> or <code>service &lt;name&gt; --feature &lt;f&gt; --openapi &lt;spec&gt;</code>, each with an optional <code>--llm &lt;provider&gt;</code>.</p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<p>Resolves once the files are scaffolded and the attribution line is printed.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">await create([&#39;feature&#39;, &#39;billing&#39;]);
+</code></pre>
+<hr>
+<h3 id="doctor">doctor()<a class="anchor" href="#doctor" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>doctor</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L428" rel="noopener">src/cli.mjs:428</a></p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="feature">feature()<a class="anchor" href="#feature" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>feature</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L114" rel="noopener">src/cli.mjs:114</a></p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="generate">generate()<a class="anchor" href="#generate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>generate</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L158" rel="noopener">src/cli.mjs:158</a></p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="importcommand">importCommand()<a class="anchor" href="#importcommand" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>importCommand</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L801" rel="noopener">src/cli.mjs:801</a></p>
+<p><code>construct import &lt;name&gt; --feature &lt;feature&gt; --layers &lt;l1,l2,...&gt; --from &lt;path&gt; [--llm &lt;provider&gt;]</code>
+| <code>construct import --plan &lt;path&gt; [--llm &lt;provider&gt;]</code>.
+Scaffolds layers exactly like <code>create layer</code> — always deterministic, same
+as everything else in this file. With no <code>--llm</code>: prepends a TODO
+breadcrumb to each generated file pointing at its source, and stops —
+writing the ported logic is left to whoever (human or LLM) does it next.
+With <code>--llm &lt;provider&gt;</code> (currently only &quot;claude&quot; is supported): calls that
+provider once per generated file to write the ported logic directly. This
+is the one place in Construct that ever calls an LLM, and only when this
+flag is explicitly given — locating the source and scaffolding the files
+themselves never involves one either way. <code>--plan</code> is the batch form: an
+approved plan (produced by whichever LLM analyzed a whole existing
+feature — Construct never does that analysis itself) runs the same step
+once per unit, in one command.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>string</code>[]</p>
+<p><code>&lt;name&gt; --feature &lt;f&gt; --layers &lt;l1,l2,...&gt; --from &lt;path&gt; [--llm &lt;provider&gt;]</code>, or <code>--plan &lt;path&gt; [--llm &lt;provider&gt;]</code> for a batch.</p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<p>Resolves once the layers are scaffolded (and filled, with <code>--llm</code>).</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>Usage error (exit code 2) for missing flags, or for <code>--route</code>, which must be run directly from a shell.</p>
+<hr>
+<h3 id="importroutewizard">importRouteWizard()<a class="anchor" href="#importroutewizard" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>importRouteWizard</strong>(<code>ask</code>, <code>seedRoute</code>, <code>__namedParameters?</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L942" rel="noopener">src/cli.mjs:942</a></p>
+<p>The wizard&#39;s actual flow, decoupled from where its questions come from —
+<code>ask</code> is an async <code>(promptText) =&gt; answer</code> function, so this is directly
+unit-testable with a fake, scripted <code>ask</code> and never needs a real
+terminal. <code>runImportRouteWizard</code> below is the only caller that wires it
+to real stdin/stdout.</p>
+<p>Guides the whole thing end to end in one session: creates the
+destination feature if it doesn&#39;t exist yet (never touches it if it
+does — no re-scaffolding over real content), loops asking for as many
+source directories as the old feature actually spans (analyzed together,
+as one combined plan, not one call per directory), builds on approval,
+then immediately validates and states exactly what&#39;s left — a TODO count
+to fill in, or a reminder to review LLM-written output — rather than
+leaving you to go find that out yourself. <code>seedRoute</code> (optional) is just
+the first route, so <code>construct import --route &lt;path&gt;</code> can still seed the
+loop instead of asking for it as question one.</p>
+<p>A &quot;route&quot; means something different per <code>config.project.framework</code>
+(resolveRoute in route-resolver.mjs is framework-ready — #66): for the
+default <code>nextjs</code>, a URL like <code>/v2/home</code> or, equivalently, the folder that
+owns its <code>page.tsx</code> — a URL route needs to know where the <code>app/</code>
+directory is, so that&#39;s asked for once, lazily, and reused for every
+further route this session. For <code>react-spa</code>, a URL like <code>/dashboard</code>
+(resolved through the project&#39;s centralized routes table) or an existing
+controller file path directly — no directory question at all, since the
+routes table is auto-located by convention from the project root. Either
+way, the actual file list comes from tracing the real import graph
+(route-resolver.mjs), never from &quot;everything under a directory you point
+at&quot;.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>ask</h5>
+<p><code>any</code></p>
+<h5>seedRoute</h5>
+<p><code>any</code></p>
+<h5>__namedParameters?</h5>
+<h6>importFill?</h6>
+<p><code>string</code> = <code>&#39;claude&#39;</code></p>
+<h6>planAnalysis?</h6>
+<p><code>string</code> = <code>&#39;claude&#39;</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="init">init()<a class="anchor" href="#init" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>init</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L84" rel="noopener">src/cli.mjs:84</a></p>
+<p><code>construct init [dir] [--framework nextjs|react-spa]</code>: write <code>architecture.yml</code> and <code>AGENTS.md</code>, then scaffold the <code>core</code> feature. The entry-point scaffold is the one framework-specific part: <code>nextjs</code> (the default) gets <code>app/page.tsx</code>; <code>react-spa</code> gets <code>src/main.tsx</code> and <code>src/App.tsx</code> with the core controller registered in the router table.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>string</code>[]</p>
+<p>Command arguments: an optional target directory, then optional <code>--framework &lt;name&gt;</code>.</p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<p>Resolves once the files are written (prints what it wrote).</p>
+<h4 id="since">Since<a class="anchor" href="#since" aria-label="Link to this section">#</a></h4>
+<p>0.8</p>
+<h4 id="example-2">Example<a class="anchor" href="#example-2" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">await init([&#39;my-app&#39;, &#39;--framework&#39;, &#39;react-spa&#39;]);
+</code></pre>
+<hr>
+<h3 id="pipeline">pipeline()<a class="anchor" href="#pipeline" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>pipeline</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L406" rel="noopener">src/cli.mjs:406</a></p>
+<p><code>construct pipeline run [--dir &lt;path&gt;]</code> -- Ticket 7.1. Reads a Context
+Envelope (schemas/envelope.v1.json) as JSON off stdin, with an optional
+<code>steps: [{layer, name}, ...]</code> list of generator steps to run against
+<code>envelope.feature</code>. Every step&#39;s output is staged in one
+transactionalWriter transaction and committed atomically: if the buffered
+result fails <code>construct validate</code>&#39;s own enforcer set, nothing under the
+project root is written and the process exits non-zero. Either way, the
+resulting envelope (status &#39;committed&#39; or &#39;aborted&#39;, <code>layers</code>/
+<code>diagnostics</code> populated accordingly) is written to stdout as JSON --
+mirroring the same <code>JSON.stringify(..., null, 2)</code> shaping <code>validate --format json</code> and <code>summarize --format json</code> already use, not a second
+JSON convention.</p>
+<h4 id="parameters-8">Parameters<a class="anchor" href="#parameters-8" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-8">Returns<a class="anchor" href="#returns-8" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="printattribution">printAttribution()<a class="anchor" href="#printattribution" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>printAttribution</strong>(<code>tool</code>, <code>llm</code>): <code>void</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L456" rel="noopener">src/cli.mjs:456</a></p>
+<h4 id="parameters-9">Parameters<a class="anchor" href="#parameters-9" aria-label="Link to this section">#</a></h4>
+<h5>tool</h5>
+<p><code>any</code></p>
+<h5>llm</h5>
+<p><code>any</code></p>
+<h4 id="returns-9">Returns<a class="anchor" href="#returns-9" aria-label="Link to this section">#</a></h4>
+<p><code>void</code></p>
+<hr>
+<h3 id="refactor">refactor()<a class="anchor" href="#refactor" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>refactor</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L734" rel="noopener">src/cli.mjs:734</a></p>
+<p><code>construct refactor move &lt;name&gt; --feature &lt;f&gt; --from &lt;layer&gt; --to &lt;layer&gt;</code>
+| <code>construct refactor rename &lt;name&gt; &lt;newName&gt; --feature &lt;f&gt; --layer &lt;layer&gt;</code>.
+Purely mechanical (relocate + rewrite every importer&#39;s path) — never
+touches a file&#39;s own content. Reports the result, then re-validates just
+the moved/renamed file so a naming/purity mismatch in its new home shows
+up immediately instead of on the next full <code>construct validate</code>.</p>
+<h4 id="parameters-10">Parameters<a class="anchor" href="#parameters-10" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>string</code>[]</p>
+<p><code>move &lt;name&gt; --feature &lt;f&gt; --from &lt;layer&gt; --to &lt;layer&gt;</code> or <code>rename &lt;name&gt; &lt;newName&gt; --feature &lt;f&gt; --layer &lt;layer&gt;</code>.</p>
+<h4 id="returns-10">Returns<a class="anchor" href="#returns-10" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<p>Resolves after the change (or dry run) is reported.</p>
+<h4 id="throws-2">Throws<a class="anchor" href="#throws-2" aria-label="Link to this section">#</a></h4>
+<p>Usage error (exit code 2) for an unknown subcommand.</p>
+<hr>
+<h3 id="research">research()<a class="anchor" href="#research" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>research</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L712" rel="noopener">src/cli.mjs:712</a></p>
+<p><code>construct research summarize ...</code> | <code>construct research doctor ...</code> | <code>construct research workflow ...</code>
+| <code>construct research impact ...</code>.</p>
+<h4 id="parameters-11">Parameters<a class="anchor" href="#parameters-11" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>string</code>[]</p>
+<p><code>summarize|doctor|workflow|impact</code> followed by that command&#39;s own arguments.</p>
+<h4 id="returns-11">Returns<a class="anchor" href="#returns-11" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<p>Resolves after printing the read-only report.</p>
+<h4 id="throws-3">Throws<a class="anchor" href="#throws-3" aria-label="Link to this section">#</a></h4>
+<p>Usage error (exit code 2) for an unknown subcommand.</p>
+<h4 id="example-3">Example<a class="anchor" href="#example-3" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">await research([&#39;impact&#39;, &#39;--files&#39;, &#39;features/plan/index.ts&#39;]);
+</code></pre>
+<hr>
+<h3 id="researchimpact">researchImpact()<a class="anchor" href="#researchimpact" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>researchImpact</strong>(<code>args</code>): <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L542" rel="noopener">src/cli.mjs:542</a></p>
+<p><code>construct research impact &lt;ref&gt;... [--files a,b] [--since &lt;git-ref&gt;] [--ticket &lt;text&gt;] [--ticket-file &lt;path&gt;] [--depth N] [--max-files N] [--format json|markdown] [--dir &lt;path&gt;]</code>
+| <code>construct research impact --usage</code>.</p>
+<p>Read-only blast radius: which features/layers/files a change touches, why each file is
+implicated, what is shared across features, and what the project&#39;s rules already say. Seeds
+given as refs or <code>--files</code>/<code>--since</code> are explicit, so every entry comes back <code>derived</code>; seeds
+proposed from <code>--ticket</code> text are heuristic, so everything they reach is marked <code>inferred</code>.
+Returns true when it printed only JSON.</p>
+<h4 id="parameters-12">Parameters<a class="anchor" href="#parameters-12" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-12">Returns<a class="anchor" href="#returns-12" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<hr>
+<h3 id="researchworkflow">researchWorkflow()<a class="anchor" href="#researchworkflow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>researchWorkflow</strong>(<code>args</code>): <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L498" rel="noopener">src/cli.mjs:498</a></p>
+<p><code>construct research workflow &lt;feature&gt; [&lt;file&gt;] [--format prose|md|json|scenarios] [--dir &lt;path&gt;]</code>
+(epic #185). Read-only: explains the XState machines in a feature&#39;s
+workflows/ folder in plain English, with scenarios and health findings,
+derived from the source every time. Returns true when it printed only JSON.</p>
+<h4 id="parameters-13">Parameters<a class="anchor" href="#parameters-13" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-13">Returns<a class="anchor" href="#returns-13" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<hr>
+<h3 id="review">review()<a class="anchor" href="#review" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>review</strong>(<code>args</code>): <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L607" rel="noopener">src/cli.mjs:607</a></p>
+<p><code>construct review &lt;base&gt; &lt;head&gt; [--plan &lt;file&gt;] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir &lt;path&gt;]</code> | <code>construct review --usage</code>.</p>
+<p>Read-only PR health: the deterministic indicators for the change from  to <head> (any two
+refs; local branches need no GitHub login): declared-vs-actual scope (only with --plan/--features),
+unexplained changes, rule regressions, public surface, and a flow diff. Findings are split into
+mechanical (a Construct block can fix them) and conversation (a human decides). No LLM, and the
+working tree, index and branches are never touched. Returns true when it printed only JSON.</p>
+<h4 id="parameters-14">Parameters<a class="anchor" href="#parameters-14" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-14">Returns<a class="anchor" href="#returns-14" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<hr>
+<h3 id="runimportroutewizard">runImportRouteWizard()<a class="anchor" href="#runimportroutewizard" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>runImportRouteWizard</strong>(<code>routeArg</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L1100" rel="noopener">src/cli.mjs:1100</a></p>
+<h4 id="parameters-15">Parameters<a class="anchor" href="#parameters-15" aria-label="Link to this section">#</a></h4>
+<h5>routeArg</h5>
+<p><code>any</code></p>
+<h4 id="returns-15">Returns<a class="anchor" href="#returns-15" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="runimportroutewizardeventdriven">runImportRouteWizardEventDriven()<a class="anchor" href="#runimportroutewizardeventdriven" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>runImportRouteWizardEventDriven</strong>(<code>onEvent</code>, <code>seedRoute?</code>, <code>providers?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L1166" rel="noopener">src/cli.mjs:1166</a></p>
+<p>Run the interactive <code>construct import --route</code> wizard as an event stream instead of a terminal session, so the Cockpit can drive it over a WebSocket: every prompt arrives as a <code>{type: &#39;question&#39;, text}</code> event and every console line the wizard prints as a <code>{type: &#39;log&#39;, kind, text}</code> event.</p>
+<h4 id="parameters-16">Parameters<a class="anchor" href="#parameters-16" aria-label="Link to this section">#</a></h4>
+<h5>onEvent</h5>
+<p>(<code>event</code>) =&gt; <code>void</code></p>
+<p>Receives questions and log lines.</p>
+<h5>seedRoute?</h5>
+<p><code>string</code></p>
+<p>Route to start from, when the caller already knows it.</p>
+<h5>providers?</h5>
+<p><code>any</code></p>
+<p>Injectable dependencies (LLM provider and friends) for tests.</p>
+<h4 id="returns-16">Returns<a class="anchor" href="#returns-16" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p><code>answer</code> feeds the reply to the pending question (<code>false</code> when none is pending); <code>done</code> settles when the wizard finishes.</p>
+<h5>answer</h5>
+<blockquote>
+<p><strong>answer</strong>: (<code>text</code>) =&gt; <code>boolean</code></p>
+</blockquote>
+<h6>Parameters</h6>
+<h6>text</h6>
+<p><code>string</code></p>
+<h6>Returns</h6>
+<p><code>boolean</code></p>
+<h5>done</h5>
+<blockquote>
+<p><strong>done</strong>: <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<hr>
+<h3 id="summarize">summarize()<a class="anchor" href="#summarize" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>summarize</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L361" rel="noopener">src/cli.mjs:361</a></p>
+<h4 id="parameters-17">Parameters<a class="anchor" href="#parameters-17" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-17">Returns<a class="anchor" href="#returns-17" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="sync">sync()<a class="anchor" href="#sync" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>sync</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L319" rel="noopener">src/cli.mjs:319</a></p>
+<h4 id="parameters-18">Parameters<a class="anchor" href="#parameters-18" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-18">Returns<a class="anchor" href="#returns-18" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="template">template()<a class="anchor" href="#template" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>template</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L671" rel="noopener">src/cli.mjs:671</a></p>
+<p><code>construct template list|show|instantiate</code>. Read-only, JSON in/out, no LLM.</p>
+<p>  construct template list --templates <dir>
+  construct template show <name> --templates <dir>
+  construct template instantiate <name> --templates <dir> [--param key=value]... [--params-json &#39;{&quot;k&quot;:&quot;v&quot;}&#39;]</p>
+<p>A template is a named, reusable, parameterised plan; <code>instantiate</code> prints an ordinary plan.v1 (feed it
+to the runner or <code>construct review --plan</code>). The mechanism is open; the CURATED templates are not in
+this repo: point <code>--templates &lt;dir&gt;</code> (or CONSTRUCT_TEMPLATES_DIR) at wherever they live. There is no
+default directory, and nothing here runs a plan.</p>
+<h4 id="parameters-19">Parameters<a class="anchor" href="#parameters-19" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-19">Returns<a class="anchor" href="#returns-19" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="testcommand">testCommand()<a class="anchor" href="#testcommand" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>testCommand</strong>(<code>args</code>): <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L640" rel="noopener">src/cli.mjs:640</a></p>
+<p><code>construct test run &lt;feature&gt; [--name &lt;file&gt; --area generated|yours] [--base-url &lt;url&gt;] [--format json|text] [--dir &lt;path&gt;]</code>. Runs a feature&#39;s Playwright tests against the project&#39;s own running app and says, for each failure, whether
+the harness or the app is at fault. Read-only, deterministic, no LLM. Exit code 1 when any test failed.</p>
+<h4 id="parameters-20">Parameters<a class="anchor" href="#parameters-20" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-20">Returns<a class="anchor" href="#returns-20" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>boolean</code>&gt;</p>
+<hr>
+<h3 id="validate">validate()<a class="anchor" href="#validate" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>validate</strong>(<code>args</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/cli.mjs#L331" rel="noopener">src/cli.mjs:331</a></p>
+<h4 id="parameters-21">Parameters<a class="anchor" href="#parameters-21" aria-label="Link to this section">#</a></h4>
+<h5>args</h5>
+<p><code>any</code></p>
+<h4 id="returns-21">Returns<a class="anchor" href="#returns-21" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/cli.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

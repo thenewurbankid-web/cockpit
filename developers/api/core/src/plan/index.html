@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/plan · Developer Docs</title>
+<meta name="description" content="#286 — the Execution Plan contract (schemas/plan.v1.json).">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/plan · Developer Docs">
+<meta property="og:description" content="#286 — the Execution Plan contract (schemas/plan.v1.json).">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/plan/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/core/src/plan/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../">Home</a><a href="../../../../../user-guide/">Guide</a><a href="../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../developers/api/">All packages</a></li><li><a href="../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/plan</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/plan</h1><div class="prose"><p>#286 — the Execution Plan contract (schemas/plan.v1.json).</p>
+<p><em>Core engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/plan.mjs" rel="noopener"><code>src/plan.mjs</code></a>.</em></p>
+<h2 id="variables">Variables<a class="anchor" href="#variables" aria-label="Link to this section">#</a></h2>
+<h3 id="planerrorcodes">PLAN_ERROR_CODES<a class="anchor" href="#planerrorcodes" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_ERROR_CODES</strong>: <code>Readonly</code>&lt;{ <code>ENVELOPE_INVALID</code>: <code>&quot;ENVELOPE_INVALID&quot;</code>; <code>IMPORT_PLAN_INVALID</code>: <code>&quot;IMPORT_PLAN_INVALID&quot;</code>; <code>PLAN_FIELD_TYPE</code>: <code>&quot;PLAN_FIELD_TYPE&quot;</code>; <code>PLAN_MISSING_FIELD</code>: <code>&quot;PLAN_MISSING_FIELD&quot;</code>; <code>PLAN_NOT_OBJECT</code>: <code>&quot;PLAN_NOT_OBJECT&quot;</code>; <code>PLAN_UNKNOWN_FIELD</code>: <code>&quot;PLAN_UNKNOWN_FIELD&quot;</code>; <code>PLAN_VERSION_INVALID</code>: <code>&quot;PLAN_VERSION_INVALID&quot;</code>; <code>STEP_ARG_ENUM</code>: <code>&quot;STEP_ARG_ENUM&quot;</code>; <code>STEP_ARG_MISSING</code>: <code>&quot;STEP_ARG_MISSING&quot;</code>; <code>STEP_ARG_TYPE</code>: <code>&quot;STEP_ARG_TYPE&quot;</code>; <code>STEP_ARG_UNKNOWN</code>: <code>&quot;STEP_ARG_UNKNOWN&quot;</code>; <code>STEP_ARGS_NOT_OBJECT</code>: <code>&quot;STEP_ARGS_NOT_OBJECT&quot;</code>; <code>STEP_DEPENDENCY_FORWARD</code>: <code>&quot;STEP_DEPENDENCY_FORWARD&quot;</code>; <code>STEP_DEPENDENCY_SELF</code>: <code>&quot;STEP_DEPENDENCY_SELF&quot;</code>; <code>STEP_DEPENDENCY_UNKNOWN</code>: <code>&quot;STEP_DEPENDENCY_UNKNOWN&quot;</code>; <code>STEP_DEPENDS_ON_INVALID</code>: <code>&quot;STEP_DEPENDS_ON_INVALID&quot;</code>; <code>STEP_ESTIMATE_INVALID</code>: <code>&quot;STEP_ESTIMATE_INVALID&quot;</code>; <code>STEP_EXECUTOR_INVALID</code>: <code>&quot;STEP_EXECUTOR_INVALID&quot;</code>; <code>STEP_EXECUTOR_LLM_CONFLICT</code>: <code>&quot;STEP_EXECUTOR_LLM_CONFLICT&quot;</code>; <code>STEP_EXECUTOR_MISSING</code>: <code>&quot;STEP_EXECUTOR_MISSING&quot;</code>; <code>STEP_EXECUTOR_NOT_ALLOWED</code>: <code>&quot;STEP_EXECUTOR_NOT_ALLOWED&quot;</code>; <code>STEP_FLOW_MISSING</code>: <code>&quot;STEP_FLOW_MISSING&quot;</code>; <code>STEP_FLOW_UNKNOWN</code>: <code>&quot;STEP_FLOW_UNKNOWN&quot;</code>; <code>STEP_ID_DUPLICATE</code>: <code>&quot;STEP_ID_DUPLICATE&quot;</code>; <code>STEP_ID_INVALID</code>: <code>&quot;STEP_ID_INVALID&quot;</code>; <code>STEP_NOT_OBJECT</code>: <code>&quot;STEP_NOT_OBJECT&quot;</code>; <code>STEP_TITLE_INVALID</code>: <code>&quot;STEP_TITLE_INVALID&quot;</code>; <code>STEP_TOUCHES_ABSOLUTE_PATH</code>: <code>&quot;STEP_TOUCHES_ABSOLUTE_PATH&quot;</code>; <code>STEP_TOUCHES_CHANGE_INVALID</code>: <code>&quot;STEP_TOUCHES_CHANGE_INVALID&quot;</code>; <code>STEP_TOUCHES_INVALID</code>: <code>&quot;STEP_TOUCHES_INVALID&quot;</code>; <code>STEP_TOUCHES_REQUIRED</code>: <code>&quot;STEP_TOUCHES_REQUIRED&quot;</code>; <code>STEP_UNKNOWN_FIELD</code>: <code>&quot;STEP_UNKNOWN_FIELD&quot;</code>; <code>STEPS_EMPTY</code>: <code>&quot;STEPS_EMPTY&quot;</code>; <code>STEPS_NOT_ARRAY</code>: <code>&quot;STEPS_NOT_ARRAY&quot;</code>; <code>TICKET_INVALID</code>: <code>&quot;TICKET_INVALID&quot;</code>; <code>TICKET_SOURCE_INVALID</code>: <code>&quot;TICKET_SOURCE_INVALID&quot;</code>; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L51" rel="noopener">src/plan.mjs:51</a></p>
+<p>Every rejection this validator can produce, by name — so callers (and
+tests) match on a code rather than on message text.</p>
+<hr>
+<h3 id="planexecutors">PLAN_EXECUTORS<a class="anchor" href="#planexecutors" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_EXECUTORS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L40" rel="noopener">src/plan.mjs:40</a></p>
+<p>Who actually performs a step. Mirrors the Deterministic / Local model /
+You tags in docs/design/cockpit-layout.md §4 <code>plan-mode</code>.</p>
+<hr>
+<h3 id="planflows">PLAN_FLOWS<a class="anchor" href="#planflows" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_FLOWS</strong>: <code>Readonly</code>&lt;{ <code>create.controller.bind</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>envelope</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>fixedFlags</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.feature</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.layer</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>layers</code>: { <code>flag</code>: <code>string</code>; <code>join</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>llm</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.page.from</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>from</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.service.openapi</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>openapi</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.unit</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>layer</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>llm</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>create.workflow.from</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>from</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>import.plan</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>llm</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>plan</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>materialize</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>schemaRef</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>import.route</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>route</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>import.unit</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>from</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>layers</code>: { <code>flag</code>: <code>string</code>; <code>join</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>llm</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>manual.task</code>: { <code>args</code>: { <code>instructions</code>: { <code>description</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>any</code>; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>pipeline.run</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>envelope</code>: { <code>description</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>schemaRef</code>: <code>string</code>; <code>stdin</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>project.init</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>type</code>: <code>string</code>; }; <code>framework</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>refactor.move</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>from</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>to</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>refactor.rename</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>layer</code>: { <code>flag</code>: <code>string</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>newName</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>research.doctor</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>research.summarize</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>format</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>since</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>research.workflow</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>file</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>type</code>: <code>string</code>; }; <code>format</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>review.analyze</code>: { <code>args</code>: { <code>base</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>head</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>plan</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>materialize</code>: <code>string</code>; <code>schemaRef</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>summarize.list</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>kind</code>: { <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>fixedFlags</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>summarize.unit</code>: { <code>args</code>: { <code>detail</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>format</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>include</code>: { <code>flag</code>: <code>string</code>; <code>join</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>kind</code>: { <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>ref</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>summarize.usage</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>fixedFlags</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>sync</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>test.run</code>: { <code>args</code>: { <code>area</code>: { <code>description</code>: <code>string</code>; <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>base-url</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>feature</code>: { <code>description</code>: <code>string</code>; <code>positional</code>: <code>number</code>; <code>required</code>: <code>boolean</code>; <code>type</code>: <code>string</code>; }; <code>name</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; <code>validate</code>: { <code>args</code>: { <code>dir</code>: { <code>description</code>: <code>string</code>; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; <code>format</code>: { <code>enum</code>: <code>string</code>[]; <code>flag</code>: <code>string</code>; <code>type</code>: <code>string</code>; }; }; <code>cli</code>: <code>string</code>[]; <code>executors</code>: <code>string</code>[]; <code>summary</code>: <code>string</code>; <code>writes</code>: <code>boolean</code>; }; }&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L111" rel="noopener">src/plan.mjs:111</a></p>
+<p>The flow registry: every flow <code>bin/construct.mjs</code> actually exposes, keyed
+by a stable dotted id. Checked against <code>construct --help</code> and src/cli.mjs,
+not against prose.</p>
+<p>Each entry declares:</p>
+<ul>
+<li><code>cli</code>         the command words, e.g. [&#39;refactor&#39;, &#39;move&#39;] (null = no CLI
+          command behind it; only <code>manual.task</code>)</li>
+<li><code>fixedFlags</code>  flags the flow id itself implies (e.g. <code>--bind</code>, <code>--list</code>)</li>
+<li><code>args</code>        arg name -&gt; { type, required, positional | flag | stdin |
+          materialize, enum, join }. Arg names are the CLI flag names
+          minus <code>--</code>, so a step maps mechanically onto a real command
+          (see planToCommand).</li>
+<li><code>writes</code>      whether the flow changes files (drives whether <code>touches</code> is
+          required on the step)</li>
+<li><code>executors</code>   which executor tags are legitimate for this flow.
+          <code>local-model</code> appears only on flows that genuinely have an
+          <code>--llm</code> path, so &quot;exactly where a model is involved&quot; is
+          enforced rather than merely documented.</li>
+</ul>
+<hr>
+<h3 id="planrequiredfields">PLAN_REQUIRED_FIELDS<a class="anchor" href="#planrequiredfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_REQUIRED_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L406" rel="noopener">src/plan.mjs:406</a></p>
+<hr>
+<h3 id="plantoplevelfields">PLAN_TOP_LEVEL_FIELDS<a class="anchor" href="#plantoplevelfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_TOP_LEVEL_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L405" rel="noopener">src/plan.mjs:405</a></p>
+<hr>
+<h3 id="planversion">PLAN_VERSION<a class="anchor" href="#planversion" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>PLAN_VERSION</strong>: <code>1</code> = <code>1</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L36" rel="noopener">src/plan.mjs:36</a></p>
+<hr>
+<h3 id="stepfields">STEP_FIELDS<a class="anchor" href="#stepfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>STEP_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L407" rel="noopener">src/plan.mjs:407</a></p>
+<hr>
+<h3 id="steprequiredfields">STEP_REQUIRED_FIELDS<a class="anchor" href="#steprequiredfields" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>STEP_REQUIRED_FIELDS</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L408" rel="noopener">src/plan.mjs:408</a></p>
+<hr>
+<h3 id="ticketsources">TICKET_SOURCES<a class="anchor" href="#ticketsources" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>TICKET_SOURCES</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L47" rel="noopener">src/plan.mjs:47</a></p>
+<p>Where the ticket that produced this plan came from.</p>
+<hr>
+<h3 id="touchchanges">TOUCH_CHANGES<a class="anchor" href="#touchchanges" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><code>const</code> <strong>TOUCH_CHANGES</strong>: readonly <code>string</code>[]</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L44" rel="noopener">src/plan.mjs:44</a></p>
+<p>How a step is expected to change a file it touches. <code>read</code> is for the
+read-only research/validate flows, which still declare what they looked at.</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="createplan">createPlan()<a class="anchor" href="#createplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createPlan</strong>(<code>ticket</code>, <code>steps?</code>, <code>extras?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L427" rel="noopener">src/plan.mjs:427</a></p>
+<p>Build a well-formed v1 plan. Pure: no clock, no filesystem, no ids
+invented for you — step ids are the planner&#39;s, so re-planning the same
+ticket yields the same JSON.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>ticket</h5>
+<p><code>any</code></p>
+<h5>steps?</h5>
+<p><code>any</code>[] = <code>[]</code></p>
+<h5>extras?</h5>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>steps</h5>
+<blockquote>
+<p><strong>steps</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>ticket</h5>
+<blockquote>
+<p><strong>ticket</strong>: <code>any</code></p>
+</blockquote>
+<h5>version</h5>
+<blockquote>
+<p><strong>version</strong>: <code>number</code> = <code>PLAN_VERSION</code></p>
+</blockquote>
+<hr>
+<h3 id="formatplanerrors">formatPlanErrors()<a class="anchor" href="#formatplanerrors" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>formatPlanErrors</strong>(<code>errors</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L772" rel="noopener">src/plan.mjs:772</a></p>
+<p>One human-readable line per structured error, for a CLI or a log.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>errors</h5>
+<p><code>any</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<hr>
+<h3 id="migrateplan">migratePlan()<a class="anchor" href="#migrateplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>migratePlan</strong>(<code>record</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L687" rel="noopener">src/plan.mjs:687</a></p>
+<p>Bring a stored plan record up to the current schema version before
+validation. v1 is the only version: identity. A v2 adds a step here that
+returns the v2 shape; see docs/VERSIONING.md. *</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>record</h5>
+<p><code>any</code></p>
+<p>A parsed stored plan record, any supported version.</p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The record at the current schema version.</p>
+<h4 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">migratePlan(JSON.parse(text));
+</code></pre>
+<hr>
+<h3 id="planflow">planFlow()<a class="anchor" href="#planflow" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>planFlow</strong>(<code>id</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L420" rel="noopener">src/plan.mjs:420</a></p>
+<p>The flow registry entry for <code>id</code>, or undefined.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>id</h5>
+<p><code>string</code></p>
+<p>Flow id.</p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The flow registry entry, or <code>undefined</code> for an unknown id.</p>
+<hr>
+<h3 id="plantocommand">planToCommand()<a class="anchor" href="#plantocommand" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>planToCommand</strong>(<code>step</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L796" rel="noopener">src/plan.mjs:796</a></p>
+<p>Turn a step into the real command that performs it — the mantra applied:
+each layer hands the next a concrete example, not an abstract spec. #287&#39;s
+runner can execute a plan without re-deriving how any flow is invoked.</p>
+<p>Returns <code>{ argv, stdin, files, manual }</code>:</p>
+<ul>
+<li><code>argv</code>   the arguments to <code>bin/construct.mjs</code>, or null for <code>manual.task</code>
+     (nothing to run — read <code>instructions</code> instead)</li>
+<li><code>stdin</code>  a JSON string to pipe in (<code>pipeline.run</code>&#39;s envelope), else null</li>
+<li><code>files</code>  object arguments the caller must write to a temp file and
+     substitute for the placeholder token already sitting in <code>argv</code>
+     (<code>import.plan</code>&#39;s inline plan): <code>[{ placeholder, arg, value }]</code></li>
+<li><code>manual</code> true when a human, not a command, performs the step</li>
+</ul>
+<p>Throws TypeError on an unknown flow — validate the plan first.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>step</h5>
+<p>A plan step.</p>
+<h6>args?</h6>
+<p><code>any</code></p>
+<h6>flow</h6>
+<p><code>string</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p>The command that performs the step.</p>
+<h5>argv</h5>
+<blockquote>
+<p><strong>argv</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>manual</h5>
+<blockquote>
+<p><strong>manual</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>stdin</h5>
+<blockquote>
+<p><strong>stdin</strong>: <code>string</code></p>
+</blockquote>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>For an unknown flow.</p>
+<hr>
+<h3 id="plantouches">planTouches()<a class="anchor" href="#plantouches" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>planTouches</strong>(<code>plan</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L847" rel="noopener">src/plan.mjs:847</a></p>
+<p>Roll the per-step <code>touches</code> up to plan level — the features and files the
+whole plan expects to change, deduplicated, in first-mentioned order.
+Derived rather than stored so there is only ever one source of truth.
+Each file carries every <code>change</code> any step declared for it and the ids of
+the steps that touch it, so &quot;who wrote this file?&quot; is answerable after the
+fact.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>plan</h5>
+<p><code>any</code></p>
+<p>A plan with <code>steps[].touches</code>.</p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p>The deduplicated features and files the plan expects to change.</p>
+<h5>features</h5>
+<blockquote>
+<p><strong>features</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>object</code>[]</p>
+</blockquote>
+<hr>
+<h3 id="validateplan">validatePlan()<a class="anchor" href="#validateplan" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>validatePlan</strong>(<code>plan</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/plan.mjs#L709" rel="noopener">src/plan.mjs:709</a></p>
+<p>Validate a plan against schemas/plan.v1.json&#39;s shape and the flow
+registry. Returns <code>{ valid, errors }</code> where each error is
+<code>{ code, path, message }</code> — never throws, never mutates <code>plan</code>, never
+prints. Reports every problem rather than stopping at the first, so a
+review UI can show them all at once.</p>
+<p><code>ext</code> (any object) is reserved for additive data and is never inspected.</p>
+<p><code>path</code> is a JSON-pointer-ish dotted path into the plan
+(e.g. <code>steps[2].args.feature</code>), so a caller can highlight the exact field.</p>
+<h4 id="parameters-7">Parameters<a class="anchor" href="#parameters-7" aria-label="Link to this section">#</a></h4>
+<h5>plan</h5>
+<p><code>any</code></p>
+<p>The plan to check.</p>
+<h4 id="returns-7">Returns<a class="anchor" href="#returns-7" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<p>Every problem found.</p>
+<h5>errors</h5>
+<blockquote>
+<p><strong>errors</strong>: <code>object</code>[]</p>
+</blockquote>
+<h5>valid</h5>
+<blockquote>
+<p><strong>valid</strong>: <code>boolean</code></p>
+</blockquote>
+<h4 id="example-2">Example<a class="anchor" href="#example-2" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-ts">validatePlan(plan).errors.map((e) =&gt; `${e.path}: ${e.message}`);
+</code></pre>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#variables">Variables</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/plan.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

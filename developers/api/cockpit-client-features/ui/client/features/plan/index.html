@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui/client/features/plan · Developer Docs</title>
+<meta name="description" content="API of ui/client/features/plan.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ui/client/features/plan · Developer Docs">
+<meta property="og:description" content="API of ui/client/features/plan.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/plan/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/cockpit-client-features/ui/client/features/plan/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>ui/client/features/plan</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>ui/client/features/plan</h1><div class="prose"><p><em>Cockpit client (features), next. Source: n/a.</em></p>
+<h2 id="references">References<a class="anchor" href="#references" aria-label="Link to this section">#</a></h2>
+<h3 id="apiresult">ApiResult<a class="anchor" href="#apiresult" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#apiresult">ApiResult</a></p>
+<hr>
+<h3 id="argview">ArgView<a class="anchor" href="#argview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#argview">ArgView</a></p>
+<hr>
+<h3 id="catalogueprops">CatalogueProps<a class="anchor" href="#catalogueprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#catalogueprops">CatalogueProps</a></p>
+<hr>
+<h3 id="constraints">Constraints<a class="anchor" href="#constraints" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#constraints">Constraints</a></p>
+<hr>
+<h3 id="constraintsprops">ConstraintsProps<a class="anchor" href="#constraintsprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#constraintsprops">ConstraintsProps</a></p>
+<hr>
+<h3 id="constraintsview">ConstraintsView<a class="anchor" href="#constraintsview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#constraintsview">ConstraintsView</a></p>
+<hr>
+<h3 id="errorview">ErrorView<a class="anchor" href="#errorview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#errorview">ErrorView</a></p>
+<hr>
+<h3 id="executor">Executor<a class="anchor" href="#executor" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#executor">Executor</a></p>
+<hr>
+<h3 id="flowarg">FlowArg<a class="anchor" href="#flowarg" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#flowarg">FlowArg</a></p>
+<hr>
+<h3 id="flowinfo">FlowInfo<a class="anchor" href="#flowinfo" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#flowinfo">FlowInfo</a></p>
+<hr>
+<h3 id="impactfeature">ImpactFeature<a class="anchor" href="#impactfeature" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#impactfeature">ImpactFeature</a></p>
+<hr>
+<h3 id="impactfile">ImpactFile<a class="anchor" href="#impactfile" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#impactfile">ImpactFile</a></p>
+<hr>
+<h3 id="impactpaneprops">ImpactPaneProps<a class="anchor" href="#impactpaneprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#impactpaneprops">ImpactPaneProps</a></p>
+<hr>
+<h3 id="impactreason">ImpactReason<a class="anchor" href="#impactreason" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#impactreason">ImpactReason</a></p>
+<hr>
+<h3 id="impactreport">ImpactReport<a class="anchor" href="#impactreport" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#impactreport">ImpactReport</a></p>
+<hr>
+<h3 id="impactrow">ImpactRow<a class="anchor" href="#impactrow" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#impactrow">ImpactRow</a></p>
+<hr>
+<h3 id="impactview">ImpactView<a class="anchor" href="#impactview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#impactview">ImpactView</a></p>
+<hr>
+<h3 id="impactwarning">ImpactWarning<a class="anchor" href="#impactwarning" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#impactwarning">ImpactWarning</a></p>
+<hr>
+<h3 id="impactwarningview">ImpactWarningView<a class="anchor" href="#impactwarningview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#impactwarningview">ImpactWarningView</a></p>
+<hr>
+<h3 id="plancontext">PlanContext<a class="anchor" href="#plancontext" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#plancontext">PlanContext</a></p>
+<hr>
+<h3 id="plancontroller">PlanController<a class="anchor" href="#plancontroller" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/controllers/PlanController/#plancontroller">PlanController</a></p>
+<hr>
+<h3 id="plandoc">PlanDoc<a class="anchor" href="#plandoc" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#plandoc">PlanDoc</a></p>
+<hr>
+<h3 id="planerror">PlanError<a class="anchor" href="#planerror" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#planerror">PlanError</a></p>
+<hr>
+<h3 id="planhandlers">PlanHandlers<a class="anchor" href="#planhandlers" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#planhandlers">PlanHandlers</a></p>
+<hr>
+<h3 id="planpaneprops">PlanPaneProps<a class="anchor" href="#planpaneprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#planpaneprops">PlanPaneProps</a></p>
+<hr>
+<h3 id="planstep">PlanStep<a class="anchor" href="#planstep" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#planstep">PlanStep</a></p>
+<hr>
+<h3 id="proposal">Proposal<a class="anchor" href="#proposal" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#proposal">Proposal</a></p>
+<hr>
+<h3 id="proposalview">ProposalView<a class="anchor" href="#proposalview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#proposalview">ProposalView</a></p>
+<hr>
+<h3 id="provenance">Provenance<a class="anchor" href="#provenance" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#provenance-2">Provenance</a></p>
+<hr>
+<h3 id="runbarprops">RunBarProps<a class="anchor" href="#runbarprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#runbarprops">RunBarProps</a></p>
+<hr>
+<h3 id="screenaction">ScreenAction<a class="anchor" href="#screenaction" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#screenaction">ScreenAction</a></p>
+<hr>
+<h3 id="screenstate">ScreenState<a class="anchor" href="#screenstate" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#screenstate">ScreenState</a></p>
+<hr>
+<h3 id="status">Status<a class="anchor" href="#status" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#status-1">Status</a></p>
+<hr>
+<h3 id="stepcardprops">StepCardProps<a class="anchor" href="#stepcardprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#stepcardprops">StepCardProps</a></p>
+<hr>
+<h3 id="steppreview">StepPreview<a class="anchor" href="#steppreview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#steppreview">StepPreview</a></p>
+<hr>
+<h3 id="stepview">StepView<a class="anchor" href="#stepview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#stepview">StepView</a></p>
+<hr>
+<h3 id="tagview">TagView<a class="anchor" href="#tagview" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#tagview">TagView</a></p>
+<hr>
+<h3 id="ticket">Ticket<a class="anchor" href="#ticket" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#ticket">Ticket</a></p>
+<hr>
+<h3 id="ticketfieldsprops">TicketFieldsProps<a class="anchor" href="#ticketfieldsprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#ticketfieldsprops">TicketFieldsProps</a></p>
+<hr>
+<h3 id="tickethandlers">TicketHandlers<a class="anchor" href="#tickethandlers" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#tickethandlers">TicketHandlers</a></p>
+<hr>
+<h3 id="ticketpaneprops">TicketPaneProps<a class="anchor" href="#ticketpaneprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#ticketpaneprops">TicketPaneProps</a></p>
+<hr>
+<h3 id="unitpickerprops">UnitPickerProps<a class="anchor" href="#unitpickerprops" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/types/#unitpickerprops">UnitPickerProps</a></p>
+<hr>
+<h3 id="useplancontext">usePlanContext<a class="anchor" href="#useplancontext" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/usePlanContext/#useplancontext">usePlanContext</a></p>
+<hr>
+<h3 id="useplanrun">usePlanRun<a class="anchor" href="#useplanrun" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/usePlanRun/#useplanrun">usePlanRun</a></p>
+<hr>
+<h3 id="useplanscreen">usePlanScreen<a class="anchor" href="#useplanscreen" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/usePlanScreen/#useplanscreen">usePlanScreen</a></p>
+<hr>
+<h3 id="useplanvalidation">usePlanValidation<a class="anchor" href="#useplanvalidation" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/usePlanValidation/#useplanvalidation">usePlanValidation</a></p>
+<hr>
+<h3 id="useseedactions">useSeedActions<a class="anchor" href="#useseedactions" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/useSeedActions/#useseedactions">useSeedActions</a></p>
+<hr>
+<h3 id="usestepactions">useStepActions<a class="anchor" href="#usestepactions" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/hooks/useStepActions/#usestepactions">useStepActions</a></p>
+<hr>
+<h3 id="validation">Validation<a class="anchor" href="#validation" aria-label="Link to this section">#</a></h3>
+<p>Re-exports <a href="../../../../../../../developers/api/cockpit-client-features/ui/client/features/plan/domain/PlanTypes/#validation-1">Validation</a></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/package.json">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

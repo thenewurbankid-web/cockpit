@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tools/github-comment-bridge/src/poller · Developer Docs</title>
+<meta name="description" content="API of tools/github-comment-bridge/src/poller.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="tools/github-comment-bridge/src/poller · Developer Docs">
+<meta property="og:description" content="API of tools/github-comment-bridge/src/poller.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/next/developers/api/tools/tools/github-comment-bridge/src/poller/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/next/developers/api/tools/tools/github-comment-bridge/src/poller/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../../">Home</a><a href="../../../../../../../user-guide/">Guide</a><a href="../../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>tools/github-comment-bridge/src/poller</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>tools/github-comment-bridge/src/poller</h1><div class="prose"><p><em>Tools, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tools/github-comment-bridge/src/poller.mjs" rel="noopener"><code>tools/github-comment-bridge/src/poller.mjs</code></a>.</em></p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="establishbaseline">establishBaseline()<a class="anchor" href="#establishbaseline" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>establishBaseline</strong>(<code>__namedParameters</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L64" rel="noopener">tools/github-comment-bridge/src/poller.mjs:64</a></p>
+<p>First-ever run: record the current highest comment id and current time
+as a baseline, WITHOUT processing anything. This deliberately avoids
+reacting to any pre-existing &quot;/claude&quot; text already sitting in the
+issue history (e.g. from earlier discussion) the first time the bridge
+is started against a repo that already has history.</p>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters</h5>
+<h6>github</h6>
+<p><code>any</code></p>
+<h6>log</h6>
+<p><code>any</code></p>
+<h6>stateStore</h6>
+<p><code>any</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<hr>
+<h3 id="excerpt">excerpt()<a class="anchor" href="#excerpt" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>excerpt</strong>(<code>text</code>, <code>maxLen?</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L12" rel="noopener">tools/github-comment-bridge/src/poller.mjs:12</a></p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>text</h5>
+<p><code>any</code></p>
+<h5>maxLen?</h5>
+<p><code>number</code> = <code>800</code></p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+<hr>
+<h3 id="extractissuenumber">extractIssueNumber()<a class="anchor" href="#extractissuenumber" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>extractIssueNumber</strong>(<code>issueUrl</code>): <code>number</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L7" rel="noopener">tools/github-comment-bridge/src/poller.mjs:7</a></p>
+<p>Extracts the issue number from an issues/comments API item&#39;s <code>issue_url</code>,
+e.g. &quot;<a href="https://api.github.com/repos/OWNER/REPO/issues/37" rel="noopener">https://api.github.com/repos/OWNER/REPO/issues/37</a>&quot; -&gt; 37.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>issueUrl</h5>
+<p><code>any</code></p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>number</code></p>
+<hr>
+<h3 id="pollonce">pollOnce()<a class="anchor" href="#pollonce" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>pollOnce</strong>(<code>__namedParameters</code>): <code>Promise</code>&lt;<code>void</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L153" rel="noopener">tools/github-comment-bridge/src/poller.mjs:153</a></p>
+<p>Runs a single poll cycle: fetch new comments since the last cursor,
+find any that carry the &quot;/claude&quot; trigger, dispatch each to Claude, and
+advance the durable cursor.</p>
+<p>The cursor snapshot is taken at the START of the cycle (before the
+network call), and comments are de-duplicated by numeric id (which is
+monotonically increasing and never reused), not just by timestamp. That
+combination means: (a) a comment created while a previous cycle was
+still processing is never missed, and (b) a comment already handled is
+never re-processed even if GitHub&#39;s <code>since</code> filter (which matches on
+<code>updated_at</code>) returns it again, e.g. because someone edited an old
+comment. Editing an old, already-handled comment does NOT retrigger it.</p>
+<h4 id="parameters-4">Parameters<a class="anchor" href="#parameters-4" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters</h5>
+<h6>buildPromptFn</h6>
+<p><code>any</code></p>
+<h6>config</h6>
+<p><code>any</code></p>
+<h6>github</h6>
+<p><code>any</code></p>
+<h6>log?</h6>
+<p><code>any</code> = <code>console.log</code></p>
+<h6>runClaudeFn</h6>
+<p><code>any</code></p>
+<h6>sessionStore</h6>
+<p><code>any</code></p>
+<h6>stateStore</h6>
+<p><code>any</code></p>
+<h4 id="returns-4">Returns<a class="anchor" href="#returns-4" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>void</code>&gt;</p>
+<hr>
+<h3 id="resolvebotlogin">resolveBotLogin()<a class="anchor" href="#resolvebotlogin" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>resolveBotLogin</strong>(<code>__namedParameters</code>): <code>Promise</code>&lt;<code>any</code>&gt;</p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L49" rel="noopener">tools/github-comment-bridge/src/poller.mjs:49</a></p>
+<p>Resolves and caches (in stateStore-backed state) the login the token
+belongs to, so the bridge can filter out its own comments.</p>
+<h4 id="parameters-5">Parameters<a class="anchor" href="#parameters-5" aria-label="Link to this section">#</a></h4>
+<h5>__namedParameters</h5>
+<h6>github</h6>
+<p><code>any</code></p>
+<h6>log</h6>
+<p><code>any</code></p>
+<h6>state</h6>
+<p><code>any</code></p>
+<h4 id="returns-5">Returns<a class="anchor" href="#returns-5" aria-label="Link to this section">#</a></h4>
+<p><code>Promise</code>&lt;<code>any</code>&gt;</p>
+<hr>
+<h3 id="summarizerun">summarizeRun()<a class="anchor" href="#summarizerun" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>summarizeRun</strong>(<code>runResult</code>): <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/github-comment-bridge/src/poller.mjs#L19" rel="noopener">tools/github-comment-bridge/src/poller.mjs:19</a></p>
+<p>Turns a claudeRunner result into the comment posted back on the issue.</p>
+<h4 id="parameters-6">Parameters<a class="anchor" href="#parameters-6" aria-label="Link to this section">#</a></h4>
+<h5>runResult</h5>
+<p><code>any</code></p>
+<h4 id="returns-6">Returns<a class="anchor" href="#returns-6" aria-label="Link to this section">#</a></h4>
+<p><code>string</code></p>
+</div>
+</article>
+
+</main>
+
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:20.733Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/tools/github-comment-bridge/src/poller.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>src/engine/processEngine · Developer Docs</title>
+<meta name="description" content="#287 — the driver: control semantics for a running process.">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="src/engine/processEngine · Developer Docs">
+<meta property="og:description" content="#287 — the driver: control semantics for a running process.">
+<meta property="og:url" content="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processEngine/">
+<link rel="canonical" href="https://thenewurbankid-web.github.io/cockpit/developers/api/engine/src/engine/processEngine/">
+
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../../../../../assets/css/site.css">
+<link rel="stylesheet" href="../../../../../../assets/css/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../../../../../"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <nav class="primary" aria-label="Primary"><a href="../../../../../../">Home</a><a href="../../../../../../user-guide/">Guide</a><a href="../../../../../../developers/" aria-current="page">For developers</a></nav>
+    <div class="topbar-tools">
+      
+      <a class="search-link" href="../../../../../../search/">Search</a>
+      <a class="ext" href="https://github.com/thenewurbankid-web/cockpit">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="shell has-sidebar has-toc">
+<aside class="sidebar" aria-label="Developer Docs navigation"><details class="side-menu" open><summary>Developer Docs menu</summary><nav><ul><li><a href="../../../../../../developers/">Overview</a></li></ul><p class="side-h">Overview</p><ul><li><a href="../../../../../../developers/architecture/">Architecture</a></li><li><a href="../../../../../../developers/repository-layout/">Repository layout</a></li><li><a href="../../../../../../developers/execution-model/">Execution model</a></li></ul><p class="side-h">Internals</p><ul><li><a href="../../../../../../developers/context-envelope/">Context Envelope and pipeline</a></li><li><a href="../../../../../../developers/ast/">The AST package</a></li><li><a href="../../../../../../developers/workflows/">Workflow narrator</a></li><li><a href="../../../../../../developers/building-blocks/">Building blocks</a></li></ul><p class="side-h">Reference</p><ul><li><a href="../../../../../../developers/cli-reference/">CLI reference</a></li><li><a href="../../../../../../developers/rules-reference/">Rule reference</a></li></ul><p class="side-h">Contribute</p><ul><li><a href="../../../../../../developers/extending/">Extending Construct</a></li><li><a href="../../../../../../developers/testing/">Testing</a></li><li><a href="../../../../../../developers/contributing/">Contributing</a></li></ul><p class="side-h">API reference</p><ul><li><a href="../../../../../../developers/api/">All packages</a></li><li><a href="../../../../../../developers/api/core/">Core engine</a></li><li><a href="../../../../../../developers/api/engine/">Engine</a></li><li><a href="../../../../../../developers/api/ast/">AST</a></li><li><a href="../../../../../../developers/api/cockpit-server/">Cockpit server</a></li><li><a href="../../../../../../developers/api/cockpit-client-shared/">Cockpit client (shared)</a></li><li><a href="../../../../../../developers/api/cockpit-client-features/">Cockpit client (features)</a></li><li><a href="../../../../../../developers/api/tools/">Tools</a></li><li><a href="../../../../../../developers/api/docs-site/">Docs site</a></li></ul></nav></details></aside>
+<main id="main" tabindex="-1">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../../../../../../">Home</a> <span aria-hidden="true">/</span> <a href="../../../../../../developers/">Developer Docs</a> <span aria-hidden="true">/</span> <span>src/engine/processEngine</span></nav>
+<article data-pagefind-body data-pagefind-filter="area:Developer Docs">
+<h1>src/engine/processEngine</h1><div class="prose"><p>#287 — the driver: control semantics for a running process.</p>
+<p><em>Engine, next. Source: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processEngine.mjs" rel="noopener"><code>src/engine/processEngine.mjs</code></a>.</em></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="stepaborted">StepAborted<a class="anchor" href="#stepaborted" aria-label="Link to this section">#</a></h3>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L59" rel="noopener">src/engine/processEngine.mjs:59</a></p>
+<p>Thrown by the engine when a step is abandoned because cancel was asked
+for. Not a failure: nothing was written, and the step goes back to
+<code>pending</code>.</p>
+<h4 id="extends">Extends<a class="anchor" href="#extends" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><code>Error</code></li>
+</ul>
+<h4 id="constructors">Constructors<a class="anchor" href="#constructors" aria-label="Link to this section">#</a></h4>
+<h5>Constructor</h5>
+<blockquote>
+<p><strong>new StepAborted</strong>(<code>stepId</code>): <a href="#stepaborted"><code>StepAborted</code></a></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L60" rel="noopener">src/engine/processEngine.mjs:60</a></p>
+<h6>Parameters</h6>
+<h6>stepId</h6>
+<p><code>any</code></p>
+<h6>Returns</h6>
+<p><a href="#stepaborted"><code>StepAborted</code></a></p>
+<h6>Overrides</h6>
+<p><code>Error.constructor</code></p>
+<h4 id="properties">Properties<a class="anchor" href="#properties" aria-label="Link to this section">#</a></h4>
+<h5>name</h5>
+<blockquote>
+<p><strong>name</strong>: <code>string</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L62" rel="noopener">src/engine/processEngine.mjs:62</a></p>
+<h6>Inherited from</h6>
+<p><code>Error.name</code></p>
+<h5>stepId</h5>
+<blockquote>
+<p><strong>stepId</strong>: <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L63" rel="noopener">src/engine/processEngine.mjs:63</a></p>
+<h2 id="type-aliases">Type Aliases<a class="anchor" href="#type-aliases" aria-label="Link to this section">#</a></h2>
+<h3 id="validatefn">ValidateFn<a class="anchor" href="#validatefn" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>ValidateFn</strong> = (<code>shadowRoot</code>) =&gt; <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L113" rel="noopener">src/engine/processEngine.mjs:113</a></p>
+<h4 id="type-parameters">Type Parameters<a class="anchor" href="#type-parameters" aria-label="Link to this section">#</a></h4>
+<h4 id="parameters">Parameters<a class="anchor" href="#parameters" aria-label="Link to this section">#</a></h4>
+<h5>shadowRoot</h5>
+<p><code>string</code></p>
+<h4 id="returns">Returns<a class="anchor" href="#returns" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>ok</h5>
+<blockquote>
+<p><strong>ok</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>violations</h5>
+<blockquote>
+<p><strong>violations</strong>: <code>any</code>[]</p>
+</blockquote>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="createprocessengine">createProcessEngine()<a class="anchor" href="#createprocessengine" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>createProcessEngine</strong>(<code>options?</code>): <code>any</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L126" rel="noopener">src/engine/processEngine.mjs:126</a></p>
+<p>Create an engine over one process store.</p>
+<h4 id="parameters-2">Parameters<a class="anchor" href="#parameters-2" aria-label="Link to this section">#</a></h4>
+<h5>options?</h5>
+<h6>executeStep?</h6>
+<p>(<code>context</code>) =&gt; <code>Promise</code>&lt;<code>any</code>&gt;</p>
+<p><code>async ({ process, step, status, command, transaction, projectRoot, log, signal }) =&gt; { ok, llm, artifacts?, error? }</code>
+                                        — #291 supplies this. <code>llm</code> is required in the result:
+                                        <code>null</code> for &quot;no model was involved&quot;, <code>{ provider, calls }</code> otherwise.</p>
+<h6>maxConcurrent?</h6>
+<p><code>number</code> = <code>1</code></p>
+<p>processes running at once. Default 1.</p>
+<h6>now?</h6>
+<p>() =&gt; <code>string</code> = <code>defaultNow</code></p>
+<p>clock, injected for deterministic tests.</p>
+<h6>onChange?</h6>
+<p>(<code>record</code>) =&gt; <code>void</code> = <code>null</code></p>
+<p>called with every persisted process record — the seam #292&#39;s
+                                        WebSocket streams from, so the engine needs no socket of its own.</p>
+<h6>store?</h6>
+<p><code>any</code></p>
+<p>an <code>openProcessStore()</code> result; every state change is persisted</p>
+<h6>validate?</h6>
+<p><a href="#validatefn"><code>ValidateFn</code></a></p>
+<p>passed to <code>transaction.commit()</code>; defaults to the writer&#39;s own
+                                        <code>validateArchitecture</code>.</p>
+<h4 id="returns-2">Returns<a class="anchor" href="#returns-2" aria-label="Link to this section">#</a></h4>
+<p><code>any</code></p>
+<p>The engine: <code>start</code>, <code>pause</code>, <code>resume</code>, <code>cancel</code> and <code>retry</code> by process id, <code>settled(id)</code>, <code>runningIds()</code>, plus <code>store</code> and <code>maxConcurrent</code>.</p>
+<h4 id="throws">Throws<a class="anchor" href="#throws" aria-label="Link to this section">#</a></h4>
+<p>When <code>store</code> or <code>executeStep</code> is missing.</p>
+<hr>
+<h3 id="materializecommand">materializeCommand()<a class="anchor" href="#materializecommand" aria-label="Link to this section">#</a></h3>
+<blockquote>
+<p><strong>materializeCommand</strong>(<code>step</code>, <code>options?</code>): <code>object</code></p>
+</blockquote>
+<p>Defined in: <a href="https://github.com/thenewurbankid-web/cockpit/blob/main/processEngine.mjs#L82" rel="noopener">src/engine/processEngine.mjs:82</a></p>
+<p><code>planToCommand()</code> for a step, with the <code>files</code> placeholders already
+materialised into real temp files — the concrete example the mantra asks
+each layer to hand the next, so #291&#39;s executor spawns a command rather
+than re-deriving how each of the 23 flows is invoked.</p>
+<p>Returns <code>{ argv, stdin, manual, cleanup() }</code>. Call <code>cleanup()</code> when the
+step is over; it removes whatever temp files were written.</p>
+<h4 id="parameters-3">Parameters<a class="anchor" href="#parameters-3" aria-label="Link to this section">#</a></h4>
+<h5>step</h5>
+<p><code>any</code></p>
+<p>a plan step</p>
+<h5>options?</h5>
+<h6>tmpDir?</h6>
+<p><code>string</code></p>
+<p>write the materialised files here instead of a fresh temp dir</p>
+<h4 id="returns-3">Returns<a class="anchor" href="#returns-3" aria-label="Link to this section">#</a></h4>
+<p><code>object</code></p>
+<h5>argv</h5>
+<blockquote>
+<p><strong>argv</strong>: <code>string</code>[]</p>
+</blockquote>
+<h5>cleanup</h5>
+<blockquote>
+<p><strong>cleanup</strong>: () =&gt; <code>void</code></p>
+</blockquote>
+<h6>Returns</h6>
+<p><code>void</code></p>
+<h5>files</h5>
+<blockquote>
+<p><strong>files</strong>: <code>any</code>[]</p>
+</blockquote>
+<h5>manual</h5>
+<blockquote>
+<p><strong>manual</strong>: <code>boolean</code></p>
+</blockquote>
+<h5>stdin</h5>
+<blockquote>
+<p><strong>stdin</strong>: <code>string</code></p>
+</blockquote>
+</div>
+</article>
+
+</main>
+<aside class="page-toc" aria-label="On this page"><p class="side-h">On this page</p><ul><li><a href="#classes">Classes</a></li><li><a href="#type-aliases">Type Aliases</a></li><li><a href="#functions">Functions</a></li></ul></aside>
+</div>
+<footer class="footer"><div class="footer-inner">
+<span>Construct is open source (MIT). Documentation built <time datetime="2026-09-22T14:38:37.467Z">2026-09-22 UTC</time>.</span>
+<span><a href="https://github.com/thenewurbankid-web/cockpit/blob/main/src/engine/processEngine.mjs">View source</a> · <a href="https://github.com/thenewurbankid-web/cockpit">GitHub</a></span>
+</div></footer>
+<script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
+</body>
+</html>
