@@ -1,0 +1,41 @@
+{
+  "name": "construct-cockpit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Construct's Cockpit UI (ui/client, ui/server) as its own standalone repo -- consumes thenewurbankid-web/construct's core/CLI as a cross-repo dependency, fetched at build time by scripts/vendor-construct.sh (see README.md).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "ui/client",
+    "ui/server"
+  ],
+  "scripts": {
+    "vendor": "bash scripts/vendor-construct.sh",
+    "dev:server": "npm run dev --workspace=ui/server",
+    "dev:client": "npm run dev --workspace=ui/client",
+    "build:server": "npm run build --workspace=ui/server",
+    "build:client": "npm run build --workspace=ui/client",
+    "test:server": "npm test --workspace=ui/server",
+    "test:client": "npm test --workspace=ui/client"
+  },
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.97.3",
+    "@typescript-eslint/typescript-estree": "^8.70.0",
+    "axios": "^1.20.0",
+    "diff": "^9.0.0",
+    "estree-walker": "^3.0.3",
+    "ipaddr.js": "2.5.0",
+    "js-yaml": "^4.3.2",
+    "minimatch": "^10.0.1",
+    "react-docgen": "^8.0.4",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "eslint-plugin-boundaries": "^7.2.0"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
+  }
+}

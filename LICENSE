@@ -1,0 +1,15 @@
+Copyright (c) 2026 thenewurbankid-web. All rights reserved.
+
+This repository (Construct's Cockpit UI, comprising `ui/client` and
+`ui/server`) is proprietary software. No license to use, copy, modify,
+merge, publish, distribute, sublicense, or sell copies of this code is
+granted except as expressly agreed in writing with thenewurbankid-web.
+
+This repository does not itself contain a copy of Construct's core
+CLI/engine. `packages/core`, `packages/ast`, `packages/engine` and
+`packages/cli` are fetched at build time (see `scripts/vendor-construct.sh`
+and README.md) from `thenewurbankid-web/construct`, are git-ignored here,
+and are never committed to this repository's history. Those packages are
+distributed under the MIT License as part of the `construct` repository
+independently of this repository's own license -- see that repository's
+own LICENSE for their terms.

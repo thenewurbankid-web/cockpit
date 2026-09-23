@@ -1,0 +1,460 @@
+// #330 -- the clone job runtime: what git is handed, the SSRF and destination checks, caps, cancel cleanup, and one
+// REAL clone of a local bare repository (test-harness file:// path only).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import { spawn as realSpawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { cloneArgs, cloneEnv, createCloneJobs, dirBytes, killLiveCloneGroups, liveCloneChildren, markerPath } from './cloneJobs.mjs';
+
+const PUBLIC = async () => [{ address: '140.82.112.3' }];
+
+function sandbox() {
+  const dir = fs.realpathSync(makeTempDir('clone-'));
+  const ws = path.join(dir, 'ws');
+  fs.mkdirSync(ws);
+  return { dir, ws };
+}
+
+/** A fake `git` process: the test decides when and how it ends. */
+function fakeSpawn(onStart) {
+  const calls = [];
+  const spawn = (cmd, args, opts) => {
+    const child = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.killed = [];
+    child.kill = (sig) => { child.killed.push(sig); setImmediate(() => child.emit('close', null)); return true; };
+    child.finish = (code) => child.emit('close', code);
+    calls.push({ cmd, args, opts, child });
+    onStart?.(child, args);
+    return child;
+  };
+  return { spawn, calls };
+}
+
+const dest = (args) => args[args.length - 1];
+
+test('git is handed a locked-down argv and a scrubbed environment (never a shell)', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/octocat/Hello-World', depth: 1 });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const { cmd, args, opts } = f.calls[0];
+  assert.equal(cmd, 'git');
+  const joined = args.join(' ');
+  for (const must of ['protocol.allow=never', 'protocol.https.allow=always', 'credential.helper=', 'core.hooksPath=/dev/null', 'http.followRedirects=false', 'http.curloptResolve=github.com:443:140.82.112.3', '--no-recurse-submodules', '--depth 1']) assert.ok(joined.includes(must), `missing ${must}: ${joined}`);
+  assert.equal(args[args.length - 3], '--', 'the URL and destination come after --');
+  assert.equal(args[args.length - 2], 'https://github.com/octocat/Hello-World.git');
+  assert.equal(dest(args), path.join(ws, 'Hello-World'));
+  assert.ok(!args.some((a) => /upload-pack|protocol\.file|protocol\.ext|protocol\.ssh|--recurse/.test(a)));
+  assert.equal(opts.env.GIT_TERMINAL_PROMPT, '0');
+  assert.equal(opts.env.GIT_ALLOW_PROTOCOL, 'https');
+  assert.equal(opts.env.GIT_CONFIG_GLOBAL, '/dev/null');
+  assert.equal(opts.env.GIT_CONFIG_NOSYSTEM, '1');
+  assert.equal(opts.shell, undefined);
+  assert.deepEqual(Object.keys(opts.env).filter((k) => /proxy|token|ssh|askpass/i.test(k)), ['GIT_ASKPASS']);
+  assert.equal(opts.env.GIT_ASKPASS, '/bin/false');
+  assert.equal(opts.cwd, ws);
+  f.calls[0].child.finish(0);
+  await r.done;
+});
+
+test('cloneArgs allows the file protocol only for a harness-approved local source', () => {
+  const local = { kind: 'file', url: 'file:///x/r.git' };
+  assert.ok(!cloneArgs({ parsed: local, dest: '/w/r' }).includes('protocol.file.allow=always'));
+  assert.ok(cloneArgs({ parsed: local, dest: '/w/r', allowLocal: true }).includes('protocol.file.allow=always'));
+  assert.ok(!cloneArgs({ parsed: { kind: 'https', url: 'https://github.com/o/r.git' }, dest: '/w/r', allowLocal: true }).includes('protocol.file.allow=always'));
+  assert.equal(cloneEnv({ allowLocal: true }).GIT_ALLOW_PROTOCOL, 'https:file');
+  assert.equal(cloneEnv({ base: { PATH: '/bin', HTTPS_PROXY: 'http://evil', GITHUB_TOKEN: 't', SSH_AUTH_SOCK: '/s' } }).HTTPS_PROXY, undefined);
+});
+
+test('SSRF: a host that resolves to any non-public address is refused, and git is never started', async () => {
+  const { ws } = sandbox();
+  for (const answer of [['127.0.0.1'], ['10.0.0.8'], ['169.254.169.254'], ['192.168.0.1'], ['::1'], ['140.82.112.3', '127.0.0.1'], []]) {
+    const f = fakeSpawn();
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: async () => answer.map((address) => ({ address })), spawn: f.spawn });
+    const r = await jobs.start({ url: 'https://github.com/o/r' });
+    assert.equal(r.ok, false, answer.join(','));
+    assert.equal(r.status, 403);
+    assert.equal(f.calls.length, 0);
+  }
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: async () => { throw new Error('ENOTFOUND'); }, spawn: fakeSpawn().spawn });
+  assert.equal((await jobs.start({ url: 'https://github.com/o/r' })).code, 'HOST_UNRESOLVED');
+});
+
+test('hostile input never reaches git', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  for (const url of ['https://user:pw@github.com/o/r', '--upload-pack=touch /tmp/pwned', 'ext::sh -c id', 'file:///etc/passwd', 'ssh://git@github.com/o/r', 'https://evil.com/o/r', 'https://github.com/o/..']) {
+    assert.equal((await jobs.start({ url })).ok, false, url);
+  }
+  for (const name of ['..', '../escape', 'a/b', '/abs', '.hidden', 'x.', '', ' ', '--upload-pack=x', 'ü', 'a\0b']) {
+    if (name === '') continue; // empty means "derive from the URL"
+    assert.equal((await jobs.start({ url: 'https://github.com/o/r', name })).ok, false, JSON.stringify(name));
+  }
+  assert.equal((await jobs.start({ url: 'https://github.com/o/r', depth: 0 })).code, 'BAD_DEPTH');
+  assert.equal((await jobs.start({ url: 'https://github.com/o/r', depth: '5; rm -rf /' })).code, 'BAD_DEPTH');
+  assert.equal(f.calls.length, 0);
+  assert.deepEqual(fs.readdirSync(ws), []);
+});
+
+test('destination: an existing folder, file, or symlink at the name is refused; nothing is changed', async () => {
+  const { dir, ws } = sandbox();
+  const outside = path.join(dir, 'outside');
+  fs.mkdirSync(outside);
+  fs.mkdirSync(path.join(ws, 'taken'));
+  fs.writeFileSync(path.join(ws, 'taken', 'keep.txt'), 'mine');
+  fs.writeFileSync(path.join(ws, 'afile'), 'x');
+  fs.symlinkSync(outside, path.join(ws, 'link'));
+  fs.symlinkSync(path.join(dir, 'nowhere'), path.join(ws, 'dangling'));
+  const f = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  for (const name of ['taken', 'afile', 'link', 'dangling']) {
+    const r = await jobs.start({ url: 'https://github.com/o/r', name });
+    assert.equal(r.ok, false, name);
+    assert.ok([403, 409].includes(r.status), `${name}: ${r.status}`);
+  }
+  assert.equal(fs.readFileSync(path.join(ws, 'taken', 'keep.txt'), 'utf8'), 'mine');
+  assert.deepEqual(fs.readdirSync(outside), []);
+  assert.equal(f.calls.length, 0);
+});
+
+test('only one clone at a time; a second is refused until the first ends', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const a = await jobs.start({ url: 'https://github.com/o/one' });
+  assert.equal(a.ok, true);
+  const b = await jobs.start({ url: 'https://github.com/o/two' });
+  assert.equal(b.code, 'BUSY');
+  f.calls[0].child.finish(0);
+  await a.done;
+  const c = await jobs.start({ url: 'https://github.com/o/two' });
+  assert.equal(c.ok, true);
+  f.calls[1].child.finish(0);
+  await c.done;
+});
+
+test('cancel stops the process group and removes the partial directory', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn((child, args) => {
+    fs.mkdirSync(dest(args));
+    fs.writeFileSync(path.join(dest(args), 'partial.pack'), 'x'.repeat(100));
+  });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.ok(fs.existsSync(path.join(ws, 'r')));
+  const c = jobs.cancel(r.job.id);
+  assert.equal(c.status, 200);
+  assert.equal(c.body.job.state, 'cancelling');
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'cancelled');
+  assert.equal(fs.existsSync(path.join(ws, 'r')), false, 'the partial copy is gone');
+  assert.equal(jobs.cancel(r.job.id).status, 409);
+  assert.equal(jobs.cancel('nope').status, 404);
+  assert.equal(jobs.live(), 0);
+});
+
+test('a failed clone (git exits non-zero) is reported and its partial directory removed', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/o/private' });
+  f.calls[0].child.stderr.emit('data', Buffer.from("fatal: could not read Username for 'https://github.com'\n"));
+  f.calls[0].child.finish(128);
+  await r.done;
+  const j = jobs.get(r.job.id);
+  assert.equal(j.state, 'failed');
+  assert.match(j.error, /^Private or misspelled/);
+  assert.equal(j.code, 'AUTH');
+  assert.equal(fs.existsSync(path.join(ws, 'private')), false);
+});
+
+test('the size cap kills the clone and removes what it wrote', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn((child, args) => {
+    fs.mkdirSync(dest(args));
+    fs.writeFileSync(path.join(dest(args), 'huge.pack'), Buffer.alloc(4096));
+  });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn, maxBytes: 1024, sizePollMs: 20 });
+  const r = await jobs.start({ url: 'https://github.com/o/big' });
+  await r.done;
+  const j = jobs.get(r.job.id);
+  assert.equal(j.state, 'failed');
+  assert.match(j.error, /larger than the/);
+  assert.equal(fs.existsSync(path.join(ws, 'big')), false);
+});
+
+test('the time cap kills the clone and removes what it wrote', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn, timeoutMs: 30, sizePollMs: 1000 });
+  const r = await jobs.start({ url: 'https://github.com/o/slow' });
+  await r.done;
+  const j = jobs.get(r.job.id);
+  assert.equal(j.state, 'failed');
+  assert.match(j.error, /took longer than/);
+  assert.equal(fs.existsSync(path.join(ws, 'slow')), false);
+});
+
+test('progress lines from git are kept short and printable, and shown as the job progress', async () => {
+  const { ws } = sandbox();
+  const f = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  f.calls[0].child.stderr.emit('data', Buffer.from('Receiving objects:  10% (1/10)\rReceiving objects:  50% (5/10)\r\u001b[31mevil\u0007\n'));
+  const j = jobs.get(r.job.id);
+  assert.equal(j.progress, '[31mevil');
+  assert.equal(j.log.filter((l) => l.startsWith('Receiving')).length, 1, 'percent noise is collapsed');
+  f.calls[0].child.finish(0);
+  await r.done;
+});
+
+test('a REAL clone of a local bare repository (harness-only file:// path) leaves a normal git repo with origin set', async () => {
+  const { dir, ws } = sandbox();
+  const fixtures = path.join(dir, 'fixtures');
+  fs.mkdirSync(fixtures);
+  const seed = path.join(dir, 'seed');
+  const g = (cwd, ...a) => { const r = spawnSync('git', a, { cwd, encoding: 'utf8', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+  fs.mkdirSync(seed);
+  g(seed, 'init', '-q', '-b', 'main');
+  fs.writeFileSync(path.join(seed, 'README.md'), '# hello\n');
+  // a hook that would run on clone/checkout if hooks were honoured
+  g(seed, 'add', '.');
+  g(seed, 'commit', '-q', '-m', 'init');
+  g(dir, 'clone', '-q', '--bare', seed, path.join(fixtures, 'demo.git'));
+  const jobs = createCloneJobs({ getRoot: () => ws, localRoot: fixtures });
+  const r = await jobs.start({ url: `file://${path.join(fixtures, 'demo.git')}` });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  await r.done;
+  const j = jobs.get(r.job.id);
+  assert.equal(j.state, 'done', JSON.stringify(j));
+  assert.equal(j.dir, path.join(ws, 'demo'));
+  assert.equal(fs.readFileSync(path.join(ws, 'demo', 'README.md'), 'utf8'), '# hello\n');
+  assert.equal(g(path.join(ws, 'demo'), 'remote', 'get-url', 'origin'), `file://${path.join(fixtures, 'demo.git')}`);
+  assert.equal((await jobs.start({ url: `file://${path.join(fixtures, 'demo.git')}` })).code, 'EXISTS');
+  // outside the fixtures directory is refused even in harness mode
+  assert.equal((await jobs.start({ url: `file://${seed}` })).ok, false);
+});
+
+test('dirBytes counts files and never follows a symlink', () => {
+  const { dir } = sandbox();
+  const d = path.join(dir, 'd');
+  fs.mkdirSync(d);
+  fs.writeFileSync(path.join(d, 'a'), Buffer.alloc(1000));
+  fs.symlinkSync(dir, path.join(d, 'loop'));
+  assert.ok(dirBytes(d) >= 1000 && dirBytes(d) < 100000);
+  assert.ok(dirBytes(d, 10) > 10, 'stops early once past the limit');
+});
+
+test('cancel really kills the whole process group of a real, hung child (grandchildren included)', async () => {
+  const { dir, ws } = sandbox();
+  const pidFile = path.join(dir, 'grandchild.pid');
+  // Stands in for `git`: makes the destination, starts a grandchild (like git-remote-https), then hangs.
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && echo partial > "$1/x" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
+  const r = await jobs.start({ url: 'https://github.com/o/hung' });
+  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
+  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  assert.ok(grandchild > 1);
+  assert.equal(jobs.cancel(r.job.id).status, 200);
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'cancelled');
+  assert.equal(fs.existsSync(path.join(ws, 'hung')), false, 'partial directory removed');
+  let alive = true;
+  for (let i = 0; i < 50 && alive; i += 1) {
+    try { process.kill(grandchild, 0); await new Promise((res) => setTimeout(res, 50)); } catch { alive = false; }
+  }
+  assert.equal(alive, false, 'the grandchild process was killed with the group');
+});
+
+// ---- #423: clone refuses a git that would silently ignore the DNS pin (http.curloptResolve needs git >= 2.37.0).
+
+test('git older than 2.37.0: GIT_TOO_OLD (503), git is never started; missing git: GIT_MISSING', async () => {
+  const { ws } = sandbox();
+  const old = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: old.spawn, gitCheck: () => ({ ok: true, major: 2, minor: 36, patch: 6, version: '2.36.6' }) });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 503);
+  assert.equal(r.code, 'GIT_TOO_OLD');
+  assert.match(r.error, /git 2\.36\.6 is installed, but cloning needs 2\.37\.0 or newer/);
+  assert.match(r.error, /http\.curloptResolve/);
+  assert.equal(old.calls.length, 0);
+  assert.deepEqual(fs.readdirSync(ws), [], 'no marker, no directory');
+  assert.deepEqual(jobs.gitStatus(), { ok: true, version: '2.36.6', minimum: '2.37.0', cloneEnabled: false, code: 'GIT_TOO_OLD', reason: jobs.gitStatus().reason });
+
+  const none = fakeSpawn();
+  const noGit = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: none.spawn, gitCheck: () => ({ ok: false, error: 'git could not be started (ENOENT). Is git installed and on PATH?' }) });
+  const m = await noGit.start({ url: 'https://github.com/o/r' });
+  assert.equal(m.status, 503);
+  assert.equal(m.code, 'GIT_MISSING');
+  assert.match(m.error, /Cloning is unavailable: git could not be started \(ENOENT\)/);
+  assert.equal(none.calls.length, 0);
+  assert.equal(noGit.gitStatus().cloneEnabled, false);
+
+  // Input errors still come first: a bad URL is 400, not 503, whatever the git.
+  assert.equal((await noGit.start({ url: 'ssh://git@github.com/o/r' })).status, 400);
+  // The machine's real git (>= 2.37.0 here) enables clone.
+  assert.equal(createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn }).gitStatus().cloneEnabled, true);
+});
+
+// ---- #422: a clone never outlives the server; a crashed server's partial clone is recovered.
+
+/** A pid that certainly refers to no live process: a child that has already exited. */
+function deadPid() {
+  const r = spawnSync('true');
+  assert.ok(r.pid > 1);
+  return r.pid;
+}
+
+const waitGone = async (pid) => {
+  for (let i = 0; i < 100; i += 1) {
+    try { process.kill(pid, 0); await new Promise((res) => setTimeout(res, 20)); } catch { return true; }
+  }
+  return false;
+};
+
+test('a marker beside the destination exists while git runs and is removed on every outcome', async () => {
+  const { ws } = sandbox();
+  for (const end of ['done', 'failed', 'cancelled']) {
+    const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); child.pid = 4242; });
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+    const r = await jobs.start({ url: `https://github.com/o/${end}` });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const marker = markerPath(ws, end);
+    assert.equal(path.dirname(marker), ws, 'the marker sits directly in the workspace root');
+    assert.ok(path.basename(marker).startsWith('.'), 'hidden, and never a valid slug');
+    const m = JSON.parse(fs.readFileSync(marker, 'utf8'));
+    assert.equal(m.slug, end);
+    assert.equal(m.dest, path.join(ws, end));
+    assert.equal(m.serverPid, process.pid);
+    assert.equal(m.gitPid, 4242);
+    assert.match(m.startedAt, /^\d{4}-/);
+    if (end === 'done') f.calls[0].child.finish(0);
+    else if (end === 'failed') f.calls[0].child.finish(1);
+    else jobs.cancel(r.job.id);
+    await r.done;
+    assert.equal(jobs.get(r.job.id).state, end);
+    assert.equal(fs.existsSync(marker), false, `marker removed after ${end}`);
+  }
+  assert.deepEqual(fs.readdirSync(ws).filter((n) => n.startsWith('.construct-clone-')), []);
+});
+
+test('the exit handler SIGKILLs the whole process group of every live clone (the hosted `kill 0` cannot reach a detached group)', async () => {
+  const { dir, ws } = sandbox();
+  const pidFile = path.join(dir, 'grandchild.pid');
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
+  const r = await jobs.start({ url: 'https://github.com/o/orphan' });
+  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
+  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  assert.ok(liveCloneChildren() >= 1);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) assert.ok(process.listenerCount(sig) >= 1, `${sig} handler installed`);
+  assert.ok(process.listeners('exit').includes(killLiveCloneGroups), 'exit handler installed');
+
+  killLiveCloneGroups(); // what `exit`/SIGTERM run
+  await r.done;
+  assert.equal(liveCloneChildren(), 0);
+  assert.equal(jobs.get(r.job.id).state, 'failed');
+  assert.equal(await waitGone(grandchild), true, 'the grandchild died with the group');
+  assert.equal(fs.existsSync(path.join(ws, 'orphan')), false, 'partial directory removed');
+  assert.equal(fs.existsSync(markerPath(ws, 'orphan')), false);
+});
+
+test('startup sweep: removes a dead-owner partial that carries our marker; keeps a live one, an unmarked one, and never follows a symlink', () => {
+  const { dir, ws } = sandbox();
+  const dead = deadPid();
+  const write = (slug, marker) => fs.writeFileSync(markerPath(ws, slug), JSON.stringify(marker));
+  const partial = (slug) => { fs.mkdirSync(path.join(ws, slug)); fs.writeFileSync(path.join(ws, slug, 'partial.pack'), 'x'); };
+
+  partial('stale'); write('stale', { slug: 'stale', dest: path.join(ws, 'stale'), serverPid: dead, gitPid: null, startedAt: 'x' });
+  partial('live'); write('live', { slug: 'live', dest: path.join(ws, 'live'), serverPid: process.pid, gitPid: null, startedAt: 'x' });
+  partial('unmarked');
+  write('vanished', { slug: 'vanished', dest: path.join(ws, 'vanished'), serverPid: dead, gitPid: null, startedAt: 'x' }); // marker, no dir
+  const outside = path.join(dir, 'outside'); fs.mkdirSync(outside); fs.writeFileSync(path.join(outside, 'keep.txt'), 'x');
+  fs.symlinkSync(outside, path.join(ws, 'linked')); write('linked', { slug: 'linked', serverPid: dead, gitPid: null, startedAt: 'x' });
+  write('evil', { slug: '../outside', serverPid: dead }); // hostile slug in a marker
+  fs.writeFileSync(path.join(ws, '.construct-clone-mismatch.json'), JSON.stringify({ slug: 'unmarked', serverPid: dead })); // names another slug
+  fs.writeFileSync(path.join(ws, '.construct-clone-garbage.json'), '{not json');
+
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+  const out = jobs.recoverInterrupted();
+  assert.deepEqual(out.removed, ['stale']);
+  assert.deepEqual(out.killed, []);
+  assert.deepEqual(out.kept, [{ slug: 'live', why: 'this server is cloning it now' }], 'our own pid: a marker of this very server');
+  // `linked` is a bad marker too: contain() resolves the symlink out of the workspace, so nothing but the marker goes.
+  assert.deepEqual(out.badMarkers.sort(), ['.construct-clone-evil.json', '.construct-clone-garbage.json', '.construct-clone-linked.json', '.construct-clone-mismatch.json']);
+  assert.equal(fs.existsSync(path.join(ws, 'stale')), false, 'dead-owner partial removed');
+  assert.ok(fs.existsSync(path.join(ws, 'live', 'partial.pack')), 'live owner: untouched');
+  assert.ok(fs.existsSync(markerPath(ws, 'live')), 'live marker kept');
+  assert.ok(fs.existsSync(path.join(ws, 'unmarked', 'partial.pack')), 'no marker: never removed, even though a bad marker named it');
+  assert.ok(fs.lstatSync(path.join(ws, 'linked')).isSymbolicLink(), 'symlink left in place');
+  assert.ok(fs.existsSync(path.join(outside, 'keep.txt')), 'and never followed');
+  for (const slug of ['stale', 'vanished', 'linked']) assert.equal(fs.existsSync(markerPath(ws, slug)), false, `marker ${slug} removed`);
+  assert.deepEqual(fs.readdirSync(ws).filter((n) => n.startsWith('.construct-clone-')), ['.construct-clone-live.json']);
+  assert.deepEqual(jobs.recoverInterrupted().removed, [], 'idempotent');
+});
+
+test('startup sweep stops an orphaned git that is still working on the destination (Linux /proc)', async () => {
+  if (!fs.existsSync('/proc/self/cmdline')) return;
+  const { ws } = sandbox();
+  const target = path.join(ws, 'busy');
+  fs.mkdirSync(target);
+  // Stands in for an orphaned `git clone ... <dest>`: argv[0] is git and the destination is in its argv.
+  const orphan = realSpawn('sh', ['-c', 'sleep 60', 'git', target], { argv0: 'git', detached: true, stdio: 'ignore' });
+  orphan.unref();
+  await new Promise((res) => setTimeout(res, 50));
+  fs.writeFileSync(markerPath(ws, 'busy'), JSON.stringify({ slug: 'busy', dest: target, serverPid: deadPid(), gitPid: orphan.pid, startedAt: 'x' }));
+  try {
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+    const out = jobs.recoverInterrupted();
+    assert.deepEqual(out.killed, ['busy']);
+    assert.deepEqual(out.removed, ['busy']);
+    assert.equal(await waitGone(orphan.pid), true, 'the orphaned git was stopped');
+    assert.equal(fs.existsSync(target), false);
+  } finally {
+    try { process.kill(-orphan.pid, 'SIGKILL'); } catch { /* already gone */ }
+  }
+});
+
+test('an unrelated process named in a marker is never killed', async () => {
+  const { ws } = sandbox();
+  const bystander = realSpawn('sleep', ['60'], { stdio: 'ignore' });
+  try {
+    fs.mkdirSync(path.join(ws, 'r'));
+    fs.writeFileSync(markerPath(ws, 'r'), JSON.stringify({ slug: 'r', dest: path.join(ws, 'r'), serverPid: deadPid(), gitPid: bystander.pid, startedAt: 'x' }));
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+    const out = jobs.recoverInterrupted();
+    assert.deepEqual(out.killed, []);
+    assert.deepEqual(out.removed, ['r']);
+    process.kill(bystander.pid, 0); // still alive
+  } finally {
+    bystander.kill('SIGKILL');
+  }
+});
+
+test('a retry after a crash succeeds: the stale partial is recovered by start() itself', async () => {
+  const { ws } = sandbox();
+  fs.mkdirSync(path.join(ws, 'r'));
+  fs.writeFileSync(path.join(ws, 'r', 'old-partial.pack'), 'x');
+  fs.writeFileSync(markerPath(ws, 'r'), JSON.stringify({ slug: 'r', dest: path.join(ws, 'r'), serverPid: deadPid(), gitPid: null, startedAt: 'x' }));
+  const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); fs.writeFileSync(path.join(dest(args), 'fresh'), 'y'); });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(fs.existsSync(path.join(ws, 'r', 'old-partial.pack')), false, 'the crashed partial is gone');
+  f.calls[0].child.finish(0);
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'done');
+  assert.ok(fs.existsSync(path.join(ws, 'r', 'fresh')));
+
+  // Without a marker, an existing folder is still EXISTS: a marker is the only licence to remove anything.
+  fs.mkdirSync(path.join(ws, 'plain'));
+  assert.equal((await jobs.start({ url: 'https://github.com/o/plain' })).code, 'EXISTS');
+  assert.ok(fs.existsSync(path.join(ws, 'plain')));
+});

@@ -1,0 +1,44 @@
+{
+  "name": "construct-ui-client",
+  "version": "0.2.0",
+  "description": "Next.js (App Router, TypeScript) frontend for the Construct web UI — dashboard/command-runner, settings, the import route wizard chat, and the pages editor. Organized as real Construct feature slices (see architecture.yml) so it passes `construct validate` against itself (CLAUDE.md's Dogfooding section).",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --experimental-strip-types --test features/*/domain/*.spec.mjs",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
+    "@monaco-editor/react": "^4.7.0",
+    "@statelyai/inspect": "^0.7.2",
+    "@xyflow/react": "^12.11.6",
+    "diff": "^9.0.0",
+    "next": "^15.5.0",
+    "prismjs": "^1.30.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "xstate": "^5.33.2"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/nextjs": "^10.6.0",
+    "@types/diff": "^7.0.2",
+    "@types/node": "^20",
+    "@types/prismjs": "^1.26.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "storybook": "^10.6.0",
+    "threadmark-react": "^0.1.0-beta.1",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0",
+    "next": {
+      "postcss": "8.5.28"
+    }
+  }
+}

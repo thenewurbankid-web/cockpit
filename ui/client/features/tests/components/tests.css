@@ -1,0 +1,187 @@
+/* Tests screen (#300, #301). Design: docs/design/mocks/qa-tests-scenarios.html and qa-tests-clone.html.
+ * Prefix ts-. Tokens only (app/tokens.css), so both themes follow. Scoped to .ts-* so nothing leaks. */
+.main:has(.ts-stage) { max-width: none; padding: 0; }
+.ts-stage { padding: var(--sp-3) var(--sp-4) var(--sp-4); min-width: 0; }
+.ts-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-2); }
+.ts-h1 { margin: 0; font-size: var(--fs-lg); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-crumb { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+.ts-lede { margin: 0 0 var(--sp-3); color: var(--text-muted); }
+.ts-det { font-size: 0.7rem; letter-spacing: 0.06em; padding: 0 var(--sp-2); border-radius: 4px; color: var(--success); background: var(--success-soft); }
+.ts-pad { padding: var(--sp-3); }
+.ts-mono { font-family: var(--font-mono, ui-monospace, monospace); }
+.ts-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ts-btn { font: inherit; font-size: var(--fs-md); min-height: 24px; padding: var(--sp-1) var(--sp-3); border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); cursor: pointer; }
+.ts-btn:hover { background: var(--hover); }
+.ts-btn:disabled { opacity: 0.6; cursor: default; }
+.ts-btn:focus-visible, .ts-input:focus-visible, .ts-step-edit:focus-visible, .ts-leaf:focus-visible, .ts-row-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ts-btn--primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.ts-btn--primary:hover { background: var(--accent); filter: brightness(1.08); }
+.ts-btn--link { border-color: transparent; background: transparent; color: var(--accent); }
+
+/* chips: the word carries the meaning, colour only reinforces it */
+.ts-chip { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; color: var(--text-muted); }
+.ts-chip--locked { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+.ts-chip--none { color: var(--text-muted); background: var(--neutral-soft); }
+.ts-chip--yours { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.ts-chip--stale { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
+
+/* coverage table */
+.ts-tablewrap { border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
+.ts-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ts-table th { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: var(--sp-2) var(--sp-3); background: var(--surface-1); border-bottom: 1px solid var(--border-subtle); }
+.ts-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); vertical-align: middle; min-width: 0; }
+.ts-table tr:last-child td { border-bottom: 0; }
+.ts-table tbody tr[data-selected='true'] td { background: var(--accent-soft); }
+.ts-col-n { width: 2.5rem; }
+.ts-col-branch { width: 22%; }
+.ts-col-test { width: 28%; }
+.ts-col-last { width: 5.5rem; }
+.ts-cell-title { font-weight: 600; }
+.ts-cell-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.ts-cell-sub { color: var(--text-muted); font-size: var(--fs-sm); }
+.ts-testcell { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ts-row-btn { font: inherit; background: transparent; border: 0; padding: 0; color: inherit; text-align: left; cursor: pointer; width: 100%; min-width: 0; }
+.ts-foot { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+
+/* banners */
+.ts-banner { margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-2); }
+.ts-banner--warn { border-color: var(--warn); background: var(--warn-soft); }
+.ts-banner--error { border-color: var(--danger); background: var(--danger-soft); }
+.ts-banner--ok { border-color: var(--success); background: var(--success-soft); }
+.ts-banner h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); }
+.ts-banner p { margin: 0 0 var(--sp-2); }
+.ts-pre { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--code-bg); border: 1px solid var(--border-subtle); border-radius: 6px; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 22rem; overflow: auto; }
+
+/* Browser tab: the tree */
+.ts-tree { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ts-tree-h { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ts-group { margin: var(--sp-1) 0 0; display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; }
+.ts-group-count { margin-left: auto; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+.ts-leaves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ts-leaf { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 24px; padding: 2px var(--sp-2); background: transparent; color: var(--text); border: 0; border-radius: 4px; text-align: left; font: inherit; cursor: pointer; }
+.ts-leaf:hover { background: var(--hover); }
+.ts-leaf[aria-current='true'] { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.ts-leaf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-leaf-tag { color: var(--text-muted); font-size: var(--fs-sm); white-space: nowrap; }
+.ts-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.ts-field select { width: 100%; }
+
+/* Tools tab: one test */
+.ts-detail { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ts-detail-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.ts-detail-title { margin: 0; font-size: var(--fs-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-path { margin: 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; }
+.ts-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.ts-h { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ts-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ts-step { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
+.ts-step-text { min-width: 0; overflow-wrap: anywhere; }
+.ts-step-edit { flex: none; font: inherit; font-size: var(--fs-sm); min-height: 24px; padding: 0 var(--sp-2); border-radius: 4px; border: 1px solid var(--border-subtle); background: transparent; color: var(--text-muted); cursor: pointer; }
+.ts-step-edit:hover { background: var(--hover); color: var(--text); }
+.ts-readonly { margin: 0; padding-top: var(--sp-2); border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: var(--fs-sm); }
+
+/* clone dialog */
+.ts-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(0, 0, 0, 0.55); }
+.ts-dialog { width: min(34rem, 100%); max-height: calc(100vh - 2 * var(--sp-4)); overflow: auto; background: var(--surface-1); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); }
+.ts-dialog-head { padding: var(--sp-4); border-bottom: 1px solid var(--border-subtle); }
+.ts-dialog-head h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); }
+.ts-dialog-head p { margin: 0; color: var(--text-muted); }
+.ts-dialog-body { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.ts-label { display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ts-input { font: inherit; font-size: var(--fs-md); text-transform: none; letter-spacing: 0; padding: var(--sp-2) var(--sp-3); background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); border-radius: 6px; }
+.ts-saved { padding: var(--sp-2) var(--sp-3); background: var(--code-bg); border: 1px solid var(--border-subtle); border-radius: 6px; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.ts-gets { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ts-dialog-foot { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border-subtle); flex-wrap: wrap; }
+.ts-dialog-foot .ts-spacer { margin-left: auto; }
+.ts-err { margin: 0; color: var(--danger); }
+
+@media (max-width: 720px) {
+  .ts-col-branch, .ts-table th.ts-col-branch { display: none; }
+}
+
+/* Step document and edit panel (#302). Design: docs/design/mocks/qa-tests-editor.html. Tokens only. */
+.ts-editor { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ts-editor-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ts-editor-title { margin: 0; font-size: var(--fs-lg); flex: 1 1 100%; }
+.ts-editor-head .ts-path { flex: 1 1 auto; }
+.ts-editor-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr); gap: var(--sp-3); align-items: start; }
+.ts-doc { border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-1); min-width: 0; }
+.ts-rows { list-style: none; margin: 0; padding: 0; }
+.ts-srow { display: flex; align-items: stretch; gap: var(--sp-2); border-bottom: 1px solid var(--border-subtle); }
+.ts-srow:last-child { border-bottom: 0; }
+.ts-srow-btn { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); min-height: 32px; font: inherit; color: var(--text); background: transparent; border: 0; border-left: 3px solid transparent; text-align: left; cursor: pointer; }
+.ts-srow-btn:hover:not(:disabled) { background: var(--hover); }
+.ts-srow-btn:disabled { cursor: default; }
+.ts-srow-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ts-srow-btn[aria-current='true'] { background: var(--accent-soft); border-left-color: var(--accent); }
+.ts-srow--added .ts-srow-btn { background: var(--success-soft); }
+.ts-srow--changed .ts-srow-btn { background: var(--warn-soft); }
+.ts-srow--removed .ts-srow-btn { background: var(--danger-soft); }
+.ts-srow--removed .ts-srow-text { text-decoration: line-through; }
+.ts-srow-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ts-srow-text { overflow-wrap: anywhere; }
+.ts-srow-note, .ts-srow-change { color: var(--text-muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.ts-srow-binding { flex: none; max-width: 40%; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-xs); color: var(--text-muted); overflow-wrap: anywhere; }
+.ts-kw { flex: none; display: inline-block; min-width: 4.2rem; text-align: center; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.06em; padding: 0 var(--sp-2); border-radius: 4px; border: 1px solid var(--border-subtle); background: var(--surface-2); color: var(--text); }
+.ts-kw--given, .ts-kw--and { color: var(--text); }
+.ts-kw--when { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
+.ts-kw--then { color: var(--text); background: var(--success-soft); border-color: var(--success); }
+.ts-kw--check { color: var(--text); background: var(--warn-soft); border-color: var(--warn); }
+.ts-doc-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--border-subtle); }
+.ts-doc-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.ts-panel { border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-1); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ts-panel-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ts-panel-title { margin: 0; font-size: var(--fs-md); flex: 1; }
+.ts-panel-tools { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+.ts-fieldhint { color: var(--text-muted); font-size: var(--fs-sm); text-transform: none; letter-spacing: 0; margin: 0; }
+.ts-editor-foot { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ts-problems { margin: 0; padding-left: var(--sp-4); color: var(--danger); }
+.ts-review { border: 1px solid var(--border-strong); border-radius: 6px; padding: var(--sp-3); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-2); }
+.ts-review-h { margin: 0; font-size: var(--fs-md); }
+.ts-diff { border: 1px solid var(--border-subtle); border-radius: 6px; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-sm); max-height: 24rem; overflow: auto; background: var(--code-bg); }
+.ts-diff-row { display: grid; grid-template-columns: 3rem 1.5rem minmax(0, 1fr); }
+.ts-diff-row--added { background: var(--success-soft); }
+.ts-diff-row--removed { background: var(--danger-soft); }
+.ts-diff-row--gap { color: var(--text-muted); font-style: italic; }
+.ts-diff-n { color: var(--text-muted); text-align: right; padding-right: var(--sp-2); }
+.ts-diff-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .ts-editor-grid { grid-template-columns: minmax(0, 1fr); } .ts-srow-binding { display: none; } }
+
+/* States and stale clones (#306). Design: docs/design/mocks/qa-tests-states.html. Tokens only. */
+.ts-state { margin: 0 0 var(--sp-3); padding: var(--sp-4); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-1); max-width: 40rem; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ts-state-h { margin: 0; font-size: var(--fs-lg); }
+.ts-state p { margin: 0; }
+.ts-changes { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ts-change { padding: var(--sp-1) var(--sp-2); border-radius: 4px; border-left: 3px solid var(--border-strong); background: var(--surface-1); overflow-wrap: anywhere; }
+.ts-change--added { border-left-color: var(--success); background: var(--success-soft); }
+.ts-change--removed { border-left-color: var(--danger); background: var(--danger-soft); }
+.ts-change--changed { border-left-color: var(--warn); background: var(--warn-soft); }
+.ts-kinds { margin: var(--sp-3) 0 0; }
+.ts-kinds > summary { cursor: pointer; font-weight: 600; min-height: 24px; }
+.ts-kinds > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ts-kinds-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-2); }
+@media (max-width: 720px) { .ts-kinds-grid { grid-template-columns: minmax(0, 1fr); } }
+.ts-banner .ts-chip--stale { color: var(--text); background: transparent; border-color: var(--warn); }
+
+/* running the tests (#305): the word AND the symbol carry the result; colour only reinforces it */
+.ts-run { margin: 0 0 var(--sp-3); }
+.ts-run-bar { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
+.ts-run-addr { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; min-width: 12rem; max-width: 26rem; }
+.ts-run-live { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0; font-weight: 600; }
+.ts-run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: ts-pulse 1.2s ease-in-out infinite; }
+@keyframes ts-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ts-run-dot { animation: none; } }
+.ts-results { list-style: none; margin: var(--sp-2) 0; padding: 0; border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
+.ts-result { display: grid; grid-template-columns: 7rem minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-1) var(--sp-3); border-bottom: 1px solid var(--border-subtle); }
+.ts-result:last-child { border-bottom: 0; }
+.ts-result-mark { font-weight: 600; white-space: nowrap; }
+.ts-result--ok .ts-result-mark, .ts-result-mark.ts-result--ok { color: var(--success); }
+.ts-result--error .ts-result-mark, .ts-result-mark.ts-result--error { color: var(--danger); }
+.ts-result--muted .ts-result-mark, .ts-result-mark.ts-result--muted { color: var(--text-muted); }
+.ts-result-title { text-align: left; }
+.ts-fail { margin-top: var(--sp-3); }
+.ts-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); margin: var(--sp-2) 0; }
+.ts-facts dt { color: var(--text-muted); }
+.ts-facts dd { margin: 0; overflow-wrap: anywhere; user-select: text; }
+.ts-fail .ts-pre { user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 16rem; overflow: auto; }
+@media (max-width: 640px) { .ts-result { grid-template-columns: 6rem minmax(0, 1fr); } .ts-result > :last-child { grid-column: 2; } }

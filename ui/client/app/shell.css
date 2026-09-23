@@ -1,0 +1,578 @@
+/* Cockpit shell (Design #244/#245): top bar, Browser | stage | Tools panes,
+ * drawer, status bar. Tokens only, no raw colours. The page itself scrolls
+ * (as before); the side panes and bars are sticky so they stay in view. */
+:root {
+  --sh-top: 44px;
+  --sh-status: 24px;
+}
+
+.sh-root {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-size: var(--fs-md);
+}
+
+/* ---- top bar ---- */
+.sh-top {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  height: var(--sh-top);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+/* #273: every fixed-size control keeps its intrinsic width. Flexbox shrinks
+ * items by default, which used to squeeze the pills and pane toggles below
+ * their content width - the text then overflowed the 1px border (the Browser
+ * and Tools buttons appeared to touch) and the labels wrapped onto a second
+ * line inside a 24px pill. The command palette trigger is the single elastic
+ * item: it ellipsises by design, so it absorbs the whole deficit instead. */
+.sh-brand, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
+.sh-brand { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs-md, 0.95rem); letter-spacing: 0.22em; text-transform: uppercase; margin-right: var(--sp-2); }
+.sh-brand svg { flex: none; }
+.sh-spacer { flex: 1 1 0; min-width: 0; }
+
+/* The five primary screens: the left rail (ActivityBar). The current one is marked by weight and an edge bar,
+ * not colour alone. Vertical, collapsible to icons; on a phone the same bar lies horizontal above the pane tabs. */
+.sh-rail {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  width: 168px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+}
+.sh-rail--collapsed { width: 52px; }
+.sh-rail-list { display: flex; flex-direction: column; }
+.sh-rail-link, .sh-rail-toggle {
+  appearance: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.sh-rail-link:hover, .sh-rail-toggle:hover { color: var(--text); background: var(--surface-3); }
+.sh-rail-link:focus-visible, .sh-rail-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sh-rail-link--active, .sh-rail-link--active:hover { color: var(--text); font-weight: 700; border-left-color: var(--accent); background: var(--surface-2, var(--surface-1)); }
+.sh-rail-icon { flex: none; }
+.sh-rail-badge { margin-left: auto; }
+.sh-rail-toggle { border-bottom: 1px solid var(--border-subtle); }
+.sh-rail--collapsed .sh-rail-link, .sh-rail--collapsed .sh-rail-toggle { justify-content: center; padding: 0; }
+.sh-rail--collapsed .sh-rail-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.sh-rail--collapsed .sh-rail-badge { position: absolute; top: 2px; right: 2px; margin: 0; min-width: 16px; padding: 0 3px; font-size: var(--fs-xs); }
+/* Phone / narrow: a horizontal bar of the five screens above the pane tabs (icon over label). */
+.sh-rail--horizontal {
+  position: sticky;
+  top: auto;
+  bottom: calc(var(--sh-status) + 44px);
+  z-index: var(--z-topbar);
+  width: auto;
+  height: auto;
+  flex-shrink: 0;
+  overflow: visible;
+  border-right: 0;
+  border-top: 1px solid var(--border-strong);
+}
+.sh-rail--horizontal .sh-rail-list { flex-direction: row; }
+.sh-rail--horizontal .sh-rail-link {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
+  padding: 4px 2px;
+  font-size: var(--fs-sm);
+  border-left: 0;
+  border-top: 3px solid transparent;
+  text-align: center;
+}
+.sh-rail--horizontal .sh-rail-link--active { border-top-color: var(--accent); }
+.sh-rail--horizontal .sh-rail-badge { position: absolute; top: 2px; right: 4px; margin: 0; min-width: 16px; padding: 0 3px; font-size: var(--fs-xs); }
+.sh-root--gate .main { flex: 1; }
+.sh-topnav-badge { min-width: 18px; padding: 0 5px; text-align: center; font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 999px; }
+.sh-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.sh-pill {
+  appearance: none;
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  cursor: default;
+}
+button.sh-pill { cursor: pointer; }
+button.sh-pill:hover { background: var(--surface-3); }
+.sh-pill { white-space: nowrap; }
+.sh-pill-icon { flex: none; fill: currentColor; opacity: 0.75; }
+.sh-pill-count { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+.sh-pill--ready .sh-dot { background: var(--success); }
+.sh-pill--offline .sh-dot { background: var(--danger); }
+
+.sh-icon-btn {
+  appearance: none;
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.sh-icon-btn { white-space: nowrap; }
+.sh-icon-btn:hover { background: var(--surface-3); }
+.sh-toggle[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); }
+
+/* ---- project switcher ---- */
+.sh-project { position: relative; }
+.sh-project-btn {
+  appearance: none;
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  max-width: 220px;
+}
+.sh-project-btn:hover { background: var(--surface-3); }
+.sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: var(--z-popover);
+  width: min(520px, 92vw);
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  animation: sh-popover-in 120ms ease-out;
+}
+/* Disclosure variant (account chip): compact, end-aligned to the right edge. */
+.sh-popover--disclosure { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); width: max-content; min-width: 180px; max-width: calc(100vw - 16px); }
+.sh-popover--end { left: auto; right: 0; }
+@keyframes sh-popover-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sh-popover { animation: none; } }
+
+/* ---- body: panes ---- */
+.sh-body { flex: 1; display: flex; align-items: flex-start; min-height: 0; }
+
+/* #539 — wide layout only: the screens rail and the Browser pane's own content share one left
+ * column (rail on top, Browser content below) instead of sitting beside each other as two
+ * separate columns. `.sh-rail`/`.sh-pane.sh-left` keep their own rules (position, background,
+ * border) for every OTHER context (narrow's horizontal bar, standalone use) -- these overrides
+ * apply only inside `.sh-left-col`, the wide-layout wrapper.
+ *
+ * The column itself is the sticky, full-height frame; its two children divide that height
+ * between them instead of each claiming the full viewport height on their own:
+ *   - Browser pane CLOSED (no `--split`): the rail is the column's only child, so it grows
+ *     (flex: 1) to fill the whole column, exactly as its own `height: calc(100vh ...)` rule did
+ *     when it rendered as an independent sibling column before this change.
+ *   - Browser pane OPEN (`--split`): the rail shrinks back to its own content height (its
+ *     collapse toggle still works exactly as before -- see shell-rail.spec.js), stretches to the
+ *     column's full (resizable) width, and gets a bottom divider; the Browser pane's `<aside>`
+ *     below it drops its own explicit width to stretch (flex default `align-items: stretch`) to
+ *     that same width, and grows (flex: 1) to fill the remaining height, scrolling on its own. */
+.sh-left-col {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sh-left-col .sh-rail {
+  position: static;
+  height: auto;
+  flex: 1 1 auto;
+}
+.sh-left-col--split .sh-rail {
+  flex: 0 0 auto;
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sh-left-col--split .sh-pane.sh-left {
+  position: static;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sh-mid { flex: 1; min-width: 0; outline: none; }
+.sh-pane {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  flex-shrink: 0;
+  overflow: auto;
+  background: var(--surface-1);
+  outline: none;
+}
+.sh-pane:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sh-left { border-right: 1px solid var(--border-subtle); }
+.sh-right { border-left: 1px solid var(--border-subtle); }
+
+/* ---- resizers (focusable separators; 6px hit area, 24px+ tall/wide by pane) ---- */
+.sh-resizer {
+  flex-shrink: 0;
+  background: transparent;
+  touch-action: none;
+  position: sticky;
+  z-index: var(--z-raised);
+}
+.sh-resizer:hover, .sh-resizer:active { background: var(--accent-soft); }
+.sh-resizer--vertical {
+  width: 6px;
+  margin: 0 -3px;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  cursor: col-resize;
+}
+.sh-resizer--horizontal { height: 6px; width: 100%; cursor: row-resize; margin-top: -3px; }
+
+/* ---- drawer + status ---- */
+.sh-drawer {
+  position: sticky;
+  bottom: var(--sh-status);
+  z-index: var(--z-drawer);
+  flex-shrink: 0;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-strong);
+  overflow: auto;
+  outline: none;
+}
+.sh-status {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-topbar);
+  height: var(--sh-status);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-3);
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.sh-status-btn {
+  appearance: none;
+  align-self: auto;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: var(--fs-xs);
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.sh-status-btn:hover { background: var(--surface-3); }
+/* The validate readout is sized by the longest text it can ever show, not by the
+   one showing now, so a background result changes the words without changing the
+   button's width -- and so without moving its own hit area out from under a
+   pointer (#252). --sh-gauge is that length in characters (StatusBar); `ch` keeps
+   it honest at any font size or zoom, and it is an upper bound because `ch` is
+   the width of a digit, the widest character these texts contain. */
+.sh-status-btn--gauged {
+  min-width: calc(var(--sh-gauge, 0) * 1ch + 2 * 8px + 2px); /* + the padding and border it is sized with */
+  text-align: left;
+}
+.sh-status-btn[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); }
+.sh-hints { display: inline-flex; gap: var(--sp-3); white-space: nowrap; overflow: hidden; }
+kbd {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ---- tab host ---- */
+.sh-tabhost { display: flex; flex-direction: column; min-height: 100%; }
+.sh-tablist { display: flex; gap: 2px; padding: 0 var(--sp-2); border-bottom: 1px solid var(--border-subtle); position: sticky; top: 0; background: var(--surface-1); z-index: var(--z-raised); }
+.sh-tab {
+  appearance: none;
+  align-self: auto;
+  min-height: 32px;
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sh-tab:hover:not(:disabled) { color: var(--text); }
+.sh-tab[aria-selected='true'] { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+.sh-tab:disabled { opacity: 0.5; cursor: default; }
+.sh-badge {
+  /* Three characters wide whatever it holds, so a 1, a 12 and a 99+ all take
+     the same room and a count arriving cannot move the tabs after it (#252).
+     Counts are capped at 99+ in badgeText() to keep that promise. */
+  min-width: calc(3ch + 12px);
+  padding: 0 5px;
+  font-size: var(--fs-xs);
+  line-height: 16px;
+  text-align: center;
+  color: var(--text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+}
+/* A badge declared but not yet known (#252): holds its place, says nothing. */
+.sh-badge--reserved { visibility: hidden; }
+.sh-tabpanel { flex: 1; padding: var(--sp-2); outline: none; }
+.sh-tabpanel:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* ---- pane contents ---- */
+.sh-screens { display: flex; flex-direction: column; gap: 2px; }
+.sh-screen {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: var(--r-md);
+}
+.sh-screen:hover { background: var(--surface-3); color: var(--text); }
+.sh-screen--active { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.sh-screen--active:hover { background: var(--accent); color: var(--accent-fg); }
+.sh-empty-panel { padding: var(--sp-3); }
+.sh-empty-title { margin: 0 0 4px; font-weight: 600; }
+.sh-empty { color: var(--text-muted); }
+.sh-info { padding: var(--sp-2); }
+.sh-info dl { margin: 0; }
+.sh-info dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin-top: var(--sp-3); }
+.sh-info dd { margin: 2px 0 0; word-break: break-all; }
+.sh-info-title { margin: var(--sp-4) 0 var(--sp-1); font-weight: 600; }
+.sh-shortcuts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; color: var(--text-muted); }
+
+/* ---- narrow layout (< 900px, Design #250): one pane at a time, bottom tab bar.
+ * ShellLayout renders the narrow structure itself (matchMedia in
+ * useNarrowLayout); this block only styles it. Hidden panes use the `hidden`
+ * attribute, so keep it authoritative over the display rules below. ---- */
+.sh-pill-text { white-space: nowrap; }
+.sh-narrowbar {
+  position: sticky;
+  bottom: var(--sh-status);
+  z-index: var(--z-topbar);
+  flex-shrink: 0;
+  height: 44px;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-strong);
+}
+.sh-narrowlist { display: flex; height: 100%; }
+.sh-narrowtab {
+  appearance: none;
+  flex: 1;
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-top: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+}
+.sh-narrowtab:hover { color: var(--text); background: var(--surface-3); }
+.sh-narrowtab[aria-selected='true'] { color: var(--text); font-weight: 600; border-top-color: var(--accent); }
+.sh-root--narrow [hidden] { display: none !important; }
+.sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px - 48px); border: 0; }
+.sh-root--narrow .main { padding: var(--sp-4); }
+
+/* #273: 1024-1280px is the band where the bar's fixed parts add up to more
+ * than the viewport (Playwright's Desktop Chrome, and most laptops, are
+ * exactly 1280x720). Collapse the two status pills to icon + count, the way
+ * the <=899px tier already collapses the model pill. The words stay in the
+ * DOM - clipped, not removed - so the accessible name, the aria-live
+ * announcement and the hover title all survive. The 8px `gap` on .sh-top is
+ * never consumed, because nothing shrinks any more. */
+@media (max-width: 1280px) {
+  .sh-pill-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .sh-pill { padding: 0 8px; }
+  .sh-project-btn { max-width: 168px; }
+  .sh-palette-trigger { width: min(280px, 20vw); }
+}
+
+@media (max-width: 899px) {
+  .sh-hints { display: none; }
+  .sh-top { gap: var(--sp-2); padding: 0 var(--sp-2); }
+  .sh-brand { margin-right: 0; }
+  .sh-project-btn { max-width: 96px; }
+  /* Pane toggles and the processes pill are redundant here (the bottom tab bar
+   * switches panes; the drawer is not shown in one-pane mode). */
+  .sh-toggle, [data-testid='pill-processes'], [data-testid='toggle-drawer'] { display: none; }
+  /* The model pill keeps its dot and an accessible name, and drops the words. */
+  .sh-pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .sh-popover { position: fixed; left: var(--sp-2); right: var(--sp-2); top: calc(var(--sh-top) + 4px); width: auto; }
+  /* The top bar's stacking context must clear the bottom tab bar, or the sheet below slides under it. */
+  .sh-top { z-index: var(--z-popover); }
+  /* The profile menu is a bottom sheet on a phone (docs/design/ia-five-screens.md, ia-narrow). */
+  .sh-popover--account { top: auto; bottom: 0; left: 0; right: 0; width: auto; min-width: 0; max-width: none; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: var(--sp-4); }
+}
+
+/* Phone: the bar keeps to one row (brand, project, search, account); the five screens are the bottom bar. */
+@media (max-width: 520px) {
+  .sh-palette-trigger { width: auto; flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-2); }
+  .sh-palette-trigger span, .sh-palette-trigger kbd { display: none; }
+  .sh-palette-trigger::before { content: 'Search'; font-size: var(--fs-sm); }
+  .sh-spacer { flex: 0 0 0; }
+  /* The local-model status is also in the profile menu (Local model row), so the phone bar drops its dot. */
+  [data-testid='pill-model'] { display: none; }
+}
+
+/* ---- signed-in account (#278) ---------------------------------------- *
+ * Sits last in the top bar, after the theme toggle. Present only when the
+ * server actually has a login gate — on an unauthenticated loopback run
+ * UserMenuController renders nothing, so the bar looks exactly as before. */
+.sh-user { position: relative; }
+.sh-user-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  max-width: 160px;
+  padding: 0 var(--sp-2) 0 3px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.sh-user-trigger:hover { background: var(--surface-3); }
+.sh-user-trigger[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); }
+.sh-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+  object-fit: cover;
+  background: var(--surface-3);
+}
+.sh-avatar--initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.sh-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-user-head { padding: var(--sp-1) var(--sp-2) var(--sp-2); border-bottom: 1px solid var(--border); margin-bottom: var(--sp-1); }
+.sh-user-login { margin: 0; color: var(--text); font-size: var(--fs-md); font-weight: 600; }
+.sh-user-sub { margin: 2px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-section { margin: var(--sp-1) 0 0; padding: 0 var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.sh-user-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; text-decoration: none; }
+.sh-user-row[aria-current='page'] { background: var(--accent-soft); }
+.sh-user-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip--ready .sh-dot { background: var(--success); }
+.sh-user-chip--offline .sh-dot { background: var(--danger); }
+.sh-user-theme { margin: 0; padding: var(--sp-1) var(--sp-2); border: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; }
+.sh-user-theme legend { float: left; padding: 0; margin: 0; color: var(--text); font-size: var(--fs-md); }
+.sh-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; margin-left: auto; }
+.sh-seg-opt { position: relative; display: inline-flex; padding: 3px var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); cursor: pointer; }
+.sh-seg-opt input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.sh-seg-opt--on { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.sh-seg-opt:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sh-user-item {
+  appearance: none;
+  text-align: left;
+  padding: var(--sp-2);
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.sh-user-item:hover { background: var(--surface-3); }
+
+/* The name is the first thing worth dropping when the bar gets tight
+ * (#273's tier); the avatar alone still carries the accessible name. */
+@media (max-width: 1280px) {
+  .sh-user-name { display: none; }
+  .sh-user-trigger { padding: 0 3px; }
+}
+
+/* ---- focus mode (#456): the Cockpit stands down -------------------------
+ * The rail, top bar, drawer and status bar are not rendered and the side panes
+ * are hidden (ShellLayout), so the stage is the whole frame. No animated expand:
+ * the change is instant, which is also what a reduced-motion setting asks for. */
+.sh-root--focus { min-height: 100dvh; }
+.sh-root--focus .sh-body { height: 100dvh; align-items: stretch; }
+.sh-root--focus .sh-mid { display: flex; min-height: 0; }
+.sh-root--focus .main { flex: 1; min-width: 0; max-width: none; padding: 0; }

@@ -1,0 +1,27 @@
+{
+  "name": "construct-ui-server",
+  "version": "0.1.0",
+  "description": "Node.js backend for the Construct web UI — wraps the core CLI's exported functions directly (no subprocess) and exposes REST + WebSocket endpoints for the React frontend.",
+  "type": "module",
+  "private": true,
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "dev": "node --watch src/index.mjs",
+    "test": "node --test src/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "start:dist": "node dist/index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "typescript": "^5.8.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

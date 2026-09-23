@@ -1,0 +1,66 @@
+name: CI
+
+# Builds and tests ui/client + ui/server standalone in this repo. Needs
+# packages/{core,ast,engine,cli} fetched from thenewurbankid-web/construct
+# first (scripts/vendor-construct.sh, see README.md's "Cross-repo dependency
+# on construct") -- construct is currently a PRIVATE repo, so this job needs
+# read access to it via CONSTRUCT_REPO_READ_TOKEN (a fine-grained PAT scoped
+# only to thenewurbankid-web/construct, "Contents: Read"). Until that secret
+# is added, the vendor/build/test steps are skipped (this mirrors the same
+# check-and-skip pattern construct's own .github/workflows/pages.yml uses for
+# its COCKPIT_REPO_TOKEN) and only checkout runs, so the workflow still goes
+# green on a fork/PR without the secret rather than failing loudly on
+# something outside the contributor's control. Once construct goes public
+# (construct#540 step 7) or #480 publishes a real package, this token
+# requirement drops away entirely.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check for CONSTRUCT_REPO_READ_TOKEN
+        id: check
+        run: echo "has-token=${{ secrets.CONSTRUCT_REPO_READ_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        if: steps.check.outputs.has-token == 'true'
+        with:
+          node-version: 20
+
+      - name: Vendor construct's core/ast/engine/cli
+        if: steps.check.outputs.has-token == 'true'
+        env:
+          CONSTRUCT_REPO: https://x-access-token:${{ secrets.CONSTRUCT_REPO_READ_TOKEN }}@github.com/thenewurbankid-web/construct.git
+        run: npm run vendor
+
+      - name: Install dependencies
+        if: steps.check.outputs.has-token == 'true'
+        run: npm install
+
+      - name: Build client
+        if: steps.check.outputs.has-token == 'true'
+        run: npm run build:client
+
+      - name: Build server
+        if: steps.check.outputs.has-token == 'true'
+        run: npm run build:server
+
+      - name: Test server
+        if: steps.check.outputs.has-token == 'true'
+        run: npm run test:server
+
+      - name: Test client
+        if: steps.check.outputs.has-token == 'true'
+        run: npm run test:client
+
+      - name: CONSTRUCT_REPO_READ_TOKEN not set
+        if: steps.check.outputs.has-token != 'true'
+        run: |
+          echo "::warning::CONSTRUCT_REPO_READ_TOKEN secret is not set on this repo -- skipping vendor/build/test (construct is currently private). See the comment block at the top of .github/workflows/ci.yml for what to add."

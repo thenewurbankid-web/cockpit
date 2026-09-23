@@ -1,0 +1,2312 @@
+/* Tokens live in tokens.css (Design #244); legacy names are aliased there. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 15% -10%, var(--bg-glow-1) 0%, transparent 45%),
+    radial-gradient(circle at 100% 10%, var(--bg-glow-2) 0%, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Shared glass surface — the one place the glassmorphism look is
+ * actually implemented. Every panel-like class below (.nav,
+ * .command-form, .chat, .settings-current, .wizard-start, .chat-input,
+ * .help-contents, .gate-panel) extends this rather than repeating the
+ * blur/border/background trio itself. */
+.glass-panel {
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: var(--glass-shadow);
+}
+
+.main {
+  padding: 24px 32px;
+  max-width: 1100px;
+}
+
+.page h1 {
+  margin-top: 0;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Features stage actions (#370): the retired Dashboard's four forms, opened one at a time in the stage.
+ * Tokens only; the forms themselves keep their own .command-form look. */
+.sa { margin: var(--sp-3) 0; }
+.sa-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.sa-label { color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.sa-buttons { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sa-btn { appearance: none; min-height: 28px; padding: 0 var(--sp-3); color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); font: inherit; cursor: pointer; }
+.sa-btn:hover { background: var(--surface-3); }
+.sa-btn[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.sa-panel { margin-top: var(--sp-3); max-width: 720px; }
+.sa-panel:focus { outline: none; }
+.sa-panel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* #163 — with the default `align-items: stretch`, every card in a grid row
+ * gets forced to the height of the tallest card in that row (Refactor and
+ * Import, both with more fields than Create/Research's default view),
+ * leaving visible dead space below Create/Research's own shorter content.
+ * `start` lets each card size to its own content instead. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* .command-form (#46): now just the layout on top of the shared
+ * .glass-panel background/border/blur — GlassPanel's `className` prop is
+ * used as `<GlassPanel as="form" className="command-form">` in
+ * Dashboard.jsx, so this class only needs to carry what's specific to a
+ * command form (padding + vertical stack), not repeat the glass recipe
+ * a fourth time. */
+.command-form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.command-form h3 {
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* Input.jsx / Select.jsx (#46): styled by their own `.ui-input`/
+ * `.ui-select` classes rather than a `.field input, .field select`
+ * descendant selector, so they look right rendered standalone in a
+ * Storybook story too, not only nested inside a `.field` label. */
+.ui-input,
+.ui-select {
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+}
+
+/* #161 — the browser's own dropdown arrow ignores this theme entirely
+ * (a plain light-grey triangle baked into the OS/browser chrome), the one
+ * part of `.ui-select` that visibly clashed with the glass theme. Still a
+ * real native <select> (keyboard/screen-reader/Playwright behavior
+ * unchanged) — `appearance: none` only removes the native arrow so a
+ * theme-matched chevron (drawn as a background SVG, colored via --muted)
+ * can take its place. */
+.ui-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239aa1ac' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.ui-select option {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.ui-input:focus,
+.ui-select:focus,
+.chat-input input:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+/* #161 — checkboxes previously fell back entirely to unstyled browser
+ * chrome (Input.jsx's `.ui-checkbox` class existed but carried no rules).
+ * `accent-color` themes a *real* native checkbox to match the app's
+ * accent blue instead of the browser/OS default — no custom div/SVG
+ * replacement, so focus rings, keyboard toggling, and Playwright's
+ * `page.locator('input[type=checkbox]')` queries all keep working exactly
+ * as before. Also covers plain `input[type=checkbox]` (e.g. the Pages
+ * Editor's auto-map candidates and prop-flow "show values" toggle) so the
+ * same theming applies wherever a checkbox appears, not only through
+ * Input.jsx. */
+.ui-checkbox,
+input[type='checkbox'] {
+  accent-color: var(--accent);
+  /* 24px: WCAG 2.2 target size (axe `target-size`), and the design system's own "small control" height. */
+  width: 24px;
+  height: 24px;
+  /* In a flex row the default flex-shrink squeezed it to 13px wide, below the target size. */
+  flex: none;
+  cursor: pointer;
+}
+
+.ui-checkbox:focus-visible,
+input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+.layer-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Kept as a fallback baseline for any <button> not yet migrated to
+ * Button.jsx (e.g. other in-flight work elsewhere in ui/client) — not
+ * removed, just no longer the only styling layer. */
+button {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Button.jsx (#46): every button on Dashboard/Settings/Wizard/
+ * ProjectGate now renders through that component rather than a bare
+ * <button>, carrying one of these two variants explicitly instead of
+ * relying only on the tag-selector fallback above. `ghost` (a
+ * lower-emphasis outline style) isn't wired into any page yet — it
+ * exists so Button actually demonstrates a real choice in its Storybook
+ * story, as themed CSS a future secondary action can reach for instead
+ * of a one-off style. */
+.ui-button--ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.command-result {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.command-output {
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.command-error {
+  color: var(--error);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Whole-command wall-clock total (#167) — a floor guarantee distinct from
+   whatever per-step timing text already appears inside .command-output. */
+.command-duration {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--muted, var(--text));
+  opacity: 0.75;
+}
+
+.attribution {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.attribution-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.attribution-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.attribution-label.tool {
+  background: var(--success-soft);
+  color: var(--tool);
+}
+
+.attribution-label.llm {
+  background: var(--llm-soft);
+  color: var(--llm);
+}
+
+.attribution-label.llm-none {
+  background: var(--neutral-soft);
+  color: var(--muted);
+}
+
+/* New tone added for Badge.jsx (#46) — nothing used an error-toned
+ * attribution-label before Badge generalized the concept. */
+.attribution-label.error {
+  background: var(--danger-soft);
+  color: var(--error);
+}
+
+.status-ok {
+  color: var(--tool);
+}
+
+.status-error {
+  color: var(--error);
+}
+
+/* .settings-current / .wizard-start / .chat (#46): layout-only now —
+ * each is rendered as `<GlassPanel className="…">` in its page, so the
+ * background/border/blur/box-shadow trio lives once on .glass-panel
+ * instead of being repeated per class. */
+.settings-current {
+  margin-top: 24px;
+  padding: 16px 18px;
+}
+
+.wizard-start {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 300px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.chat-message {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  max-width: 90%;
+}
+
+.chat-log {
+  background: var(--sunken);
+  color: var(--muted);
+  align-self: flex-start;
+}
+
+.chat-question {
+  background: var(--accent-soft);
+  color: var(--text);
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+.chat-answer {
+  background: var(--accent);
+  color: var(--accent-fg);
+  align-self: flex-end;
+}
+
+.chat-answer-blank {
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.chat-error {
+  background: var(--danger-soft);
+  /* `--error` on the soft tint was 4.45:1 in the light theme (needs 4.5, axe `color-contrast`). Body text
+     colour is ~16:1, and the danger colour stays as the edge so the message still reads as an error. */
+  color: var(--text);
+  border-left: 3px solid var(--error);
+  align-self: flex-start;
+}
+
+.chat-system {
+  align-self: center;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.chat-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.chat-input input {
+  flex: 1;
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+/* .help-contents / .gate-panel (#46): layout-only, rendered as
+ * <GlassPanel className="…"> in Help.jsx/ProjectGate.jsx respectively —
+ * see the .settings-current/.wizard-start/.chat comment above. */
+.help-contents {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+}
+
+.gate-panel {
+  max-width: 640px;
+  padding: 24px 28px;
+}
+
+/* ---- login screen (#278): the whole screen when there is no session ----
+ * It replaces the Cockpit frame rather than sitting inside it, so it
+ * centres itself in the viewport instead of following the normal page flow
+ * under a top bar that is not there. */
+.auth-screen {
+  /* `.app` is a flex *row*, and this screen replaces the whole Cockpit
+   * rather than sitting inside `.main`, so it has to claim the row itself
+   * — without `flex: 1` it is only as wide as the panel and the centring
+   * below has nothing to centre within. */
+  flex: 1 1 auto;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  padding: var(--sp-6);
+}
+/* ---- login hero (owner request 2026-09-20): full-screen slideshow + typed tagline ---- */
+.auth-screen { position: relative; flex-direction: column; gap: var(--sp-5); overflow: hidden; isolation: isolate; }
+.login-backdrop { position: fixed; inset: 0; z-index: -1; background: #0b0d10; }
+.login-backdrop__slide {
+  position: absolute; inset: 0;
+  /* Never zoom past the image's own width: a phone shows a wide slice of the screen, not a magnified corner. */
+  background-repeat: no-repeat;
+  background-size: max(100vw, 1000px) auto; background-position: center 24%;
+  filter: blur(8px) saturate(0.95) brightness(0.95);
+  transform: scale(1.04);
+  opacity: 0; z-index: 1;
+  animation: login-slide 42s linear infinite both;
+}
+.login-backdrop__slide:nth-child(1) { animation-delay: -1.6s; }
+.login-backdrop__slide:nth-child(2) { animation-delay: 5.4s; }
+.login-backdrop__slide:nth-child(3) { animation-delay: 12.4s; }
+.login-backdrop__slide:nth-child(4) { animation-delay: 19.4s; }
+.login-backdrop__slide:nth-child(5) { animation-delay: 26.4s; }
+.login-backdrop__slide:nth-child(6) { animation-delay: 33.4s; }
+/* 6 slides x 7s. The incoming slide fades in on top while the outgoing one stays opaque, so there is never a dip. */
+@keyframes login-slide {
+  0%      { opacity: 0; z-index: 2; }
+  4%      { opacity: 1; z-index: 2; }
+  4.01%   { opacity: 1; z-index: 1; }
+  21.5%   { opacity: 1; z-index: 1; }
+  21.51%  { opacity: 0; z-index: 1; }
+  100%    { opacity: 0; z-index: 1; }
+}
+.login-backdrop__scrim {
+  position: absolute; inset: 0; z-index: 3;
+  background:
+    radial-gradient(70% 55% at 50% 42%, rgba(9, 12, 18, 0.18) 0%, rgba(9, 12, 18, 0.55) 100%),
+    linear-gradient(to bottom, rgba(9, 12, 18, 0.25), rgba(9, 12, 18, 0.7));
+}
+.login-brand { display: inline-flex; align-items: center; gap: var(--sp-4); color: #f2f4f7; font-weight: 600; letter-spacing: 0.36em; text-transform: uppercase; font-size: clamp(1.6rem, 3.2vw, 2.1rem); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6); }
+.login-tagline {
+  margin: 0; min-height: 2.2rem; text-align: center;
+  font-size: 1.2rem; font-weight: 500; color: #e6e9ee;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+}
+.login-tagline__caret {
+  display: inline-block; width: 2px; height: 1.1em; margin-left: 3px; vertical-align: -0.15em;
+  background: #e6e9ee; animation: login-caret 1s steps(1) infinite;
+}
+@keyframes login-caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .login-backdrop__slide { animation: none; }
+  .login-backdrop__slide:first-child { opacity: 1; }
+  .login-tagline__caret { animation: none; }
+}
+.login-actions { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); }
+.login-note { max-width: 420px; text-align: center; color: #e6e9ee; }
+.login-note--test { font-size: 0.78rem; color: #aab2c0; margin: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* GitHub's standard dark "Sign in with GitHub" button; the test login shares its geometry (.gh-signin--test). */
+.gh-signin {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 240px; height: 46px; padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px;
+  background: #24292f; color: #ffffff; font: inherit; font-weight: 600; font-size: 0.98rem; cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+.gh-signin:hover:not(:disabled) { background: #32383f; }
+.gh-signin:focus-visible { outline: 2px solid #8fb0ff; outline-offset: 3px; }
+.gh-signin:disabled { opacity: 0.7; cursor: progress; }
+/* Quieter sibling: same size, radius, weight and focus ring, outlined instead of filled, so it does not read as the real path. */
+.gh-signin--test {
+  background: rgba(255, 255, 255, 0.06); color: #f2f4f7; border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: none; font-size: 0.92rem; text-align: center;
+}
+.gh-signin--test:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.auth-actions { justify-content: center; margin-top: 0; }
+.auth-screen .auth-actions button { min-width: 220px; border-radius: 12px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-screen .gate-panel { background: rgba(16, 20, 28, 0.88); }
+}
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.auth-test-note {
+  border-left: 3px solid var(--warn);
+  padding-left: var(--sp-3);
+  color: var(--text-muted);
+}
+
+.help-contents a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.help-contents a:hover {
+  text-decoration: underline;
+}
+
+/* #162 — HelpPage's four top-level topics are now <details>, open by
+ * default (see HelpPage.tsx). `summary` carries the h2 and gets its own
+ * disclosure triangle instead of the browser's default marker, so it reads
+ * as a section header that happens to be clickable rather than a generic
+ * expando. */
+.help-section {
+  margin-bottom: 28px;
+}
+
+.help-section > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.help-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-section > summary::before {
+  content: '▸';
+  color: var(--muted);
+  font-size: 0.75em;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.help-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.help-section > summary h2 {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin: 0;
+}
+
+.help-section h3 {
+  margin-top: 26px;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.help-section ul,
+.help-section ol {
+  padding-left: 22px;
+  line-height: 1.6;
+}
+
+.help-section li {
+  margin-bottom: 6px;
+}
+
+/* #162 — each CLI command/topic is now its own <details> too (see
+ * CliTopic.tsx), collapsed by default — this is the actual "dozens of
+ * always-expanded blocks" bulk the issue is about, not the 4 top-level
+ * sections above. Styled as a small, clearly-clickable row so it's obvious
+ * there's more to expand rather than looking like a finished, empty item. */
+.help-topic {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 12px;
+  background: var(--hover);
+}
+
+.help-topic summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.help-topic summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-topic summary::before {
+  content: '▸';
+  color: var(--accent);
+  font-size: 0.75em;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.help-topic[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.help-topic[open] {
+  background: var(--hover);
+}
+
+.help-topic .help-pre {
+  margin: 0 0 10px;
+}
+
+/* #162 — code-block contrast/spacing polish: a touch darker than the
+ * surrounding glass panel (reads as a distinct "terminal" surface), a
+ * visible left accent bar instead of a uniform border on every side, and
+ * more line-height so dense flag/subcommand listings don't run together. */
+.help-pre {
+  max-height: none;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  background: var(--sunken);
+  border-left: 3px solid var(--border-strong);
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.help-page code {
+  background: var(--neutral-soft);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+/* Tutorials section (#154-#157): real local screenshots (ui/client/public/
+ * tutorials/**), never hotlinked, embedded next to the step they illustrate. */
+.tutorial-figure {
+  margin: 12px 0 20px;
+}
+
+.tutorial-screenshot {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: block;
+}
+
+.tutorial-figure figcaption {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* --- Pages Editor (epic #48) --- */
+
+/* #536 — Browser pane merge (docs/design/browser-panel-merge.md): the Files-view's
+ * PagesBrowser/TreePanel content shares one GlassPanel (`.pe-browser-group`) as two
+ * independently collapsible native <details>/<summary> sections, the same disclosure idiom
+ * PalettePanel.tsx's `.pal-group` already ships (~L2056 below). `.pages-browser`/`.tree-panel`
+ * keep their exact pre-existing class names (~30 ui/e2e specs locate the two panels by them,
+ * now on <details> elements instead of their own GlassPanel) — only their own chrome changes,
+ * from two standalone glass cards to two bordered rows in one shared card. */
+.pe-browser-group {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.pages-browser,
+.tree-panel {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pe-browser-group > .pages-browser:last-child,
+.pe-browser-group > .tree-panel:last-child {
+  border-bottom: none;
+}
+
+.pages-browser > summary,
+.tree-panel > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--sp-2) 0;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+
+.pages-browser > summary::-webkit-details-marker,
+.tree-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pages-browser > summary::before,
+.tree-panel > summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 0.75em;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.pages-browser[open] > summary::before,
+.tree-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pages-browser[open] > :not(summary),
+.tree-panel[open] > :not(summary) {
+  margin-top: var(--sp-1);
+}
+
+.pe-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+}
+
+.pages-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pages-file-list button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+}
+
+.pages-file-list li.active button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pages-editor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .pages-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* #536 — .tree-panel is no longer a standalone GlassPanel (see the disclosure rules above); it
+ * keeps its own max-height/overflow since it's still the real scroll container (ui/e2e's
+ * pages-editor-autoscroll.spec.js sets `.tree-panel`'s own scrollTop directly). */
+.tree-panel {
+  max-height: 45vh;
+  overflow: auto;
+}
+
+.preview-panel,
+.inspector-panel {
+  /* background/border/blur come from .glass-panel (GlassPanel component) */
+  padding: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.tree-root {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.tree-root ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tree-node {
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tree-node:hover {
+  background: var(--accent-soft);
+}
+
+.tree-node.selected {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.tree-node.component .tree-node-tag {
+  color: var(--llm);
+}
+
+.tree-node.selected .tree-node-tag {
+  color: inherit;
+}
+
+.tree-node-props {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tree-node.selected .tree-node-props {
+  color: color-mix(in srgb, var(--accent-fg) 80%, transparent);
+}
+
+.preview-canvas {
+  font-size: 0.8rem;
+}
+
+.preview-node {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  margin: 4px 0;
+  cursor: pointer;
+}
+
+.preview-node.component {
+  border-color: var(--warn);
+}
+
+.preview-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.preview-node-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.preview-node.selected .preview-node-label {
+  color: var(--accent);
+}
+
+.preview-node-children {
+  padding-left: 10px;
+}
+
+.snippet-textarea {
+  width: 100%;
+  background: var(--code-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+/* #160 — the snippet heading ("Snippet (<nodeId>) — isolated to this node
+ * only") sits directly above the Code/Visual view toggle in the Pages
+ * Editor's narrowest grid column, where it regularly wraps to two lines;
+ * with no explicit margin of its own and only the toggle's small 8px
+ * margin-top between them, the wrapped second line crowded right up
+ * against the toggle buttons. An explicit margin below the heading
+ * guarantees real separation regardless of column width or how many lines
+ * the heading wraps to. */
+.snippet-editor h4 {
+  margin-bottom: 10px;
+}
+
+/* #81 — highlighted snippet editor: a transparent textarea laid directly
+ * over a syntax-highlighted <pre>, both sharing identical box metrics so
+ * neither ever drifts from the other. */
+.snippet-editor-code {
+  position: relative;
+  width: 100%;
+}
+
+.snippet-editor-code .snippet-highlight,
+.snippet-editor-code .snippet-textarea-overlay {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.snippet-editor-code .snippet-highlight {
+  background: var(--code-bg);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.snippet-editor-code .snippet-textarea-overlay {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: none;
+}
+
+.snippet-editor-code .snippet-textarea-overlay::selection {
+  background: var(--selection);
+}
+
+/* A minimal, self-contained token palette (rather than pulling in Prism's
+ * own separate theme CSS) so highlighted JSX matches this app's existing
+ * dark palette instead of a mismatched, separately-themed code block. */
+.token.keyword {
+  color: var(--accent);
+}
+
+.token.function {
+  color: var(--syn-fn);
+}
+
+.token.string,
+.token.attr-value {
+  color: var(--syn-str);
+}
+
+.token.tag,
+.token.tag .token.tag,
+.token.attr-name {
+  color: var(--syn-attr);
+}
+
+.token.punctuation,
+.token.attr-equals {
+  color: var(--muted);
+}
+
+.token.comment {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.snippet-diff-preview {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--code-bg);
+}
+
+.snippet-diff {
+  max-height: 320px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0;
+}
+
+.diff-line {
+  display: block;
+}
+
+.diff-added {
+  color: var(--tool);
+  background: var(--success-soft);
+}
+
+.diff-removed {
+  color: var(--error);
+  background: var(--danger-soft);
+}
+
+.diff-context {
+  color: var(--muted);
+}
+
+.snippet-diff-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.violation-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+}
+
+.props-inspector,
+.automap-panel {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.prop-row .prop-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 90px;
+}
+
+/* #77 — labels a raw-code-edited row (identifier/expression/spread) so its
+ * text input isn't mistaken for a broken plain-string field. */
+.prop-kind-hint {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--llm-soft);
+  color: var(--llm);
+  flex-shrink: 0;
+}
+
+.prop-row input[type='text'],
+.prop-row input[type='number'] {
+  flex: 1;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.automap-candidates {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+
+.propflow-panel {
+  /* background/border/blur come from .glass-panel (GlassPanel component) */
+  margin-top: 20px;
+  padding: 16px;
+}
+
+.propflow-show-values {
+  margin-top: 10px;
+}
+
+.propflow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 0.82rem;
+}
+
+.propflow-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.propflow-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* #75 — pill/hierarchy layout replacing #55's node-box-to-node-box edges.
+ * `.propflow-hierarchy` is the positioning context: an absolutely-positioned
+ * SVG line layer underneath, plain absolutely-positioned node labels and
+ * `Badge`-rendered prop pills on top, all sharing the same coordinate
+ * space the domain layer's layoutPillHierarchy computed. */
+.propflow-hierarchy {
+  position: relative;
+  margin-top: 10px;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.propflow-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.propflow-line {
+  pointer-events: none;
+}
+
+.propflow-node-group {
+  position: absolute;
+  inset: 0;
+}
+
+.propflow-node-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.propflow-node-label.component {
+  color: var(--llm);
+  font-weight: 600;
+}
+
+/* Pills reuse Badge's `.attribution-label` shape (rounded, small, bold
+ * uppercase text) for positioning/border only — per-prop-name background
+ * and text color come from the domain layer's palette via inline style
+ * (Badge's own tone vocabulary is a fixed 4-value semantic set that doesn't
+ * cover "one distinct color per arbitrary prop name"). */
+.propflow-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.propflow-pill-outgoing {
+  opacity: 0.9;
+}
+
+/* Ticket F.4 (#123, epic #119) — the SnippetEditor Code/Visual toggle. */
+.snippet-view-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.snippet-view-toggle button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.snippet-view-toggle button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Ticket F.1 (#120, epic #119) — React Flow (@xyflow/react) visual composer
+ * canvas. `.jsx-flow-node` is the custom node box rendered by
+ * JsxFlowNode.tsx; handle colors/positions come from inline style (per-prop
+ * palette computed in the domain layer, same as .propflow-pill above). */
+.snippet-flow-canvas {
+  margin-top: 16px;
+}
+
+.snippet-flow-error {
+  margin-bottom: 8px;
+}
+
+.snippet-flow-viewport {
+  height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+/* #160 — the React Flow zoom/fit-view controls (bottom-left of the canvas)
+ * rendered with the library's default *light*-theme colors (near-white
+ * buttons, barely-visible icons) against this app's dark canvas — visually
+ * broken/floating rather than a real overlap, but the same "not actually
+ * styled for this theme" family of bug. SnippetFlowCanvas.tsx now passes
+ * colorMode="dark" to <ReactFlow>, which applies the library's own
+ * `.dark` variable set; these overrides nudge it further to match the
+ * app's existing glass/border palette instead of xyflow's stock dark grey. */
+.react-flow__controls-button {
+  background: var(--surface-2);
+  border-bottom-color: var(--border);
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.jsx-flow-node {
+  min-height: 40px;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--hover);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.jsx-flow-node.component .jsx-flow-node-label {
+  color: var(--llm);
+  font-weight: 600;
+}
+
+.jsx-flow-node-label {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.jsx-flow-handle {
+  width: 8px;
+  height: 8px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+
+/* Ticket F.2 (#121, epic #119) — the always-present, invisible whole-node
+ * drop zone (JsxFlowNode's WILDCARD_RECEIVED_HANDLE) a rewired wire can
+ * land on even when the target doesn't already expose a same-named handle. */
+.jsx-flow-handle-wildcard {
+  background: transparent !important;
+  border: none !important;
+  opacity: 0;
+}
+
+.snippet-flow-wire-error {
+  margin-top: 8px;
+}
+
+/* Ticket F.3 (#122, epic #119) — per-node structural toolbar (remove/move/
+ * add-child) rendered on JsxFlowNode. Sits above the wildcard drop-zone
+ * handle in z-order (later in DOM = on top), so its buttons stay clickable. */
+.jsx-flow-node-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.jsx-flow-node-toolbar button {
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+  align-self: auto;
+}
+
+/* Ollama (Epic 6.1/#97, 6.3/#99) — status/install/model-management screen. */
+.ollama-status,
+.ollama-install,
+.ollama-models,
+.ollama-pull {
+  margin-top: 1rem;
+}
+
+.ollama-install-command {
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--sunken);
+}
+
+.ollama-model-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ollama-model-table th,
+.ollama-model-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ollama-pull-progress {
+  font-weight: 600;
+}
+
+.ollama-model-picker-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ollama-model-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+}
+
+.ollama-model-picker-name {
+  font-weight: 600;
+  min-width: 3rem;
+}
+
+/* Epic #57 / #59 — Workflows screen (XState machine diagrams, React Flow).
+ * Appended in its own block to keep merges with other agents' CSS edits
+ * trivial. */
+.wf-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.wf-machine {
+  margin-top: 16px;
+}
+
+.wf-machine h3 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-viewport {
+  height: 380px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+}
+
+.wf-state {
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-glass-strong);
+  color: var(--text);
+  text-align: center;
+}
+
+.wf-state.initial {
+  border-color: var(--accent);
+}
+
+.wf-state.final {
+  border: 3px double var(--tool);
+}
+
+.wf-state.missing {
+  border-style: dashed;
+  border-color: var(--error);
+}
+
+.wf-state-name {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-state-tags {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wf-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.wf-tag.final {
+  color: var(--tool);
+}
+
+.wf-tag.missing {
+  color: var(--error);
+}
+
+.wf-internal {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-start-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.wf-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wf-viewport .react-flow__edge-textbg {
+  fill: var(--surface-2);
+}
+
+.wf-viewport .react-flow__edge-text {
+  fill: var(--text);
+  font-size: 11px;
+}
+
+.wf-viewport .react-flow__edge-path {
+  stroke: var(--muted);
+}
+
+/* #61 — visual editing on the Workflows canvas. */
+.wf-viewport.editable .wf-handle {
+  opacity: 1;
+  pointer-events: all;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border: 1px solid var(--border-strong);
+}
+
+.wf-edit-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-glass);
+}
+
+.wf-edit-panel h4 {
+  margin: 0 0 8px;
+}
+
+.wf-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.wf-edit-row input,
+.wf-edit-row select {
+  min-width: 140px;
+}
+
+.wf-hint {
+  margin-top: 8px;
+}
+
+/* Epic #223 — Context / Actions panel under the diagram. */
+.wf-context-table {
+  width: 100%;
+  margin-bottom: 8px;
+  border-collapse: collapse;
+}
+
+.wf-context-table th,
+.wf-context-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-named-list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-named-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+/* Epic #185 — Workflow narrator panels (plain English / scenarios / health)
+ * under each machine diagram. Own block to keep merges trivial. */
+.wf-narrative {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.wf-nar-panel {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-glass);
+  backdrop-filter: blur(var(--panel-blur));
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.wf-nar-panel h4 {
+  margin: 0 0 8px;
+}
+
+.wf-nar-panel h5 {
+  margin: 12px 0 4px;
+  text-transform: capitalize;
+}
+
+.wf-nar-panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.wf-nar-panel li {
+  margin: 3px 0;
+  line-height: 1.45;
+}
+
+.wf-nar-summary {
+  margin: 0 0 4px;
+  color: var(--muted);
+}
+
+.wf-nar-state {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.wf-nar-panel code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--llm);
+}
+
+.wf-nar-scenario {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-nar-scenario.happy h5 {
+  color: var(--tool);
+}
+
+.wf-nar-gwt {
+  list-style: none;
+  padding-left: 0;
+}
+
+.wf-finding.warning {
+  color: var(--llm);
+}
+
+.wf-nar-ok {
+  color: var(--tool);
+}
+
+/* Pages Editor source view (Monaco adapter + textarea fallback) */
+.source-panel { margin-top: 1rem; }
+.source-panel-header { display: flex; align-items: center; gap: 0.75rem; }
+.source-panel-header h3 { margin: 0; }
+.source-editor-textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; }
+.source-editor-monaco { border-radius: 6px; overflow: hidden; margin-top: 0.5rem; }
+.source-diagnostics { margin-top: 0.5rem; }
+/* #223 scope/binding link panel */
+.scope-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+.scope-graph { position: relative; max-width: 100%; }
+.scope-graph-svg { position: absolute; inset: 0; pointer-events: none; }
+/* #534 -- scope-source/scope-target are real <button>s now (Slice 1's accessibility fix); reset the
+   UA button chrome back to the original span's look, then layer interaction states on top. */
+.scope-source, .scope-target {
+  position: absolute; height: 22px; box-sizing: border-box; padding: 0 8px; line-height: 20px;
+  border: 1px solid var(--border); border-radius: 11px; font-size: 0.75rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  appearance: none; background: var(--surface-2); font: inherit; text-align: left; cursor: pointer;
+}
+.scope-source:disabled, .scope-target:disabled { cursor: default; }
+.scope-source:focus-visible, .scope-target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.scope-source.unused { opacity: 0.55; border-style: dashed; }
+.scope-target.scope-status-unbound { border-style: dashed; border-color: var(--danger); color: var(--danger); }
+.scope-target.scope-status-undeclared { border-color: var(--warn); color: var(--warn); }
+.scope-target.scope-status-spread { border-style: dotted; opacity: 0.7; }
+/* Slice 2 -- click-to-bind states. Fit/unfit never rely on colour alone: an unfit candidate also
+   carries `disabled` (announced, native-skipped by Tab) plus its own real type in `title`, never hidden. */
+.scope-target.armed { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.scope-source.scope-fit { border-color: var(--accent); background: var(--accent-soft); }
+.scope-source.scope-unfit { opacity: 0.55; border-style: dashed; }
+.scope-callout {
+  font-size: 0.8rem; margin: 6px 0; padding: 4px 8px; border-radius: 6px;
+  background: var(--accent-soft); border: 1px solid var(--accent);
+}
+.scope-flags { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; }
+.scope-flag-warn::before { content: '\26A0  '; color: var(--warn); }
+.scope-flag-info { opacity: 0.75; }
+
+/* #224 — external-change notice + diff view */
+.external-change-notice {
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.diff-view {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.diff-view-row {
+  display: flex;
+  white-space: pre;
+}
+
+.diff-view-num {
+  flex: 0 0 3ch;
+  text-align: right;
+  padding-right: 6px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.diff-view-marker {
+  flex: 0 0 2ch;
+  user-select: none;
+}
+
+.diff-view-added {
+  color: var(--tool);
+  background: var(--success-soft);
+}
+
+.diff-view-removed {
+  color: var(--error);
+  background: var(--danger-soft);
+}
+
+.diff-view-context {
+  color: var(--muted);
+}
+
+.diff-view-gap {
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+/* #223 — folder picker (features/directory-browser). Layout + focus only. */
+.dir-picker {
+  margin: 12px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.dir-picker__current,
+.dir-picker__actions,
+.dir-picker__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dir-picker__actions {
+  margin: 10px 0;
+}
+.dir-picker__list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.dir-picker__row {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dir-picker__open {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-align: left;
+}
+.dir-picker__open:hover {
+  text-decoration: underline;
+}
+.dir-picker__open:focus-visible,
+.dir-picker__hidden input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dir-picker__hidden {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+/* #365 — workspace-relative breadcrumb: the picker never leaves the workspace, so the trail starts there. */
+.dir-picker__crumbs ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.dir-picker__crumbs li + li::before {
+  content: '/';
+  color: var(--muted);
+  padding: 0 4px;
+}
+.dir-picker__crumb {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.dir-picker__crumb:hover {
+  text-decoration: underline;
+}
+.dir-picker__crumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* #365 — "Open a project" empty state (features/project-gate). */
+.no-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+}
+.no-project__reopen {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.no-project__sample {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+.no-project__hint code {
+  overflow-wrap: anywhere;
+}
+.dir-badge {
+  font-size: 0.72rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+.dir-badge--construct {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Live app preview (#456): the frame fills the stage at a chosen device size,
+ * and can take the whole viewport. Tokens only. */
+.live-preview-panel { padding: 12px; margin-top: 12px; }
+.live-preview-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+/* `display: flex` would otherwise beat the browser's own [hidden] rule, and the
+ * toolbar would still take up room (and show) in full screen. */
+.live-preview-head[hidden] { display: none; }
+.live-preview-head h4 { margin: 0; }
+.live-preview-bar { display: flex; gap: 8px; }
+.live-preview-bar input { flex: 1; }
+.live-preview-sizes { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.live-preview-sizes label { color: var(--muted); font-size: 0.8rem; }
+/* Reserves its width from the start so a measurement landing cannot shove the
+ * Full screen button sideways (the #252 rule, applied to the size readout). */
+.live-preview-measure { min-width: 12ch; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.live-preview-full-btn { margin-left: auto; }
+/* The stage the frame lives in: the height that is actually available, not 360px. */
+.live-preview-stage { display: flex; justify-content: center; height: var(--preview-stage-h, 58vh); min-height: 240px; }
+.live-preview-box { height: 100%; display: flex; min-width: 0; }
+.live-preview-frame { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 6px; background: var(--preview-bg); }
+.live-preview-empty { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.live-preview-empty p { margin: 0; }
+.live-preview-empty-actions { display: flex; gap: var(--sp-2); }
+
+/* Full screen: the app, and one way back. The shell has already hidden the rail,
+ * panes, top bar and drawer (focus mode); this covers what is left. `position:
+ * fixed` rather than the Fullscreen API — what has to disappear is the Cockpit's
+ * own chrome, which is a React/CSS matter, and Esc/focus-return then behave the
+ * same in every browser and in headless runs. */
+.live-preview-panel--full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--preview-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* Beats `.pe-stage .live-preview-panel`'s own margins, which would otherwise
+ * shrink the fixed box away from the viewport edges. */
+.pe-stage .live-preview-panel.live-preview-panel--full { margin: 0; padding: 0; }
+.live-preview-panel--full .live-preview-stage { flex: 1; height: auto; min-height: 0; }
+.live-preview-panel--full .live-preview-frame { border: 0; border-radius: 0; }
+.live-preview-panel--full .live-preview-empty { padding: var(--sp-4); color: var(--text); background: var(--surface-1); height: 100%; }
+/* Unobtrusive: out of the way until the pointer is over the app or it takes focus. */
+.live-preview-exit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.live-preview-panel--full:hover .live-preview-exit,
+.live-preview-exit:hover,
+.live-preview-exit:focus,
+.live-preview-exit:focus-visible { opacity: 1; }
+.live-preview-exit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.live-preview-exit--static { position: static; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .live-preview-exit { transition: none; }
+}
+
+/* --- Pages Editor inside the shell (#247): Browser tree, stage, Tools tabs --- */
+/* The Pages screen is a viewport for a real app, so it uses the whole middle pane
+ * instead of `.main`'s 1100px reading measure (#456). */
+.main:has(> .pe-stage) { max-width: none; padding: var(--sp-3) var(--sp-4); }
+.pe-stage { max-width: none; }
+.pe-browser { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pe-all-pages { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }
+.pe-all-pages:hover { background: var(--hover); }
+.pe-all-pages:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pe-stage .live-preview-panel,
+.pe-stage .preview-panel { margin-top: 0; margin-bottom: var(--sp-3); }
+.pe-stage .preview-panel { max-height: 60vh; }
+.pe-changed {
+  margin: 0 0 var(--sp-3);
+  padding: 6px 10px;
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: 0.85rem;
+}
+.sh-tabpanel .inspector-panel,
+.sh-tabpanel .source-panel { margin: 0; max-height: none; }
+.sh-tabpanel .prop-row { flex-wrap: wrap; }
+.sh-tabpanel .prop-row input[type='text'],
+.sh-tabpanel .prop-row input[type='number'] { min-width: 0; flex: 1 1 8rem; }
+.sh-tabpanel .scope-panel { margin-top: 0; border-top: 0; padding-top: 0; }
+.sh-tabpanel .external-change-notice { margin: 0; }
+
+/* ---------------------------------------------------------------------------
+   Commit on save (#283) — the indicator every edit screen carries, the
+   dirty-tree prompt, and the Settings controls. Tokens only (docs/design/
+   tokens.md): no hard-coded colours, so both themes follow automatically.
+   --------------------------------------------------------------------------- */
+.git-indicator {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  background: var(--sunken);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+}
+.git-indicator[data-state='asking'] { border-color: var(--warn); background: var(--warn-soft); }
+.git-indicator[data-state='pending'] { border-color: var(--accent); background: var(--accent-soft); }
+.git-indicator__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.git-indicator__text { color: var(--text); }
+.git-indicator__commit {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sp-1) var(--sp-3);
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+}
+.git-indicator__commit dt { color: var(--text-faint); }
+.git-indicator__commit dd { margin: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+
+.git-dirty {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-lg);
+}
+.git-dirty h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); }
+.git-dirty__question { margin: 0 0 var(--sp-2); color: var(--text); }
+.git-dirty__groups { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); color: var(--text-muted); font-size: var(--fs-sm); }
+.git-dirty__files { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); }
+.git-dirty__files ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-5); }
+.git-dirty__remember { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); margin-bottom: var(--sp-2); }
+.git-dirty__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.git-settings { margin-top: var(--sp-6); border-top: 1px solid var(--border-subtle); padding-top: var(--sp-4); }
+.git-settings__check { display: flex; align-items: center; gap: var(--sp-2); }
+.git-settings__check input[type='checkbox'] { width: 24px; height: 24px; flex: none; } /* was width:auto = 13px, below the 24px target size */
+.git-settings__pair { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.git-settings__pair input { flex: 1 1 10rem; min-width: 0; }
+.git-settings__warn {
+  padding: 6px 10px;
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+
+/* #330 — clone a repository (features/clone): the form on the Open-a-project screen, Settings' "Connect a remote"
+   and the Processes drawer's list of clones. Tokens only. */
+.clone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  border-top: 1px solid var(--border-strong);
+  padding-top: var(--sp-3, 12px);
+  margin-top: var(--sp-3, 12px);
+}
+.clone__heading {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.clone__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.clone__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.clone__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  font-size: var(--fs-sm);
+}
+.clone__howto {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.clone__howto summary {
+  cursor: pointer;
+  color: var(--text);
+}
+.clone__howto ol {
+  margin: 6px 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.clone__howto a {
+  color: var(--accent);
+}
+.clone-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border-strong);
+  padding-top: var(--sp-3, 12px);
+}
+.clone-recent__title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.clone-recent__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.clone-recent__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.clone-recent__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.clone-recent__url {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+}
+.clone__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.clone code {
+  overflow-wrap: anywhere;
+}
+.clone__job,
+.clone-jobs__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.clone__job--bad {
+  border-color: var(--danger, #d64545);
+}
+.clone__job-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.clone__state {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.clone__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3, rgba(127, 127, 127, 0.25));
+  overflow: hidden;
+}
+.clone__bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.clone__progress {
+  margin: 0;
+}
+.clone-jobs {
+  padding: 8px 12px 0;
+}
+.clone-jobs__title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+.clone-jobs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* #527 (Slice 1 of #518's design, docs/design/block-palette.md) — Pages editor's read-only Palette
+ * tab. Group headers are native <details>/<summary> (same disclosure idiom as .help-topic above),
+ * keyboard-toggleable with no bespoke widget. Only existing tokens (tokens.md): the Provider chip is
+ * deliberately plain grey (a naming convention over `hook`, not its own branded layer), the
+ * Expression chip earns --warn as a real branded layer, and Component reuses --success like every
+ * other component tag in the Cockpit. */
+.pal-panel h3 {
+  margin: 0 0 4px;
+}
+
+.pal-group {
+  margin: 10px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 2px var(--sp-3) var(--sp-2);
+  background: var(--surface-1);
+}
+
+.pal-group > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--sp-2) 0;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+
+.pal-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pal-group > summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 0.75em;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pal-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pal-count {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+}
+
+.pal-item {
+  padding: var(--sp-2) 0 var(--sp-2) 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pal-item:first-of-type {
+  border-top: none;
+}
+
+.pal-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pal-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.pal-chip--expression {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: transparent;
+}
+
+.pal-chip--component {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: transparent;
+}
+
+.pal-path {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
+}
+
+.pal-desc {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-empty {
+  padding-left: 20px;
+}
+
+.pal-boundary {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-boundary b {
+  color: var(--text);
+}
+
+/* #532 (Slice 2 of #518's design) -- the Insert action on a Component/Provider row. Compact variant
+ * of the global <button> baseline above (same colours/radius, smaller so it sits inline with the
+ * chip and name) pushed to the row's trailing edge; still >=24px tall per the design's target-size
+ * review. Expression rows still get no `onInsert` here (there is no mechanical block to insert an
+ * existing Expression by reference yet -- see #533's own "no block yet" note) so they render no
+ * button at all -- never a disabled placeholder that implies an action isn't there yet. */
+.pal-insert {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: var(--fs-xs);
+  min-height: 24px;
+}
+
+/* #533 (Slice 3 of #518's design) -- "Wrap with...". Additive only: nothing above this rule changes
+ * when no JSX selection is flagged (Slice 1/2 render byte-for-byte as before). Status is always a
+ * text chip ("Fits this selection" / "Not a fit"), never colour alone, per principles.md's review. */
+.pal-item--dim {
+  opacity: 0.65;
+}
+
+.pal-chip--fit-fits {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: transparent;
+}
+
+.pal-wrap-new {
+  padding: var(--sp-2) 0 var(--sp-3) 20px;
+  border-top: 1px solid var(--border-subtle);
+  margin-bottom: var(--sp-2);
+}
+
+.pal-wrap-callout {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-wrap-note {
+  margin: 0 0 var(--sp-2);
+}
+
+.pal-wrap-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pal-wrap-name-input {
+  flex: 1;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.pal-wrap-preview {
+  margin-top: var(--sp-2);
+}
+
+.pal-wrap-file {
+  margin-bottom: var(--sp-2);
+}
+
+.pal-wrap-file-name {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
+}

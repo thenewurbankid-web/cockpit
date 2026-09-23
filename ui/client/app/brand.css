@@ -1,0 +1,241 @@
+/* ---- the brand mark, alive (#455) --------------------------------------------------------------
+ * Owner request, 2026-09-21: "make the logos active always with subtle animation". No animation
+ * library: the marks are pills, a bar and a circle, so a travelling stroke-dash gap and a scale/
+ * opacity breathe do the whole job in keyframes — 0 KB added, no download, nothing to fetch offline.
+ *
+ * components/ui/AnimatedLogo.jsx owns the motion *state* and publishes it here as `data-motion`:
+ *   off     reduced motion, or before hydration — no loop at all, just the static mark
+ *   idle    the slow always-on loop
+ *   paused  tab hidden or mark scrolled out of view — frozen where it stands, zero CPU
+ * `data-part` on each shape comes from components/ui/Logo.jsx, so only ONE element per mark moves
+ * and this file never restates the geometry.
+ *
+ * The amplitude is deliberately low: a mark that pulls the eye away from the work on screen has
+ * failed. Cycles are 4-6 s, nothing jumps, nothing blinks.
+ */
+.brand-mark {
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+}
+
+/* Idle loops. Declared for `paused` too, so freezing is a pause (the shape stays where it is)
+ * rather than a snap back to the start. */
+/* Line: the two pills start stacked in one column, slide out into the staggered mark and rest there, then
+ * slide back and repeat. Construct: no motion at all (owner, 2026-09-21). Cockpit: every so often the toggle flips. */
+.brand-mark[data-mark='line'][data-motion='idle'] [data-part='bar'],
+.brand-mark[data-mark='line'][data-motion='paused'] [data-part='bar'] {
+  animation: brand-line-bar 7s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='line'][data-motion='idle'] [data-part='ring'],
+.brand-mark[data-mark='line'][data-motion='paused'] [data-part='ring'] {
+  animation: brand-line-ring 7s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='cockpit'][data-motion='idle'] [data-part='knob'],
+.brand-mark[data-mark='cockpit'][data-motion='paused'] [data-part='knob'] {
+  animation: brand-toggle-knob 8s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='cockpit'][data-motion='idle'] [data-part='bar'],
+.brand-mark[data-mark='cockpit'][data-motion='paused'] [data-part='bar'] {
+  animation: brand-toggle-bar 8s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='cli'][data-motion='idle'] [data-part='cursor'],
+.brand-mark[data-mark='cli'][data-motion='paused'] [data-part='cursor'] {
+  /* A slow glow, not a cursor blink: blinking is exactly the attention-stealing motion we don't want. */
+  animation: brand-glow 4.5s ease-in-out infinite;
+}
+
+.brand-mark[data-motion='paused'] * {
+  animation-play-state: paused;
+}
+
+/* ---- busy (#406): AnimatedLoader's motion state. The SAME per-mark parts and keyframes idle
+ * already uses, just faster (~1.5s vs 7-8s) — reads as active work instead of ambient life, with
+ * zero new keyframes. Reduced motion falls back to "off" in the component itself (same as idle), so
+ * there is no busy-specific reduced-motion rule needed here. */
+.brand-mark[data-mark='cockpit'][data-motion='busy'] [data-part='knob'] {
+  animation: brand-toggle-knob 1.5s ease-in-out infinite;
+}
+.brand-mark[data-mark='cockpit'][data-motion='busy'] [data-part='bar'] {
+  animation: brand-toggle-bar 1.5s ease-in-out infinite;
+}
+.brand-mark[data-mark='line'][data-motion='busy'] [data-part='bar'] {
+  animation: brand-line-bar 1.5s ease-in-out infinite;
+}
+.brand-mark[data-mark='line'][data-motion='busy'] [data-part='ring'] {
+  animation: brand-line-ring 1.5s ease-in-out infinite;
+}
+.brand-mark[data-mark='cli'][data-motion='busy'] [data-part='cursor'] {
+  animation: brand-glow 1s ease-in-out infinite;
+}
+
+/* ---- exit (#406): the login screen's hand-off, right before the Cockpit itself replaces it — a
+ * short, ONE-SHOT play (not infinite), so the cut reads as a resolve rather than a jump. Owner brief:
+ * "the mark plays a short exit" — reusing the toggle's own "knob slides and lights" vocabulary
+ * (brand-toggle-knob/-bar above), just resolved to the end and faded rather than looped. The whole
+ * mark also scales up slightly and fades, which is what AnimatedLogo's `animationend` listener
+ * (on the wrapper, not a child part) waits on to call `onExitEnd`. */
+.brand-mark[data-motion='exit'] {
+  animation: brand-exit-mark 420ms cubic-bezier(0.3, 0, 0.2, 1) 1 both;
+}
+.brand-mark[data-mark='cockpit'][data-motion='exit'] [data-part='knob'] {
+  animation: brand-exit-knob 420ms ease-out 1 both;
+}
+.brand-mark[data-mark='cockpit'][data-motion='exit'] [data-part='bar'] {
+  animation: brand-exit-bar 420ms ease-out 1 both;
+}
+
+@keyframes brand-exit-mark {
+  0% { transform: scale(1); opacity: 1; }
+  55% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1.16); opacity: 0; }
+}
+@keyframes brand-exit-knob {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-20px); }
+}
+@keyframes brand-exit-bar {
+  0% { opacity: 1; transform: translateX(0); }
+  55% { opacity: 0; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(17px); }
+}
+
+/* The staggered mark is the rest position (translate 0). Stacked = both pills centred in one column: the bar
+ * (x 4-32) shifts right 6, the ring (x 16-44) shifts left 6, so both span x 10-38. */
+@keyframes brand-line-bar {
+  0%, 18%   { transform: translateX(6px); }
+  42%, 74%  { transform: translateX(0); }
+  98%, 100% { transform: translateX(6px); }
+}
+
+@keyframes brand-line-ring {
+  0%, 18%   { transform: translateX(-6px); }
+  42%, 74%  { transform: translateX(0); }
+  98%, 100% { transform: translateX(-6px); }
+}
+
+/* The toggle flips off and back: the knob glides to the left end while the label bar hands over to the
+ * right side (it is invisible while it jumps, so the two never cross). */
+@keyframes brand-toggle-knob {
+  0%, 38%   { transform: translateX(0); }
+  50%, 84%  { transform: translateX(-20px); }
+  96%, 100% { transform: translateX(0); }
+}
+
+@keyframes brand-toggle-bar {
+  0%, 36%   { opacity: 1; transform: translateX(0); }
+  40%, 44%  { opacity: 0; transform: translateX(0); }
+  45%, 82%  { opacity: 0; transform: translateX(17px); }
+  86%, 92%  { opacity: 1; transform: translateX(17px); }
+  93%, 94%  { opacity: 0; transform: translateX(17px); }
+  95%, 100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes brand-glow {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* One-shot on hover/focus, wherever the mark sits inside something clickable. Nothing in the Cockpit
+ * wraps the brand in a link today; this is written parent-side so it simply works the day one does,
+ * with no prop and no change at the call site. */
+:where(a, button):hover .brand-mark,
+:where(a, button):focus-visible .brand-mark {
+  animation: brand-pop 620ms ease-out 1;
+}
+
+@keyframes brand-pop {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+/* Reduced motion: no loop, full stop. tokens.css already clamps every animation's duration globally,
+ * but a 0.001ms loop is still a loop — this removes it outright, which is what the preference asks
+ * for. AnimatedLogo independently reports `data-motion="off"` so the state is assertable, not just
+ * visually absent. */
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark,
+  .brand-mark * {
+    animation: none !important;
+  }
+}
+
+/* ---- the login lockup (owner request, 2026-09-21) --------------------------------------------
+ * Two rows: the mark alone, large and prominent, over the tracked-uppercase wordmark. Sized with
+ * clamp() so it stays inside a 390px-wide phone and never pushes the sign-in button below the fold
+ * on an 800px-tall window. */
+.login-brand--stacked {
+  flex-direction: column;
+  gap: var(--sp-3);
+  text-align: center;
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+}
+
+.login-brand__mark svg {
+  display: block;
+  width: clamp(88px, 13vw, 120px);
+  height: auto;
+  /* The mark is the brightest thing on a dark, blurred backdrop; the same soft shadow the wordmark
+   * carries keeps the two reading as one object rather than a sticker on a photo. */
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55));
+}
+
+/* 0.36em of tracking hangs off the last letter, which would leave the word visibly left of centre
+ * now that it is on a row of its own. Matching padding on the left balances it. */
+.login-brand__word {
+  padding-left: 0.36em;
+}
+
+/* ---- login hand-off (#406) --------------------------------------------------------------------
+ * A real sign-in keeps the login screen mounted one more short beat, as a fixed overlay above the
+ * Cockpit (already mounted underneath — see AuthGatePage.tsx), so it dissolves into what is already
+ * there instead of an instant cut or a blank frame in between. AnimatedLogo's own "exit" motion
+ * state (above) animates the mark itself; this only lifts the screen out of normal flow and fades
+ * the rest of it (backdrop, tagline, buttons) alongside, on the same timescale. */
+.auth-screen--handoff {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  /* Brief and non-interactive: the Cockpit underneath is already the real, clickable page. */
+  pointer-events: none;
+  animation: auth-handoff-out 420ms ease-in 1 both;
+}
+@keyframes auth-handoff-out {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen--handoff {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ---- AnimatedLoader (#406) ---------------------------------------------------------------------
+ * A small wrapper around the mark for use as a loading indicator anywhere in the Cockpit.
+ * `inline` sits in text flow next to a label (e.g. a button's own text); `overlay` centres itself
+ * over its containing box (the caller gives that box `position: relative`) and adds a caption. */
+.loader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  line-height: 0;
+}
+.loader--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-raised);
+  flex-direction: column;
+  justify-content: center;
+  line-height: normal;
+  background: var(--surface-1);
+}
+.loader__label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}

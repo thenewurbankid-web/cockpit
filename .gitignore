@@ -1,0 +1,24 @@
+# Fetched at build time by scripts/vendor-construct.sh -- a copy of
+# thenewurbankid-web/construct's packages/{core,ast,engine,cli}, deliberately
+# never committed here. See README.md "Cross-repo dependency on construct".
+/packages/core/
+/packages/ast/
+/packages/engine/
+/packages/cli/
+/packages/.vendored-from
+
+# dependencies
+node_modules/
+
+# Next.js build output
+ui/client/.next/
+ui/client/out/
+ui/client/storybook-static/
+
+# ui/server build output
+ui/server/dist/
+
+# misc
+.DS_Store
+*.tsbuildinfo
+*.log
